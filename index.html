@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Araba Oyunu</title>
+<style>
+body {
+  margin: 0;
+  background: #111;
+  overflow: hidden;
+  touch-action: none;
+}
+#game {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #444;
+}
+.car {
+  position: absolute;
+  bottom: 20px;
+  width: 50px;
+  height: 90px;
+  background: red;
+  border-radius: 8px;
+}
+.enemy {
+  position: absolute;
+  top: -100px;
+  width: 50px;
+  height: 90px;
+  background: yellow;
+  border-radius: 8px;
+}
+#score {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-size: 20px;
+  z-index: 10;
+}
+#start {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  z-index: 20;
+}
+</style>
+</head>
+<body>
+
+<div id="game">
+  <div id="score">Skor: 0</div>
+  <div id="start">▶️ PLAY</div>
+  <div id="car" class="car"></div>
+</div>
+
+<script>
+const game = document.getElementById("game");
+const car = document.getElementById("car");
+const start = document.getElementById("start");
+const scoreEl = document.getElementById("score");
+
+let carX = window.innerWidth / 2 - 25;
+let score = 0;
+let speed = 4;
+let running = false;
+
+car.style.left = carX + "px";
+
+game.addEventListener("touchmove", e => {
+  if (!running) return;
+  carX = e.touches[0].clientX - 25;
+  car.style.left = carX + "px";
+});
+
+function spawnEnemy() {
+  const e = document.createElement("div");
+  e.className = "enemy";
+  e.style.left = Math.random() * (window.innerWidth - 50) + "px";
+  game.appendChild(e);
+
+  let y = -100;
+  const interval = setInterval(() => {
+    if (!running) {
+      clearInterval(interval);
+      e.remove();
+      return;
+    }
+    y += speed;
+    e.style.top = y + "px";
+
+    const er = e.getBoundingClientRect();
+    const cr = car.getBoundingClientRect();
+
+    if (
+      er.bottom > cr.top &&
+      er.top < cr.bottom &&
+      er.left < cr.right &&
+      er.right > cr.left
+    ) {
+      alert("💥 Oyun Bitti! Skor: " + score);
+      location.reload();
+    }
+
+    if (y > window.innerHeight) {
+      score++;
+      scoreEl.innerText = "Skor: " + score;
+      e.remove();
+      clearInterval(interval);
+    }
+  }, 20);
+}
+
+start.onclick = () => {
+  start.style.display = "none";
+  running = true;
+  setInterval(spawnEnemy, 1200);
+};
+</script>
+
+</body>
+</html>
