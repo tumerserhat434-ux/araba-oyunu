@@ -116,6 +116,9 @@ export function openBattle(opts) {
   }
 
   // birimler
+  const teamRingGeo = new THREE.RingGeometry(0.42, 0.56, 24);
+  const teamRingBlue = new THREE.MeshBasicMaterial({ color: 0x3a8aff, transparent: true, opacity: 0.85, depthWrite: false });
+  const teamRingRed = new THREE.MeshBasicMaterial({ color: 0xff3a2a, transparent: true, opacity: 0.85, depthWrite: false });
   const units = [];
   const MAXU = 24;
   for (const team of ['blue', 'red']) {
@@ -133,6 +136,7 @@ export function openBattle(opts) {
         else if (t === 'cavalry') { const side = i % 2 ? 1 : -1; x = s.sign * (11 + Math.floor(i / 2) % 2 * 2.5); z = side * (8 + Math.floor(i / 4) * 2.6); }
         else { x = s.sign * (9 + (row + r) * 1.6); z = (col - 2.5) * 1.9; }
         const o = createSoldier(t, team);
+        const ring = new THREE.Mesh(teamRingGeo, team === 'blue' ? teamRingBlue : teamRingRed); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.scale.setScalar(t === 'cavalry' ? 1.5 : 1); o.add(ring);
         o.position.set(x + rand(-0.3, 0.3), 0, z + rand(-0.3, 0.3));
         o.rotation.y = -s.sign * Math.PI / 2;
         scene.add(o);
@@ -520,8 +524,8 @@ export function openHeroViewer(id) {
     const mounted = H.model && H.model.userData.mounted;
     const ty = mounted ? 1.6 : 1.05;
     const portrait = innerHeight > innerWidth;
-    H.camera.position.set(0, ty + 0.6, (mounted ? 8.2 : 5.6) * (portrait ? 1.15 : 1));
-    H.camera.lookAt(0, ty - (portrait ? 0.35 : 0), 0);
+    H.camera.position.set(0, ty + 0.9, (mounted ? 9.5 : 7.4) * (portrait ? 1.2 : 1));
+    H.camera.lookAt(0, ty - (portrait ? 0.15 : 0), 0);
   };
   open({ scene: H.scene, camera: H.camera, update, dispose: () => { cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); } });
 }

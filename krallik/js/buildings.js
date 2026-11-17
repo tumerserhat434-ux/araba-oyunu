@@ -3,6 +3,7 @@
 // =====================================================================
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as A from './assets.js';
 
 export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8 };
 
@@ -830,9 +831,104 @@ function academy(L) {
   return k.build(0.44 + H + r + 1.4);
 }
 
+
+// =====================================================================
+//  KAYKIT MODELLERİ İLE BİNALAR (yüklendiyse bunlar kullanılır)
+// =====================================================================
+const KB = (n) => 'building_' + n + '_blue';
+const KKMAP = {
+  townhall: { m: () => KB('castle'), smoke: [0.25, 0.92, -0.2] },
+  barracks: { m: () => KB('barracks') },
+  archery: { m: (L) => (L >= 7 ? KB('tower_catapult') : L >= 4 ? KB('tower_B') : KB('tower_A')), fill: 0.62 },
+  hospital: { m: () => KB('church') },
+  potion: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15], glow: 0x50ff90 },
+  heroes: { m: () => KB('tavern') },
+  summon: { m: () => KB('tower_B'), tint: 0xc8a0ff, fill: 0.5 },
+  farm: { m: () => KB('windmill'), fill: 0.55 },
+  lumber: { m: () => KB('lumbermill'), fill: 0.62 },
+  quarry: { m: () => KB('mine') },
+  warehouse: { m: () => KB('market') },
+  academy: { m: () => KB('home_B'), fill: 0.5 },
+};
+const PROP_S = 4.2;
+function prop(name, x, z, ry = 0, s = 1, parent) { const m = A.model(name); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(PROP_S * s); parent.add(m); return m; }
+function kkBuilding(key, L) {
+  const def = KKMAP[key]; if (!def || !A.ready.models) return null;
+  const name = def.m(L);
+  const base = def.tint ? A.tinted(name, def.tint) : A.model(name);
+  if (!base) return null;
+  const fp = FOOTPRINT[key] || 7;
+  const k = new Kit();
+  const size = A.modelSize(name);
+  const fill = (def.fill || 0.7) + (L - 1) * 0.022;
+  const sc = fp * fill / Math.max(size.x, size.z);
+  base.scale.setScalar(sc);
+  k.group.add(base);
+  const h = size.y * sc;
+  const c = fp * 0.42, r2 = (n) => n * Math.PI / 2;
+  // --- binaya özel ekler ---
+  if (key === 'farm') {
+    const fields = L >= 8 ? 3 : L >= 4 ? 2 : 1;
+    const spots = [[-fp * 0.27, fp * 0.2], [fp * 0.27, fp * 0.22], [-fp * 0.27, -fp * 0.24]];
+    for (let i = 0; i < fields; i++) { const g = A.model('building_grain'); if (!g) break; const gs = A.modelSize('building_grain'); g.scale.setScalar(fp * 0.36 / Math.max(gs.x, gs.z)); g.position.set(spots[i][0], 0, spots[i][1]); k.group.add(g); }
+    base.position.set(fp * 0.18, 0, -fp * 0.12);
+  }
+  if (key === 'lumber') { for (let i = 0; i < 1 + Math.floor(L / 3); i++) prop('resource_lumber', -c + i * 1.3, c, 0.3 * i, 0.9, k.group); }
+  if (key === 'quarry') { for (let i = 0; i < 1 + Math.floor(L / 3); i++) prop('resource_stone', c - i * 1.4, c, 0.5 * i, 0.9, k.group); }
+  if (key === 'barracks') { prop('target', -c, c, 0.4, 1, k.group); if (L >= 3) prop('weaponrack', c, c, -0.3, 1, k.group); if (L >= 6) prop('target', -c + 1.4, c + 0.2, 0.2, 1, k.group); }
+  if (key === 'heroes') { prop('barrel', c, c, 0, 1, k.group); if (L >= 4) prop('barrel', c - 0.9, c + 0.2, 0.5, 1, k.group); }
+  if (key === 'hospital' && L >= 3) prop('tent', -c, c - 0.4, 0.4, 0.9, k.group);
+  if (key === 'potion') { prop('bucket_water', c, c, 0, 1, k.group); if (L >= 3) prop('crate_open', c - 1, c + 0.1, 0.3, 1, k.group); }
+  if (key === 'warehouse') { prop('crate_A_big', -c, c, 0.2, 1, k.group); prop('sack', -c + 0.9, c + 0.2, 0, 1, k.group); if (L >= 5) prop('crate_long_A', c, c, -0.4, 1, k.group); }
+  if (key === 'townhall' && L >= 5) {
+    const tw = A.model(KB('tower_A')), ts = A.modelSize(KB('tower_A'));
+    const tS = fp * (0.16 + L * 0.008) / Math.max(ts.x, ts.z);
+    for (const [sx, sz] of L >= 8 ? [[-1, -1], [1, -1], [-1, 1], [1, 1]] : [[-1, -1], [1, -1]]) { const t = A.model(KB('tower_A')); t.scale.setScalar(tS); t.position.set(sx * fp * 0.42, 0, sz * fp * 0.4); k.group.add(t); }
+    if (L >= 7) for (const sx of [-1, 1]) { const w = A.model('wall_straight'); if (!w) break; const ws = A.modelSize('wall_straight'); w.scale.setScalar(fp * 0.34 / Math.max(ws.x, ws.z)); w.position.set(sx * fp * 0.42, 0, 0); w.rotation.y = Math.PI / 2; k.group.add(w); }
+  }
+  // --- seviyeye göre genel ekler ---
+  const spots = [[-c, c], [c, c], [-c, -c], [c, -c]];
+  if (L >= 2 && !['lumber', 'quarry', 'warehouse', 'barracks', 'heroes'].includes(key)) prop('barrel', spots[0][0] * 0.95, spots[0][1], 0, 1, k.group);
+  if (L >= 3) for (const i of [2, 3]) { const f = prop('flag_blue', spots[i][0], spots[i][1], 0, 1.1, k.group); if (f) { const ph = Math.random() * 6; k.anims.push((t) => { f.rotation.y = Math.sin(t * 1.3 + ph) * 0.25; }); } }
+  if (L >= 4 && key !== 'farm') prop('sack', spots[1][0] * 0.9, spots[1][1] * 1.02, 0.4, 1, k.group);
+  if (L >= 5 && !['townhall', 'farm'].includes(key)) prop('crate_A_small', spots[0][0] * 0.75, spots[0][1] * 1.05, 0.5, 1, k.group);
+  if (L >= 6) for (const sx of [-1, 1]) { const f = A.model('fence_wood_straight'); if (!f) break; const fs = A.modelSize('fence_wood_straight'); f.scale.setScalar(fp * 0.3 / Math.max(fs.x, fs.z)); f.position.set(sx * fp * 0.3, 0, fp * 0.49); k.group.add(f); }
+  if (L >= 7 && key !== 'farm') prop('wheelbarrow', spots[3][0] * 0.7, spots[3][1] * 0.95 + 0.5, 0.8, 1, k.group);
+  if (L >= 8) for (const sz of [-1]) { const f = A.model('fence_stone_straight'); if (!f) break; const fs = A.modelSize('fence_stone_straight'); f.scale.setScalar(fp * 0.5 / Math.max(fs.x, fs.z)); f.position.set(0, 0, sz * fp * 0.5); k.group.add(f); }
+  if (L >= 9) for (const i of [0, 1]) prop('flag_blue', spots[i][0] * 1.02, spots[i][1] * 1.02, 0, 1.2, k.group);
+  // --- hareketli parçalar (makine gibi) ---
+  const fan = base.getObjectByName('building_windmill_top_fan_blue'), top = base.getObjectByName('building_windmill_top_blue');
+  if (fan) k.anims.push((t) => { fan.rotation.z = -t * 1.4; });
+  if (top) k.anims.push((t) => { top.rotation.y = Math.sin(t * 0.15) * 0.25; });
+  const saw = base.getObjectByName('building_lumbermill_saw_blue');
+  if (saw) k.anims.push((t) => { saw.rotation.x = t * 8; });
+  const arm = base.getObjectByName('catapult_arm_blue'), turret = base.getObjectByName('catapult_turret_blue');
+  if (arm) k.anims.push((t) => { const u = (t * 0.35) % 1; arm.rotation.x = u < 0.15 ? -(u / 0.15) * 1.2 : -1.2 + Math.min(1, (u - 0.15) / 0.85) * 1.2; });
+  if (turret) k.anims.push((t) => { turret.rotation.y = Math.sin(t * 0.3) * 0.8; });
+  if (def.smoke) addSmoke(k, def.smoke[0] * size.x * sc, def.smoke[1] * h, def.smoke[2] * size.z * sc);
+  if (def.glow) {
+    const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: def.glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.6 }));
+    gl.position.set(0.25 * size.x * sc, h * 0.35, 0.3 * size.z * sc); gl.scale.setScalar(fp * 0.4); k.group.add(gl);
+    k.anims.push((t) => { gl.material.opacity = 0.45 + Math.sin(t * 3) * 0.2 + Math.sin(t * 11) * 0.05; });
+  }
+  if (key === 'summon') {
+    const rune = new THREE.Mesh(new THREE.PlaneGeometry(fp * 0.55, fp * 0.55).rotateX(-Math.PI / 2), mats().runeMat); rune.position.set(0, 0.06, fp * 0.28); k.group.add(rune);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: 0xa060ff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.5 })); halo.position.set(0, h * 0.6, 0); halo.scale.setScalar(fp * 0.7); k.group.add(halo);
+    const crystals = [];
+    for (let i = 0; i < 4; i++) { const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), mats().crystal); cr.scale.set(1, 1.8, 1); cr.castShadow = true; k.group.add(cr); crystals.push(cr); }
+    k.anims.push((t) => { rune.rotation.y = t * 0.3; halo.material.opacity = 0.4 + Math.sin(t * 2.2) * 0.15; crystals.forEach((cr, i) => { const a = t * 0.8 + (i / 4) * TAU; cr.position.set(Math.cos(a) * fp * 0.36, h * 0.55 + Math.sin(t * 2 + i) * 0.4, Math.sin(a) * fp * 0.36); cr.rotation.y = t * 2; }); });
+  }
+  if (L >= 10) crest(k, h + 1.6);
+  const grp = k.build(h + 0.5);
+  if (key === 'archery') grp.userData.topY = h * (L >= 7 ? 0.62 : 0.78);
+  return grp;
+}
+
 const BUILDERS = { academy, townhall, barracks, archery, hospital, potion, heroes, summon, farm, lumber, quarry, warehouse };
 export function createBuilding(key, level) {
   mats(); geos();
+  const kg = kkBuilding(key, Math.max(1, level));
+  if (kg) return kg;
   const f = BUILDERS[key];
   CUR = { key, L: Math.max(1, level) };
   const grp = f ? f(Math.max(1, level)) : new THREE.Group();
@@ -846,7 +942,15 @@ export function createBuilding(key, level) {
 }
 
 export function createConstructionSite(size) {
-  mats(); const g = geos(), k = new Kit(), h = size * 0.5;
+  mats();
+  if (A.ready.models && A.hasModel('building_scaffolding')) {
+    const k = new Kit(), st = A.model('building_stage_B'), sc = A.model('building_scaffolding'), ss = A.modelSize('building_scaffolding');
+    const s2 = size * 0.62 / Math.max(ss.x, ss.z);
+    if (st) { st.scale.setScalar(s2); k.group.add(st); }
+    sc.scale.setScalar(s2); k.group.add(sc);
+    prop('resource_lumber', size * 0.38, size * 0.36, 0.3, 0.8, k.group); prop('resource_stone', -size * 0.38, size * 0.36, 0.2, 0.8, k.group); prop('ladder', size * 0.3, -size * 0.2, 0.5, 1, k.group);
+    return k.build(ss.y * s2);
+  } const g = geos(), k = new Kit(), h = size * 0.5;
   k.add(new THREE.PlaneGeometry(size * 0.9, size * 0.9).rotateX(-Math.PI / 2), 'dirt', 0, 0.03, 0);
   k.add(boxUV(size * 0.7, 0.5, size * 0.7, 2), 'stone', 0, 0.25, 0);
   const n = 3;
@@ -886,7 +990,8 @@ export function createPlot(size) {
 }
 
 export function createTree(variant = 0) {
-  mats(); const g = geos(), k = new Kit();
+  mats();
+  if (A.ready.models) { const n = ['trees_A_large', 'trees_B_large', 'trees_A_medium', 'tree_single_A'][variant % 4]; const m = A.model(n); if (m) { const g = new THREE.Group(); m.scale.setScalar(variant === 3 ? 3.2 : 4.2); g.add(m); g.userData.height = 5; return g; } } const g = geos(), k = new Kit();
   if (variant === 0) { // meşe
     k.add(new THREE.CylinderGeometry(0.22, 0.38, 2.6, 8), 'bark', 0, 1.3, 0);
     k.add(new THREE.CylinderGeometry(0.08, 0.14, 1.4, 6), 'bark', 0.5, 2.6, 0, 0, 0, -0.8);
@@ -909,13 +1014,19 @@ export function createTree(variant = 0) {
   return k.build(1.2);
 }
 export function createRock(scale = 1) {
-  mats(); const k = new Kit();
+  mats();
+  if (A.ready.models) { const m = A.model(['rock_single_A', 'rock_single_B', 'rock_single_C', 'rock_single_D'][Math.floor(Math.random() * 4)]); if (m) { const g = new THREE.Group(); m.scale.setScalar(3.4 * scale); g.add(m); g.userData.height = scale; return g; } } const k = new Kit();
   k.add(blob(1, 0.3), 'rock', 0, 0.35 * scale, 0, 0, 0, 0, scale * 1.2, scale * 0.75, scale);
   if (scale > 0.8) k.add(blob(1, 0.3), 'rock', scale * 0.9, 0.2 * scale, scale * 0.3, 0, 1, 0, scale * 0.5, scale * 0.4, scale * 0.45);
   return k.build(scale);
 }
 export function createWall(length, level) {
-  mats(); const g = geos(), k = new Kit(), t = tier(level);
+  mats();
+  if (A.ready.models && A.hasModel('wall_straight') && level >= 4) {
+    const g = new THREE.Group(), ws = A.modelSize('wall_straight'), seg = 4.6, n = Math.max(1, Math.round(length / seg)), sc = (length / n) / ws.x;
+    for (let i = 0; i < n; i++) { const w = A.model('wall_straight'); w.scale.set(sc, sc * 0.8, sc); w.position.x = -length / 2 + (i + 0.5) * (length / n); g.add(w); }
+    g.userData.height = ws.y * sc * 0.8; g.userData.update = () => {}; return g;
+  } const g = geos(), k = new Kit(), t = tier(level);
   if (t === 1) {
     const n = Math.max(2, Math.round(length / 0.42));
     for (let i = 0; i < n; i++) { const x = -length / 2 + (i + 0.5) * (length / n), h = 2.6 + Math.sin(i * 7.3) * 0.2; k.add(cylUV(0.22, 0.24, h, 7, 1), 'bark', x, h / 2, 0); k.add(g.cone8, 'bark', x, h + 0.25, 0, 0, 0, 0, 0.22, 0.5, 0.22); }
@@ -932,7 +1043,8 @@ export function createWall(length, level) {
   return k.build(H + 0.8);
 }
 export function createWallTower(level) {
-  mats(); const g = geos(), k = new Kit(), t = tier(level);
+  mats();
+  if (A.ready.models && level >= 4) { const n = level >= 8 ? KB('tower_B') : KB('tower_A'); const m = A.model(n); if (m) { const g = new THREE.Group(), ts = A.modelSize(n); m.scale.setScalar(3.6 / Math.max(ts.x, ts.z)); g.add(m); g.userData.height = ts.y * 3.6 / Math.max(ts.x, ts.z); g.userData.update = () => {}; return g; } } const g = geos(), k = new Kit(), t = tier(level);
   if (t === 1) {
     const H = 4.2;
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) k.add(g.cyl8, 'bark', sx * 0.9, H / 2, sz * 0.9, 0, 0, 0, 0.16, H, 0.16);

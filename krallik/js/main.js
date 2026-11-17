@@ -3,7 +3,8 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BLD from './buildings.js';
-import { createSoldier, animateUnit } from './units.js';
+import { createSoldier, animateUnit, createCitizen } from './units.js';
+import * as ASSETS from './assets.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
@@ -61,7 +62,7 @@ Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, n
 sun.shadow.mapSize.set(isMobile ? 2048 : 4096, isMobile ? 2048 : 4096);
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
 city.add(sun, sun.target);
-city.add(new THREE.HemisphereLight(0xcfe6ff, 0x6a5a3a, 1.0));
+city.add(new THREE.HemisphereLight(0xd8ecff, 0x5a7a3a, 0.85));
 
 function canvasTex(w, h, draw, repeat = true, srgb = true) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
@@ -81,6 +82,7 @@ function speckle(ctx, w, h, n, cols, r0, r1, alpha = 1) {
   ctx.globalAlpha = 1;
 }
 let waterNormal, grassField = null, life = null;
+const CLOUDS = [];
 const GARDENS = [];
 const FOUNTAIN = [-3.8, 8.4];
 const STALLS = [[-9.6, 0.4, '#c8302a', Math.PI / 2], [9.6, 0.9, '#2a6ad0', -Math.PI / 2]];
@@ -89,11 +91,9 @@ const ROAD_LINES = PLOTS.filter((q) => q.id !== 'townhall').map((q) => [[0, 0], 
 function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz; const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l)) : 0; return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
 function grassAvoid(x, z) {
   const r = Math.hypot(x, z);
-  if (r < 10.9) return true;
-  for (const [gx, gz] of GARDENS) if (Math.abs(x - gx) < 2.2 && Math.abs(z - gz) < 2.2) return true;
+
   if (Math.abs(r - 40) < 2.2) return true;
   for (const p of PLOTS) { const f = (BLD.FOOTPRINT[p.key] || 7) / 2 + 0.6; if (Math.abs(x - p.x) < f && Math.abs(z - p.z) < f) return true; }
-  for (const L of ROAD_LINES) for (let i = 0; i < L.length - 1; i++) if (segDist(x, z, L[i][0], L[i][1], L[i + 1][0], L[i + 1][1]) < 1.75) return true;
   return false;
 }
 function buildTerrain() {
@@ -109,7 +109,7 @@ function buildTerrain() {
   const p = geo.attributes.position;
   for (let i = 1; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), a = Math.atan2(y, x), k = 1 + Math.sin(a * 5) * 0.05 + Math.sin(a * 11 + 1) * 0.03; p.setXY(i, x * k, y * k); }
   geo.rotateX(-Math.PI / 2);
-  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95 }));
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x5fa83a, roughness: 1 }));
   ground.receiveShadow = true; city.add(ground);
   const sand = new THREE.Mesh(new THREE.RingGeometry(70, 95, 96).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd8c08a, roughness: 1 }));
   sand.position.y = -0.25; sand.receiveShadow = true; city.add(sand);
@@ -121,12 +121,13 @@ function buildTerrain() {
   waterNormal.repeat.set(40, 40);
   const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2c7aa0, roughness: 0.12, metalness: 0.15, normalMap: waterNormal, normalScale: new THREE.Vector2(0.5, 0.5) }));
   water.position.y = -0.6; city.add(water);
-  // şehir zemini: taş yollar, meydan, bina zeminleri, bahçeler
-  const city0 = paintCity({ roads: ROAD_LINES, pads: PLOTS.map((p) => ({ x: p.x, z: p.z, s: (BLD.FOOTPRINT[p.key] || 7) + 0.4 })), mobile: isMobile });
-  city.add(city0.mesh);
-  GARDENS.push(...city0.gardens);
-  grassField = createGrass(city, { radius: 72, avoid: grassAvoid, mobile: isMobile, density: isMobile ? 1.3 : 1.7, outerDensity: isMobile ? 0.8 : 1.0 });
   // uzak dağlar
+  if (ASSETS.ready.models) {
+    const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees', 'hills_B_trees'];
+    for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2 + rand(-0.08, 0.08), r = rand(120, 170), m = ASSETS.model(mts[i % 5]); if (!m) continue; const sc = i % 5 > 2 ? rand(14, 20) : rand(22, 34); m.scale.setScalar(sc); m.position.set(Math.cos(a) * r, -1, Math.sin(a) * r); m.rotation.y = rand(0, 6); m.traverse((o) => { if (o.isMesh) o.castShadow = false; }); city.add(m); }
+    for (let i = 0; i < 9; i++) { const c = ASSETS.model(i % 2 ? 'cloud_big' : 'cloud_small'); if (!c) continue; c.scale.setScalar(rand(8, 14)); c.position.set(rand(-120, 120), rand(38, 55), rand(-120, 80)); c.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.9; } }); city.add(c); CLOUDS.push(c); }
+    return;
+  }
   const mm = new THREE.MeshStandardMaterial({ color: 0x6a7a6a, flatShading: true, roughness: 1 });
   const snow = new THREE.MeshStandardMaterial({ color: 0xf4f8ff, flatShading: true, roughness: 0.8 });
   for (let i = 0; i < 26; i++) {
@@ -246,7 +247,7 @@ function refreshPlot(id) {
   if (h.workers) { h.workers.forEach((v) => h.group.remove(v)); h.workers = null; }
   if (st === 'busy') {
     h.workers = [];
-    for (let i = 0; i < 2; i++) { const v = createVillager({ work: true, hat: i ? 'cap' : 'straw', carry: 'tool' }); const a = i * Math.PI + 0.6; v.position.set(Math.cos(a) * fp * 0.38, 0, Math.sin(a) * fp * 0.38 + fp * 0.1); v.rotation.y = Math.atan2(-v.position.x, -v.position.z); h.group.add(v); h.workers.push(v); }
+    for (let i = 0; i < 2; i++) { const v = createCitizen(4, { tool: true }) || createVillager({ work: true, hat: i ? 'cap' : 'straw', carry: 'tool' }); const a = i * Math.PI + 0.6; v.position.set(Math.cos(a) * fp * 0.38, 0, Math.sin(a) * fp * 0.38 + fp * 0.1); v.rotation.y = Math.atan2(-v.position.x, -v.position.z); h.group.add(v); h.workers.push(v); }
   }
 }
 // Yükseltme "pop" animasyonu ve parıltılar
@@ -317,7 +318,7 @@ function makeBush(spots) {
   return instancify(proto, spots.map(([x, z]) => { const s = rand(0.5, 0.75); return new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rand(0, 6), 0)), new THREE.Vector3(s, s, s)); }));
 }
 function buildPatrols() {
-  life = createLife(city, { roads: ROAD_LINES, mobile: isMobile, makeLamp, makeBush, fountainAt: FOUNTAIN, stalls: STALLS });
+  life = createLife(city, { roads: ROAD_LINES, mobile: isMobile, fountainAt: null, stalls: [] });
   for (const sx of [-1, 1]) { const g = createSoldier('spearman', 'blue'); g.position.set(sx * 1.9, 0, 7.0); city.add(g); ambient.push({ obj: g, state: 'idle', phase: rand(0, 5) }); }
   const loops = [
     [[-6, 30], [6, 30], [6, 34], [-6, 34]],
@@ -925,11 +926,12 @@ function loop(now) {
   applyCam();
   updatePops(dt);
   if (grassField) grassField.update(tAcc);
+  for (const c of CLOUDS) { c.position.x += dt * 1.2; if (c.position.x > 140) c.position.x = -140; }
   for (const id in holders) { const c = holders[id].content; if (c && c.userData.update) c.userData.update(tAcc, dt); }
   if (wallGroup) wallGroup.children.forEach((c) => c.userData.update && c.userData.update(tAcc, dt));
   updateAmbient(tAcc, dt);
   if (life) life.update(tAcc, dt);
-  for (const id in holders) { const w = holders[id].workers; if (w) w.forEach((v, i) => animVillager(v, 'work', tAcc + i * 0.4)); }
+  for (const id in holders) { const w = holders[id].workers; if (w) w.forEach((v, i) => (v.userData.kk ? animateUnit(v, 'work', tAcc + i * 0.4, dt) : animVillager(v, 'work', tAcc + i * 0.4))); }
   waterNormal.offset.set(tAcc * 0.01, tAcc * 0.006);
   renderer.render(city, camera);
   updateLabels();
@@ -967,7 +969,9 @@ const setLoad = (p, txt) => { $('loadBar').style.width = p + '%'; if (txt) $('lo
 const frame = () => new Promise((r) => setTimeout(r, 16));
 async function boot() {
   G.load();
-  setLoad(10, 'Arazi hazırlanıyor…'); await frame();
+  setLoad(4, 'Modeller yükleniyor…'); await frame();
+  await ASSETS.loadAll((f) => setLoad(4 + f * 40, `Modeller yükleniyor… %${Math.round(f * 100)}`));
+  setLoad(46, 'Arazi hazırlanıyor…'); await frame();
   city.environment = makeEnv();
   city.environmentIntensity = 0.7;
   buildTerrain();

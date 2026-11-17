@@ -3,6 +3,7 @@
 //  çeşme, fenerler, pazar tezgâhları, çalılar
 // =====================================================================
 import * as THREE from 'three';
+import { createCitizen, animateUnit } from './units.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -189,12 +190,12 @@ export function createLife(scene, { roads, plotsCenter, mobile = false, makeLamp
   const startD = 10.6;
   const NV = mobile ? 12 : 18;
   for (let i = 0; i < NV; i++) {
-    const v = createVillager(); scene.add(v);
+    const v = createCitizen(i) || createVillager(); scene.add(v);
     const P = pick(paths);
-    villagers.push({ v, P, L: pathLen(P), d: rand(startD, pathLen(P)), dirSign: Math.random() < 0.5 ? 1 : -1, off: rand(-0.7, 0.7), speed: rand(1.0, 1.5), wait: 0, plaza: null });
+    villagers.push({ v, P, L: pathLen(P), d: rand(startD, pathLen(P)), dirSign: Math.random() < 0.5 ? 1 : -1, off: rand(-0.7, 0.7), speed: rand(1.1, 1.4), wait: 0, plaza: null });
   }
   const cartRoads = paths.filter((P) => { const e = P[P.length - 1]; return Math.abs(e.x) > 20; });
-  for (let i = 0; i < (mobile ? 2 : 3); i++) {
+  for (let i = 0; i < 0; i++) {
     const P = cartRoads[i % cartRoads.length], e = P[P.length - 1];
     const cargo = Math.abs(e.y) > 18 ? 'stone' : e.x < 0 ? 'hay' : 'logs';
     const c = createCart(cargo); scene.add(c);
@@ -221,7 +222,8 @@ export function createLife(scene, { roads, plotsCenter, mobile = false, makeLamp
 
   out.update = (t, dt) => {
     for (const w of villagers) {
-      if (w.wait > 0) { w.wait -= dt; animVillager(w.v, 'idle', t); continue; }
+      const anim = (st) => (w.v.userData.kk ? animateUnit(w.v, st, t, dt) : animVillager(w.v, st, t));
+      if (w.wait > 0) { w.wait -= dt; anim('idle'); continue; }
       w.d += w.dirSign * w.speed * dt;
       if (w.d >= w.L - 3.5) { w.d = w.L - 3.5; w.dirSign = -1; w.wait = rand(1.5, 5); }
       if (w.d <= startD) { // meydana ulaştı: başka yola geç
@@ -229,7 +231,7 @@ export function createLife(scene, { roads, plotsCenter, mobile = false, makeLamp
       }
       const p = at(w.P, w.d, w.off * w.dirSign);
       w.v.position.set(p.x, 0, p.z); w.v.rotation.y = p.dir + (w.dirSign < 0 ? Math.PI : 0);
-      animVillager(w.v, 'walk', t);
+      anim('walk');
     }
     for (const c of carts) {
       if (c.wait > 0) { c.wait -= dt; animVillager(c.driver, 'idle', t); continue; }

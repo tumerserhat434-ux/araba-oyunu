@@ -5,6 +5,7 @@
 // =====================================================================
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import * as A from './assets.js';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -531,8 +532,115 @@ function mount(h, horse) {
   return obj;
 }
 
+
+// =====================================================================
+//  KAYKIT ANİMASYONLU KARAKTERLER
+// =====================================================================
+const KKCFG = {
+  blue: {
+    infantry: ['Knight', ['1H_Sword', 'Badge_Shield', 'Knight_Helmet'], '1h'],
+    spearman: ['Knight', ['2H_Sword', 'Knight_Helmet'], '2h'],
+    archer: ['Rogue_Hooded', ['2H_Crossbow', 'Rogue_Cape'], 'bow'],
+    cavalry: ['Knight', ['1H_Sword', 'Rectangle_Shield', 'Knight_Helmet'], '1h'],
+  },
+  red: {
+    infantry: ['Barbarian', ['1H_Axe', 'Barbarian_Round_Shield', 'Barbarian_Hat', 'Barbarian_Cape'], '1h'],
+    spearman: ['Barbarian', ['2H_Axe', 'Barbarian_Hat', 'Barbarian_Cape'], '2h'],
+    archer: ['Rogue', ['2H_Crossbow', 'Rogue_Cape'], 'bow'],
+    cavalry: ['Barbarian', ['1H_Axe', 'Barbarian_Round_Shield', 'Barbarian_Hat', 'Barbarian_Cape'], '1h'],
+  },
+};
+const CLIPS = {
+  '1h': { idle: 'Idle', walk: 'Walking_A', run: 'Running_A', attack: '1H_Melee_Attack_Chop', cheer: 'Cheer', die: 'Death_A', work: '1H_Melee_Attack_Chop' },
+  '2h': { idle: '2H_Melee_Idle', walk: 'Walking_A', run: 'Running_A', attack: '2H_Melee_Attack_Chop', cheer: 'Cheer', die: 'Death_A', work: '2H_Melee_Attack_Chop' },
+  bow: { idle: 'Idle', walk: 'Walking_A', run: 'Running_A', attack: '2H_Ranged_Shoot', cheer: 'Cheer', die: 'Death_A', work: 'Use_Item' },
+  none: { idle: 'Idle', walk: 'Walking_A', run: 'Running_A', attack: 'Use_Item', cheer: 'Cheer', die: 'Death_A', work: 'Use_Item' },
+};
+const PART_RE = /_(Body|Head|ArmLeft|ArmRight|LegLeft|LegRight)$|Head_Hooded$/;
+const KK_H = 1.85; // hedef boy
+const kkScale = new Map();
+export function kkUnit(charName, show, style, opts = {}) {
+  if (!A.ready.chars || !A.hasChar(charName)) return null;
+  const c = A.character(charName);
+  const root = new THREE.Group(), inner = new THREE.Group(); root.add(inner);
+  const sc = c.scene;
+  sc.traverse((o) => { if (o.isMesh) { o.visible = PART_RE.test(o.name) || show.includes(o.name); o.frustumCulled = false; o.castShadow = true; } });
+  if (!kkScale.has(charName)) { const b = new THREE.Box3().setFromObject(sc); kkScale.set(charName, KK_H / Math.max(0.5, b.max.y - b.min.y)); }
+  sc.scale.setScalar(kkScale.get(charName) * (opts.scale || 1));
+  if (opts.tint) sc.traverse((o) => { if (o.isMesh && PART_RE.test(o.name)) { o.material = o.material.clone(); o.material.color.multiply(new THREE.Color(opts.tint)); } });
+  let horse = null, obj = root;
+  if (opts.mounted) {
+    horse = buildHorse(opts.team || 'blue', opts.coat || '#5a3a22', opts.barding || null, !!opts.gold);
+    obj = new THREE.Group(); obj.add(horse.root);
+    horse.body.add(root); root.position.set(0, -0.02, -0.08); root.scale.setScalar(0.92);
+  }
+  inner.add(sc);
+  const mixer = new THREE.AnimationMixer(sc), acts = {};
+  for (const cl of c.clips) acts[cl.name] = mixer.clipAction(cl);
+  obj.userData = { kk: true, mixer, acts, style, clips: CLIPS[style] || CLIPS.none, cur: null, inner, horse, mounted: !!opts.mounted, phase: Math.random() * 10, kind: style };
+  // tüm parçaları gölge yapsın
+  obj.traverse((m) => { if (m.isMesh) m.castShadow = true; });
+  kkPlay(obj, opts.mounted ? 'sit' : 'idle', 0);
+  mixer.update(Math.random() * 2);
+  return obj;
+}
+function kkPlay(obj, state, fade = 0.25) {
+  const ud = obj.userData;
+  let name = state === 'sit' ? 'Sit_Chair_Idle' : ud.clips[state] || ud.clips.idle;
+  if (ud.mounted) name = state === 'die' ? 'Death_A' : state === 'cheer' ? 'Cheer' : 'Sit_Chair_Idle';
+  if (ud.curName === name) return;
+  const next = ud.acts[name]; if (!next) return;
+  const once = state === 'die';
+  next.reset(); next.setLoop(once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity); next.clampWhenFinished = once;
+  next.timeScale = state === 'run' ? 1.1 : state === 'attack' ? 0.9 + Math.random() * 0.25 : 1;
+  if (ud.curAct) next.crossFadeFrom(ud.curAct, fade, false);
+  next.play();
+  ud.curAct = next; ud.curName = name;
+}
+export function kkAnimate(obj, state, t, dt) {
+  const ud = obj.userData;
+  kkPlay(obj, state);
+  ud.mixer.update(Math.min(dt || 0.016, 0.1));
+  if (ud.horse) {
+    if (state === 'die') { ud.dieT = (ud.dieT || 0) + dt; const k = Math.min(1, ud.dieT / 0.7); ud.horse.inner.rotation.z = k * 1.35; }
+    else animateHorse(ud.horse, state === 'attack' ? 'run' : state, t, dt, { kind: 'lance' });
+  }
+  if (ud.fx) ud.fx(t);
+}
+export function createCitizen(kind = Math.floor(Math.random() * 4), opts = {}) {
+  const list = [['Mage', ['Spellbook'], 'none'], ['Rogue', [], 'none'], ['Barbarian', ['Mug'], 'none'], ['Rogue_Hooded', [], 'none'], ['Barbarian', ['1H_Axe'], '1h'], ['Knight', ['1H_Sword'], '1h']];
+  const [n, show, st] = list[kind % list.length];
+  return kkUnit(n, opts.tool ? (n === 'Barbarian' ? ['1H_Axe', 'Barbarian_Hat'] : show) : show, opts.tool ? '1h' : st, { scale: 0.92 });
+}
+function addAura(obj, R, mounted) {
+  if (R < 4) return;
+  const auraTex = tm('aura', () => { const [c, x] = cnv(128, 128); const g = x.createRadialGradient(64, 64, 20, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.55, 'rgba(255,255,255,.55)'); g.addColorStop(0.7, 'rgba(255,255,255,.2)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); });
+  const col = R === 5 ? new THREE.Color(2.2, 1.6, 0.5) : new THREE.Color(1.4, 0.8, 2.4);
+  const ring = new THREE.Mesh(gm('auraplane', () => new THREE.PlaneGeometry(1.9, 1.9).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ map: auraTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  ring.position.y = 0.03; obj.add(ring);
+  const spTex = tm('spark', () => { const [c, x] = cnv(32, 32); const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); });
+  const sparks = [];
+  for (let i = 0; i < 12; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: spTex, color: col, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); sp.scale.setScalar(0.09); obj.add(sp); sparks.push({ sp, a: Math.random() * TAU, o: Math.random(), r: rand(0.45, 0.75) }); }
+  obj.userData.fx = (t) => { ring.rotation.y = t * 0.5; ring.material.opacity = 0.7 + Math.sin(t * 3) * 0.25; for (const p of sparks) { const u = (t * 0.35 + p.o) % 1; p.sp.position.set(Math.cos(p.a + t * 0.6) * p.r, u * (mounted ? 2.7 : 2.0), Math.sin(p.a + t * 0.6) * p.r); p.sp.material.opacity = Math.sin(u * Math.PI); } };
+}
+function kkHero(def) {
+  const L = def.look || {}, R = def.rarity || 2, role = def.role, w = L.weapon || 'sword';
+  let n, show, st;
+  if (role === 'archer') { n = L.female ? 'Rogue_Hooded' : 'Rogue'; show = ['2H_Crossbow', 'Rogue_Cape']; st = 'bow'; }
+  else if (w === 'axe' || w === 'hammer') { n = 'Barbarian'; show = w === 'hammer' ? ['2H_Axe', 'Barbarian_Cape'] : ['1H_Axe', 'Barbarian_Round_Shield', 'Barbarian_Hat', 'Barbarian_Cape']; st = w === 'hammer' ? '2h' : '1h'; }
+  else if (w === 'spear' && role !== 'cavalry') { n = 'Knight'; show = ['2H_Sword', 'Knight_Cape', ...(L.helmet && L.helmet !== 'none' ? ['Knight_Helmet'] : [])]; st = '2h'; }
+  else { n = 'Knight'; show = ['1H_Sword', R >= 3 ? 'Badge_Shield' : 'Round_Shield', ...(R >= 3 ? ['Knight_Cape'] : []), ...(L.helmet && L.helmet !== 'none' && L.helmet !== 'crown' ? ['Knight_Helmet'] : [])]; st = '1h'; }
+  if (L.female && role !== 'archer') { n = 'Rogue_Hooded'; show = ['1H_Crossbow', 'Knife', 'Rogue_Cape']; st = '1h'; }
+  const obj = kkUnit(n, show, st, { scale: 1 + (R - 2) * 0.04, mounted: role === 'cavalry', team: 'blue', coat: R === 5 ? '#e8e4dc' : R === 4 ? '#2a2420' : '#6a4428', barding: L.primary, gold: R >= 4 });
+  if (!obj) return null;
+  addAura(obj, R, role === 'cavalry');
+  obj.userData.hero = true;
+  return obj;
+}
+
 const PANTS = { blue: '#2a3448', red: '#3a2a24' };
 export function createSoldier(type, team = 'blue') {
+  { const cfg = (KKCFG[team] || KKCFG.blue)[type]; if (cfg) { const o = kkUnit(cfg[0], cfg[1], cfg[2], { mounted: type === 'cavalry', team, coat: ['#5a3a22', '#3a2416', '#7a5a3a', '#2a2420'][Math.floor(Math.random() * 4)] }); if (o) return o; } }
   const col = teamColor(team), skin = SKINS[Math.floor(Math.random() * SKINS.length)];
   const hair = ['#2a1a10', '#4a2a14', '#1a1410', '#6a4020', '#8a6a40'][Math.floor(Math.random() * 5)];
   const beard = Math.random() < 0.55;
@@ -560,6 +668,7 @@ export function createSoldier(type, team = 'blue') {
 }
 
 export function createHero(def) {
+  { const o = kkHero(def); if (o) return o; }
   const L = def.look || {}, R = def.rarity || 2;
   const metal = L.metal || 'steel';
   const team = 'blue';
@@ -696,6 +805,7 @@ function animateHorse(hs, state, t, dt, ud) {
 }
 export function animateUnit(obj, state, t, dt) {
   const ud = obj.userData;
+  if (ud.kk) return kkAnimate(obj, state, t, dt);
   if (!ud.rig) return;
   dt = Math.min(dt || 0.016, 0.1);
   if (ud.fx) ud.fx(t);
