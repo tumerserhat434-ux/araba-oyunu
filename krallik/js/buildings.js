@@ -851,23 +851,26 @@ const KKMAP = {
   academy: { m: () => KB('home_B'), fill: 0.5 },
 };
 const PROP_S = 4.2;
+const HF_SMOKE = { potion: [0.18, 0.9, -0.1], farm: [-0.15, 0.75, -0.05], lumber: [-0.3, 0.85, -0.15], hospital: [-0.25, 0.8, -0.2] };
+const HF_FILL = { townhall: 0.9, archery: 0.78, summon: 0.82, farm: 0.92, quarry: 0.92 };
 function prop(name, x, z, ry = 0, s = 1, parent) { const m = A.model(name); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(PROP_S * s); parent.add(m); return m; }
 function kkBuilding(key, L) {
-  const def = KKMAP[key]; if (!def || !A.ready.models) return null;
+  const def = KKMAP[key]; if (!def || !(A.ready.models || A.hasHF(key))) return null;
+  const isHF = A.hasHF(key);
   const name = def.m(L);
-  const base = def.tint ? A.tinted(name, def.tint) : A.model(name);
+  const base = isHF ? A.hfModel(key) : def.tint ? A.tinted(name, def.tint) : A.model(name);
   if (!base) return null;
   const fp = FOOTPRINT[key] || 7;
   const k = new Kit();
-  const size = A.modelSize(name);
-  const fill = (def.fill || 0.7) + (L - 1) * 0.022;
+  const size = isHF ? A.hfSize(key) : A.modelSize(name);
+  const fill = (isHF ? (HF_FILL[key] || 0.86) : (def.fill || 0.7)) + (L - 1) * (isHF ? 0.016 : 0.022);
   const sc = fp * fill / Math.max(size.x, size.z);
   base.scale.setScalar(sc);
   k.group.add(base);
   const h = size.y * sc;
   const c = fp * 0.42, r2 = (n) => n * Math.PI / 2;
   // --- binaya özel ekler ---
-  if (key === 'farm') {
+  if (key === 'farm' && !isHF) {
     const fields = L >= 8 ? 3 : L >= 4 ? 2 : 1;
     const spots = [[-fp * 0.27, fp * 0.2], [fp * 0.27, fp * 0.22], [-fp * 0.27, -fp * 0.24]];
     for (let i = 0; i < fields; i++) { const g = A.model('building_grain'); if (!g) break; const gs = A.modelSize('building_grain'); g.scale.setScalar(fp * 0.36 / Math.max(gs.x, gs.z)); g.position.set(spots[i][0], 0, spots[i][1]); k.group.add(g); }
@@ -905,7 +908,8 @@ function kkBuilding(key, L) {
   const arm = base.getObjectByName('catapult_arm_blue'), turret = base.getObjectByName('catapult_turret_blue');
   if (arm) k.anims.push((t) => { const u = (t * 0.35) % 1; arm.rotation.x = u < 0.15 ? -(u / 0.15) * 1.2 : -1.2 + Math.min(1, (u - 0.15) / 0.85) * 1.2; });
   if (turret) k.anims.push((t) => { turret.rotation.y = Math.sin(t * 0.3) * 0.8; });
-  if (def.smoke) addSmoke(k, def.smoke[0] * size.x * sc, def.smoke[1] * h, def.smoke[2] * size.z * sc);
+  if (def.smoke && !isHF) addSmoke(k, def.smoke[0] * size.x * sc, def.smoke[1] * h, def.smoke[2] * size.z * sc);
+  if (isHF && HF_SMOKE[key]) { const [sx, sy, sz] = HF_SMOKE[key]; addSmoke(k, sx * size.x * sc, sy * h, sz * size.z * sc); }
   if (def.glow) {
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: def.glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.6 }));
     gl.position.set(0.25 * size.x * sc, h * 0.35, 0.3 * size.z * sc); gl.scale.setScalar(fp * 0.4); k.group.add(gl);
@@ -920,7 +924,7 @@ function kkBuilding(key, L) {
   }
   if (L >= 10) crest(k, h + 1.6);
   const grp = k.build(h + 0.5);
-  if (key === 'archery') grp.userData.topY = h * (L >= 7 ? 0.62 : 0.78);
+  if (key === 'archery') grp.userData.topY = isHF ? h * 0.66 : h * (L >= 7 ? 0.62 : 0.78);
   return grp;
 }
 

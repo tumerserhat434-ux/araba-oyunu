@@ -20,6 +20,8 @@ Krallığını kur, binaları yükselt, ordu eğit, kahraman çağır ve komşu 
 - **Savaş:** dünya haritasından krallıklara saldır, 3D savaş sahnesini izle; düşmanlar da zaman zaman şehrine saldırır
 - **Altın mağazası:** demo, gerçek ödeme alınmaz
 
+- **3D modeller:** 12 bina Higgsfield (GPT Image konsept + Tripo 3D) ile bu oyun için özel tasarlandı (`krallik/assets/hf`); karakterler ve dekor KayKit (CC0) paketlerinden
+
 > Not: Diğer krallıklar şimdilik bilgisayar tarafından yönetiliyor. Gerçek çevrimiçi oyuncularla oynamak için bir sunucu/veritabanı (ör. Firebase) bağlanması gerekir.
 
 ---

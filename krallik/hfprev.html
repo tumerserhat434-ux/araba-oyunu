@@ -1,0 +1,12 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0}</style>
+<script type="importmap">{ "imports": { "three": "../lib/three.module.min.js", "three/addons/": "../lib/jsm/" } }</script></head><body><script type="module">
+import * as THREE from 'three'; import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'; import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+const files = (new URLSearchParams(location.search).get('f') || 'barracks_raw').split(','); const rots = (new URLSearchParams(location.search).get('r') || '').split(',').map(Number);
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true; r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace; document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0x9cc8e8); s.add(new THREE.HemisphereLight(0xffffff, 0x6a7a5a, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(5, 10, 6); sun.castShadow = true; s.add(sun);
+const g = new THREE.Mesh(new THREE.PlaneGeometry(80, 80).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x5fa83a })); g.receiveShadow = true; s.add(g);
+const cam = new THREE.PerspectiveCamera(30, innerWidth / innerHeight, 0.1, 200);
+let n = 0; const L = new GLTFLoader(); L.setMeshoptDecoder(MeshoptDecoder);
+files.forEach((f, i) => L.load('assets/hf/' + f + '.glb', (gl) => { const o = gl.scene; const b = new THREE.Box3().setFromObject(o), sz = b.getSize(new THREE.Vector3()); const k = 4 / Math.max(sz.x, sz.z); o.scale.setScalar(k); o.rotation.y = (rots[i] || 0) * Math.PI / 2 - Math.PI / 2; o.position.set((i % 4 - (Math.min(files.length, 4) - 1) / 2) * 5.5 - (b.min.x + sz.x / 2) * k, -b.min.y * k, Math.floor(i / 4) * 5.5 - (b.min.z + sz.z / 2) * k); o.traverse((m) => { if (m.isMesh) m.castShadow = m.receiveShadow = true; }); s.add(o); console.log(f, sz.x.toFixed(2), sz.y.toFixed(2), sz.z.toFixed(2)); if (++n === files.length) { const rows = Math.ceil(files.length / 4); cam.position.set(0, 9 + rows * 4, 14 + rows * 5); cam.lookAt(0, 1, (rows - 1) * 2.7); r.render(s, cam); window.ready = true; } }));
+</script></body></html>
