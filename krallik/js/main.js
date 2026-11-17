@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
 import * as ASSETS from './assets.js';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
@@ -806,16 +807,18 @@ function renderModalInner() {
   if (k === 'login') return openModal(loginUI());
   if (k === 'attack') return openModal(attackUI());
 }
+const allEnemies = () => G.S.enemies.concat(G.ONLINE.enemies);
 function worldUI() {
-  const e = worldSel && G.S.enemies.find((q) => q.id === worldSel);
+  refreshRivals();
+  const e = worldSel && allEnemies().find((q) => q.id === worldSel);
   const my = G.cityPower();
   let kds = `<div class="kd me" style="left:50%;top:50%"><span class="ki">🏰</span><span class="kp">${G.S.name}</span></div>`;
-  for (const q of G.S.enemies) {
+  for (const q of allEnemies()) {
     const sh = q.shieldUntil > Date.now() / 1000;
-    kds += `<div class="kd ${q.id === worldSel ? 'sel' : ''} ${sh ? 'shield' : ''}" data-k="${q.id}" style="left:${q.x * 100}%;top:${q.y * 100}%"><span class="ki">${q.power > my * 1.3 ? '🏯' : '🏘️'}</span><span class="kp">${q.name}</span></div>`;
+    kds += `<div class="kd ${q.id === worldSel ? 'sel' : ''} ${sh ? 'shield' : ''} ${q.real ? 'real' : ''}" data-k="${q.id}" style="left:${q.x * 100}%;top:${q.y * 100}%"><span class="ki">${q.real ? '🌐' : q.power > my * 1.3 ? '🏯' : '🏘️'}</span><span class="kp">${q.name}</span></div>`;
   }
   let lines = '';
-  for (const q of G.S.enemies) lines += `<line x1="50%" y1="50%" x2="${q.x * 100}%" y2="${q.y * 100}%" stroke="rgba(255,240,200,.15)" stroke-width="1.5" stroke-dasharray="4 5"/>`;
+  for (const q of allEnemies()) lines += `<line x1="50%" y1="50%" x2="${q.x * 100}%" y2="${q.y * 100}%" stroke="rgba(255,240,200,.15)" stroke-width="1.5" stroke-dasharray="4 5"/>`;
   let info = '<p class="desc" style="text-align:center;margin-top:10px">Saldırmak için haritada bir krallığa dokun.</p>';
   if (e) {
     const sh = e.shieldUntil > Date.now() / 1000;
@@ -830,11 +833,11 @@ function worldUI() {
       <button class="btn red" style="width:100%" data-m="toattack" ${sh ? 'disabled' : ''}>⚔ Saldır</button>`;
   }
   return head('Dünya Haritası', '🗺️') + `<div class="wmap"><svg>${lines}</svg>${kds}</div>${info}
-    <p class="demo">Diğer krallıklar şu an bilgisayar tarafından yönetiliyor. Gerçek çevrimiçi oyuncular için sunucu bağlantısı gerekir.</p>`;
+    <p class="demo">${online.ready ? `🌐 Çevrimiçi • Haritada ${G.ONLINE.enemies.length} gerçek oyuncu (🌐) ve bilgisayar krallıkları var.` : online.failed ? '⚠️ Sunucuya bağlanılamadı; bilgisayar krallıklarıyla oynuyorsun.' : 'Sunucuya bağlanılıyor…'}</p>`;
 }
 let atk = { troops: {}, heroes: [] };
 function attackUI() {
-  const e = G.S.enemies.find((q) => q.id === worldSel);
+  const e = allEnemies().find((q) => q.id === worldSel);
   if (!e) return worldUI();
   if (!atk.init) { atk = { init: true, troops: {}, heroes: G.S.heroes[G.S.commander] ? [G.S.commander] : [] }; for (const t in TROOPS) atk.troops[t] = Math.floor(G.S.troops[t] * 0.8); }
   const owned = Object.keys(G.S.heroes).map((id) => HERO_BY_ID[id]).sort((a, b) => b.rarity - a.rarity || G.S.heroes[b.id].level - G.S.heroes[a.id].level);
@@ -951,8 +954,10 @@ setInterval(() => {
 }, 5200);
 function rankingUI() {
   const me = { name: G.S.name, lord: 'Sen', power: G.cityPower(), me: true };
-  const list = G.S.enemies.map((e) => ({ name: e.name, lord: e.lord, power: Math.round(e.power * 1.6 + e.th * 2500) })).concat([me]).sort((a, b) => b.power - a.power);
-  return head('Krallık Sıralaması', '🏆') + '<div>' + list.map((r, i) => `<div class="rankrow ${r.me ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="rn">${r.name}<br><small style="color:#c8b48a">${r.lord}</small></span><span class="rp">⚔ ${G.fmt(r.power)}</span></div>`).join('') + '</div><p class="demo">Sıralama, bilgisayar yönetimli krallıklarla birlikte gösterilir.</p>';
+  if (online.ready && Date.now() - G.ONLINE.topAt > 60000) { G.ONLINE.topAt = Date.now(); topPlayers(50).then((l) => { G.ONLINE.top = l; if (modalKind === 'ranking') renderModal(); }); }
+  const real = G.ONLINE.top.filter((p) => p.uid !== online.uid).map((p) => ({ name: '🌐 ' + (p.name || 'Oyuncu'), lord: 'Gerçek oyuncu • Belediye Sv.' + (p.th || 1), power: p.power || 0 }));
+  const list = real.concat(G.S.enemies.map((e) => ({ name: e.name, lord: e.lord, power: Math.round(e.power * 1.6 + e.th * 2500) }))).concat([me]).sort((a, b) => b.power - a.power);
+  return head('Krallık Sıralaması', '🏆') + '<div>' + list.map((r, i) => `<div class="rankrow ${r.me ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="rn">${r.name}<br><small style="color:#c8b48a">${r.lord}</small></span><span class="rp">⚔ ${G.fmt(r.power)}</span></div>`).join('') + '</div><p class="demo">' + (online.ready ? '🌐 Gerçek oyuncular ve bilgisayar krallıkları birlikte sıralanır.' : 'Çevrimdışı: sıralama bilgisayar krallıklarıyla gösterilir.') + '</p>';
 }
 function armyUI() {
   let rows = '';
@@ -1023,6 +1028,10 @@ function profileUI() {
     body = `<div class="w-card"><h4><img src="${UI('nav_city')}">Krallık adı</h4>
       <input data-name maxlength="16" value="${G.S.name.replace(/"/g, '')}" style="width:100%;padding:11px;border-radius:12px;background:#120a30;color:#fff;border:1px solid var(--wline);font-weight:800;font-size:15px;margin-bottom:8px">
       <button class="w-btn green" style="width:100%" data-m="savename">Kaydet</button></div>
+      <div class="w-card"><h4><img src="${UI('nav_world')}">Hesap ve bulut kayıt</h4>
+        <p class="desc" style="margin:0 0 8px">${!online.ready ? (online.failed ? '⚠️ Sunucuya bağlanılamadı. İlerlemen bu cihazda kayıtlı.' : 'Sunucuya bağlanılıyor…') : online.isGoogle ? `✅ Google hesabı bağlı: <b>${online.user.email || online.name}</b><br>İlerlemen bulutta; başka cihazda Google ile girersen devam edersin.` : '👤 Misafir hesap. İlerlemen buluta yedekleniyor ama telefonu değiştirirsen kaybolabilir. <b>Google hesabını bağla</b>, her cihazda devam et.'}</p>
+        ${online.ready && !online.isGoogle ? '<button class="w-btn gold" style="width:100%" data-m="google">🔗 Google ile bağlan</button>' : ''}
+        ${online.ready ? '<button class="w-btn" style="width:100%;margin-top:6px" data-m="cloudsave">☁️ Şimdi buluta kaydet</button>' : ''}</div>
       <div class="w-card"><h4><img src="${UI('nav_reports')}">Ses</h4><div class="row"><button class="w-btn" style="flex:1" data-m="sound">${audioState().sfxOn ? '🔊 Efekt açık' : '🔇 Efekt kapalı'}</button><button class="w-btn" style="flex:1" data-m="music">${audioState().musicOn ? '🎵 Müzik açık' : '🔇 Müzik kapalı'}</button></div></div>
       <button class="w-btn red" style="width:100%;padding:12px" data-m="reset">Oyunu sıfırla</button>`;
   }
@@ -1083,9 +1092,12 @@ $('modalBox').addEventListener('click', (e) => {
     const r = G.attackEnemy(worldSel, troops, atk.heroes);
     if (!r) return toast('Asker seç', true);
     closeModal(); atk.init = false; tutEvent('battle');
+    if (r.enemy.real) { sendAttack(r.enemy.uid, { name: G.S.name, win: r.res.win, loot: r.rep.loot, sent: r.sent, aLoss: r.res.aLoss, dLoss: r.res.dLoss }); syncSoon(); }
     openBattle({ mode: 'attack', result: r.res, attacker: { troops: r.sent, hero }, defender: { troops: addBack(r.res.D, r.res.dLoss), tower: r.enemy.tower }, report: r.rep, title: r.enemy.name });
   }
   if (a === 'gobarracks') { closeModal(); openBuilding('barracks'); focusOn(-17, 2); }
+  if (a === 'google') { connectGoogle().then((ok) => { if (ok) { toast('✅ Google hesabı bağlandı'); syncNow(); } renderModal(); }); return; }
+  if (a === 'cloudsave') { syncNow().then((ok) => toast(ok ? '☁️ Buluta kaydedildi' : 'Kaydedilemedi', !ok)); return; }
   if (a === 'savename') { const v = $('modalBox').querySelector('[data-name]').value.trim(); if (v) { G.S.name = v; G.save(); updateTop(); toast('Kaydedildi'); } }
   if (a === 'sound') { setSfx(!audioState().sfxOn); renderModal(); }
   if (a === 'music') { setMusic(!audioState().musicOn); renderModal(); }
@@ -1173,6 +1185,49 @@ addEventListener('visibilitychange', () => { if (document.hidden) G.save(); });
 // ---------------------------------------------------------------------
 const setLoad = (p, txt) => { $('loadBar').style.width = p + '%'; if (txt) $('loadTxt').textContent = txt; };
 const frame = () => new Promise((r) => setTimeout(r, 16));
+// ---------------------------------------------------------------------
+//  Çevrimiçi: giriş, bulut kayıt, rakipler, gelen saldırılar
+// ---------------------------------------------------------------------
+let lastSync = 0, syncTimer = 0;
+async function syncNow() { if (!online.ready) return false; lastSync = Date.now(); return saveCloud(G.exportSave(), G.publicProfile()); }
+function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 3000); }
+async function refreshRivals(force) {
+  if (!online.ready || (!force && Date.now() - G.ONLINE.rivalsAt < 90000)) return;
+  G.ONLINE.rivalsAt = Date.now();
+  const list = await rivals(G.cityPower(), 6);
+  G.ONLINE.enemies = list.map(G.rivalToEnemy);
+  if (modalKind === 'world' && $('modal').classList.contains('open')) renderModal();
+}
+async function processInbox() {
+  if (!online.ready) return;
+  const items = await fetchInbox(); if (!items.length) return;
+  for (const it of items) { const r = G.applyIncoming(it); toast(r.win ? `🛡️ ${r.enemy} saldırdı, savunman kazandı!` : `⚔️ ${r.enemy} şehrini yağmaladı!`, !r.win); }
+  $('repDot').classList.remove('hidden');
+  await clearInbox(items.map((x) => x.id)); updateTop(); syncSoon();
+}
+async function adoptCloud(cloud, ask) {
+  if (!cloud?.data) return false;
+  let c; try { c = JSON.parse(cloud.data); } catch (e) { return false; }
+  const cTh = c.buildings?.townhall?.level || 1;
+  if (ask && !confirm(`Bulutta kayıtlı bir krallık bulundu: "${c.name}" (Belediye Sv.${cTh}). Bu cihazdaki ilerlemenin yerine o yüklensin mi?`)) return false;
+  G.importSave(cloud.data); location.reload(); return true;
+}
+async function startOnline() {
+  onOnline(async (ev) => {
+    if (ev === 'google') { syncNow(); if (modalKind === 'profile') renderModal(); }
+    if (ev === 'google-exists') { if (confirm('Bu Google hesabına bağlı başka bir krallık var. O krallığa geçilsin mi? (Bu cihazdaki misafir ilerlemesi bırakılır)')) { if (await switchToExistingGoogle()) { const cloud = await loadCloud(); if (!(await adoptCloud(cloud, false))) syncNow(); } } }
+  });
+  const ok = await initOnline(); if (!ok) return;
+  const cloud = await loadCloud();
+  const fresh = Date.now() / 1000 - G.S.created < 900 && G.thLevel() <= 2;
+  let cTh = 0; try { cTh = JSON.parse(cloud?.data || '{}').buildings?.townhall?.level || 0; } catch (e) { /* bozuk */ }
+  if (cloud && (fresh ? cTh > G.thLevel() : cloud.updated > G.S.lastSeen * 1000 + 120000)) { if (await adoptCloud(cloud, true)) return; }
+  await syncNow();
+  processInbox(); refreshRivals(true);
+  setInterval(() => { if (Date.now() - lastSync > 60000) syncNow(); }, 15000);
+  setInterval(processInbox, 120000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') syncNow(); });
+}
 async function boot() {
   G.load();
   setLoad(4, 'Modeller yükleniyor…'); await frame();
@@ -1209,6 +1264,7 @@ async function boot() {
   updateQuestUI();
   if (G.S.tut === 'done' && G.loginPending()) setTimeout(() => { modalKind = 'login'; openModal(loginUI()); }, 900);
   requestAnimationFrame(loop);
+  setTimeout(startOnline, 1500);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
-window.__ds = { G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };
+window.__ds = { online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };

@@ -639,3 +639,6 @@ nav#nav .dot::after { content: '!'; position: absolute; inset: 0; display: grid;
 .req-ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; font-size: 13px; color: #fff; background: #c0302a; flex-shrink: 0; }
 .req-row.ok .req-ic { background: #2a9a3a; } .req-row.ok b { color: #9affb0; }
 .req-row .w-btn { padding: 5px 12px; font-size: 12.5px; }
+/* Dünya haritasında gerçek oyuncular */
+.kd.real .ki { filter: drop-shadow(0 0 6px #6ab0ff) drop-shadow(0 0 2px #fff); }
+.kd.real .kp { background: linear-gradient(180deg, #2a5ad0, #142a78); color: #fff; box-shadow: 0 0 0 1px #9fd0ff; }

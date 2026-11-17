@@ -455,16 +455,45 @@ function applyLosses(loss) {
   }
   return { wounded, dead };
 }
+// ---- Çevrimiçi: gerçek oyuncular ----
+export const ONLINE = { enemies: [], top: [], topAt: 0, rivalsAt: 0 };
+export function importSave(json) { localStorage.setItem(SAVE_KEY, json); }
+export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
+// Diğer oyuncuların göreceği herkese açık profil (savunma bilgisi dahil)
+export function publicProfile() {
+  const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
+  const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins };
+}
+// Gerçek oyuncuyu haritadaki düşman biçimine çevir
+export function rivalToEnemy(p) {
+  let hsh = 0; for (const ch of p.uid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+  const ang = (hsh % 360) * Math.PI / 180, dist = 0.25 + ((hsh >> 9) % 60) / 100;
+  return { id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
+    troops: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0, ...(p.troops || {}) }, tower: (p.towerPow || 0) / 120, th: p.th || 1, hero: p.hero || null,
+    res: { food: (p.lootable?.food || 0) / 0.6, wood: (p.lootable?.wood || 0) / 0.6, stone: (p.lootable?.stone || 0) / 0.6, gold: 0 }, power: p.power || 0, shieldUntil: (S.pvpCooldown?.[p.uid] || 0) };
+}
+// Başka bir oyuncunun saldırısı (gelen kutusu) bu şehre uygulanır
+export function applyIncoming(r) {
+  const loss = {}; for (const t in TROOPS) loss[t] = Math.min(S.troops[t] || 0, Math.max(0, Math.round(r.dLoss?.[t] || 0)));
+  for (const t in loss) S.troops[t] -= loss[t];
+  const split = applyLosses(loss);
+  const lost = {};
+  if (r.win) { for (const k of ['food', 'wood', 'stone']) { lost[k] = Math.min(S.res[k], Math.max(0, Math.round(r.loot?.[k] || 0))); S.res[k] -= lost[k]; } S.pvpShield = Date.now() + 30 * 60000; S.stats.losses++; } else { S.stats.wins++; }
+  const rep = { t: Math.floor((r.t || Date.now()) / 1000), kind: 'defense', pvp: true, win: !r.win, enemy: r.name || 'Bir oyuncu', lord: '🌐 Gerçek oyuncu', sent: r.sent || {}, aLoss: loss, dLoss: r.aLoss || {}, wounded: split.wounded, dead: split.dead, loot: lost, hero: S.commander };
+  S.reports.unshift(rep); S.reports = S.reports.slice(0, 30); save(); emit('battle-silent', rep);
+  return rep;
+}
 export function attackEnemy(enemyId, sent, heroIds) {
   if (!Array.isArray(heroIds)) heroIds = heroIds ? [heroIds] : [];
   heroIds = heroIds.filter((id) => S.heroes[id]).slice(0, MAX_COMMANDERS);
   const heroId = heroIds[0];
-  const e = S.enemies.find((q) => q.id === enemyId);
+  const e = S.enemies.find((q) => q.id === enemyId) || ONLINE.enemies.find((q) => q.id === enemyId);
   if (!e) return null;
   for (const t in sent) { sent[t] = Math.min(sent[t], S.troops[t]); }
   if (!totalTroops(sent)) return null;
   for (const t in sent) S.troops[t] -= sent[t];
-  const res = simulateBattle({ troops: sent, heroes: heroesOf(heroIds), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: null, tower: e.tower * 120 });
+  const res = simulateBattle({ troops: sent, heroes: heroesOf(heroIds), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: e.hero || null, tower: e.tower * 120 });
   const split = applyLosses(res.aLoss);
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {};
@@ -474,14 +503,15 @@ export function attackEnemy(enemyId, sent, heroIds) {
     loot.gold = e.res.gold; e.res.gold = 0;
     addRes(loot);
     S.stats.wins++; count('wins');
-    e.shieldUntil = now() + 90;
+    e.shieldUntil = now() + (e.real ? 900 : 90);
+    if (e.real) { S.pvpCooldown ||= {}; S.pvpCooldown[e.uid] = now() + 900; }
   } else S.stats.losses++;
   for (const t in e.troops) e.troops[t] = res.D[t];
   e.power = armyPower(e.troops) + e.tower * 260;
   S.stats.kills += totalTroops(res.dLoss);
   // kahraman deneyimi
   if (res.win) for (const id of heroIds) if (S.heroes[id].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[id].level++;
-  const rep = { t: now(), kind: 'attack', win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, hero: heroId, heroes: heroIds };
+  const rep = { t: now(), kind: 'attack', win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, hero: heroId, heroes: heroIds, pvp: !!e.real, uid: e.uid };
   S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
   save(); emit('battle', rep);
   return { rep, res, enemy: e, sent };

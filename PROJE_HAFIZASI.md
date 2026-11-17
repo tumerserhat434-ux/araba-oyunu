@@ -366,6 +366,17 @@ cd araba-oyunu && python3 -m http.server 8000
 - Gelişmiş modellerde eski hareketli parçalar (yel değirmeni kanadı vb.) kullanılmaz; modelin kendi parçaları sabit.
 - Notlar: SAM 3D (1 kredi) bina görsellerinde yine başarısız oldu. Referans görsel yükleme (upload.higgsfield.ai) ortam güvenlik kuralına takıldı; promptlar mevcut binanın tarifiyle yazıldı. İlk denemede 7 görsel "önce/sonra" çifti olarak çıktı, "tek bina" vurgusuyla yeniden üretildi.
 
+### 5.12 Çevrimiçi (Firebase) — 1. ve 2. aşama
+- Firebase projesi `demir-sancak` (Spark, ücretsiz). Config `krallik/js/online.js` içinde. SDK gstatic CDN'den (v10.14.1) dinamik yüklenir; yüklenemezse oyun çevrimdışı devam eder.
+- Giriş: otomatik anonim (misafir). Profil > Ayarlar > "Google ile bağlan" misafir hesabı Google'a bağlar (`linkWithPopup`); Google hesabı başka kayıtta kullanılıyorsa o kayda geçme seçeneği sunulur.
+- Firestore: `saves/{uid}` (tüm kayıt JSON, yalnız sahibi), `players/{uid}` (herkese açık profil: ad, güç, Belediye sv., ordu, kule gücü, komutan bonusu, yağmalanabilir kaynak, kalkan), `players/{uid}/inbox` (gelen saldırılar).
+- Senkron: açılışta ve her 60 sn'de bir + sayfa gizlenince. Yeni cihazda bulutta daha ileri kayıt varsa sorarak yükler.
+- Dünya haritası: güce yakın, son 14 günde aktif 6 gerçek oyuncu (🌐) bilgisayar krallıklarıyla birlikte. Saldırı onların profil anlık görüntüsüyle hesaplanır; sonuç savunanın inbox'ına gider, savunan oyunu açınca kayıplar/yağma uygulanır (kaybederse 30 dk kalkan). Aynı oyuncuya 15 dk bekleme.
+- Sıralama: ilk 50 gerçek oyuncu + bilgisayar krallıkları.
+- Güvenlik kuralları depoda `firestore.rules`; Firebase Console > Firestore > Rules'a yapıştırılmalı.
+- Sınırlama: hesaplar istemcide (hile mümkün). 3. aşama Cloud Functions ile sunucu tarafı doğrulama (Blaze planı gerekir).
+- Ortam ağ izinleri: www.gstatic.com, firestore/identitytoolkit/securetoken.googleapis.com.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
