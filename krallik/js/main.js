@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import { createSoldier, animateUnit } from './units.js';
-import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime, prodPerHour, prodCap, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
+import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, sceneActive, renderActive } from './scenes.js';
 import { createGrass } from './grass.js';
@@ -176,7 +177,7 @@ function buildNature() {
     city.add(instancify(BLD.createTree(v), ms));
   }
   // şehir içi birkaç ağaç
-  const inner = [[-8, 26], [8, 27], [-22, -10], [22, -12], [-6, -26], [9, -27], [20, 24], [-21, 24], [-34, 2], [34, 3]];
+  const inner = [[-8, 26], [6, 30], [-22, -10], [22, -12], [-6, -26], [9, -27], [-21, 24], [-34, 2], [34, 3]];
   for (const [x, z] of inner) { const t = BLD.createTree(Math.floor(Math.random() * 3)); t.position.set(x, 0, z); t.rotation.y = rand(0, 6); city.add(t); }
   const rs = [];
   for (let i = 0; i < 30; i++) { const a = Math.random() * 6.28, r = rand(45, 76); const x = Math.cos(a) * r, z = Math.sin(a) * r; if (avoid(x, z)) continue; const rk = BLD.createRock(rand(0.6, 1.8)); rk.position.set(x, 0, z); rk.rotation.y = rand(0, 6); city.add(rk); rs.push(rk); }
@@ -429,6 +430,7 @@ function updateLabels(force) {
       html += G.thLevel() >= req ? `<div class="build">＋ ${def.name}</div>` : `<div class="lock">🔒 ${def.name}</div>`;
     } else {
       if (id === 'barracks' && G.S.training) html += `<div class="tm">${TROOPS[G.S.training.type].icon} ${G.fmtTime(G.S.training.end - t)}</div>`;
+      if (p.key === 'academy' && G.S.research.cur) html += `<div class="tm">🔬 ${G.fmtTime(G.S.research.cur.end - t)}</div>`;
       if (p.key === 'hospital' && G.S.healing) html += `<div class="tm heal">💚 ${G.fmtTime(G.S.healing.end - t)}</div>`;
       if (p.key === 'potion' && G.S.potions > 0) html += `<div class="bub" style="animation:none;font-size:16px">🧪${G.S.potions}</div>`;
       const pend = G.pending(id);
@@ -480,7 +482,7 @@ function upgradeBlock(id) {
       <button class="btn gold" style="width:100%" data-act="speed">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(b.busyUntil - t)}</button>`;
   }
   if (b.level >= MAX_LEVEL) return `<p class="desc">✨ En yüksek seviyeye ulaştı.</p>`;
-  const c = G.canUpgrade(id), cost = upgradeCost(p.key, b.level + 1), time = upgradeTime(p.key, b.level + 1);
+  const c = G.canUpgrade(id), cost = upgradeCost(p.key, b.level + 1), time = G.upgradeTime(p.key, b.level + 1);
   return `<div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
     ${c.ok ? '' : `<div class="why">${c.why}</div>`}
     <button class="btn" style="width:100%" data-act="upgrade" ${c.ok ? '' : 'disabled'}>${b.level ? `⬆ Seviye ${b.level + 1}'e yükselt` : '🔨 İnşa et'}</button>`;
@@ -494,7 +496,7 @@ function renderSheet() {
     if (key === 'townhall') body += `<div class="stats">${stat('Krallık gücü', G.fmt(G.cityPower()))}${stat('Bina seviye sınırı', L)}${stat('Depo sınırı', G.fmt(G.storageCap()))}${stat('Zafer / Yenilgi', `${G.S.stats.wins} / ${G.S.stats.losses}`)}</div>`;
     if (def.prod) {
       const pend = G.pending(id);
-      body += `<div class="stats">${stat('Üretim / saat', G.fmt(prodPerHour(key, L)), L < MAX_LEVEL ? G.fmt(prodPerHour(key, L + 1)) : '')}${stat('Kapasite', G.fmt(prodCap(key, L)))}</div>
+      body += `<div class="stats">${stat('Üretim / saat', G.fmt(G.prodPerHour(key, L)), L < MAX_LEVEL ? G.fmt(G.prodPerHour(key, L + 1)) : '')}${stat('Kapasite', G.fmt(G.prodCap(key, L)))}</div>
         <button class="btn blue" style="width:100%;margin-bottom:10px" data-act="collect" ${pend >= 1 ? '' : 'disabled'}>${RES[def.prod].icon} Topla • ${G.fmt(pend)}</button>`;
     }
     if (key === 'archery') body += `<div class="stats">${stat('Kule hasarı', G.fmt(L * 260), L < MAX_LEVEL ? G.fmt((L + 1) * 260) : '')}${stat('Toplam savunma', G.fmt(G.towerPower()))}</div>`;
@@ -502,6 +504,7 @@ function renderSheet() {
     if (key === 'heroes') body += `<div class="stats">${stat('Kahraman sayısı', Object.keys(G.S.heroes).length + ' / ' + HEROES.length)}${stat('Kahraman seviye sınırı', G.heroMaxLevel())}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="heroes">🛡️ Kahramanları göster</button>`;
     if (key === 'summon') body += `<div class="stats">${stat('5★ şansı', '%0,6')}${stat('5★ garanti', `${G.S.pity5} / ${SUMMON.pity5}`)}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="summon">🔮 Çağırma ekranını aç</button>`;
     if (key === 'barracks') body += barracksUI();
+    if (key === 'academy') body += academyUI();
     if (key === 'hospital') body += hospitalUI();
     if (key === 'potion') {
       const cap = G.potionCap(), next = G.S.potions < cap ? G.potionInterval() - (t - G.S.potionAt) : 0;
@@ -539,6 +542,23 @@ function barracksUI() {
     <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
     <button class="btn red" style="width:100%;margin-bottom:10px" data-act="train" ${G.troopUnlocked(trainSel) && G.canAfford(cost) ? '' : 'disabled'}>⚔ Eğit</button>`;
 }
+function academyUI() {
+  const t = Date.now() / 1000, cur = G.S.research.cur;
+  let s = '';
+  if (cur) {
+    const pct = (t - cur.start) / (cur.end - cur.start) * 100, R = RESEARCH[cur.key];
+    s += `<p class="desc"><b>${R.icon} ${R.name} Sv.${(G.S.research.levels[cur.key] || 0) + 1}</b> araştırılıyor…</p>
+      <div class="progress"><span style="width:${pct}%"></span><em>${G.fmtTime(cur.end - t)}</em></div>
+      <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedres">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(cur.end - t)}</button>`;
+  }
+  for (const k in RESEARCH) {
+    const R = RESEARCH[k], lv = G.S.research.levels[k] || 0, c = G.canResearch(k);
+    const cost = lv < RESEARCH_MAX ? researchCost(k, lv + 1) : null;
+    s += `<div class="rsch"><span class="ri">${R.icon}</span><div class="rt"><b>${R.name}</b> <span class="stars">${'●'.repeat(lv)}${'○'.repeat(RESEARCH_MAX - lv)}</span><br>${R.desc}: <b style="color:#7dff9a">+${lv * R.per}${R.unit}</b>${cost ? ` → +${(lv + 1) * R.per}${R.unit}<br><span class="cost" style="margin:2px 0 0;font-size:11.5px">${costHtml(cost)}</span>` : ''}${!c.ok && lv < RESEARCH_MAX && !cur ? `<br><span style="color:#ffb0a0;font-size:11px">${c.why}</span>` : ''}</div>
+      ${lv < RESEARCH_MAX ? `<button class="btn blue" data-act="research" data-k="${k}" ${c.ok ? '' : 'disabled'}>🔬</button>` : '<span>✨</span>'}</div>`;
+  }
+  return s + '<div style="height:6px"></div>';
+}
 function hospitalUI() {
   const t = Date.now() / 1000, cap = G.hospitalCap(), w = G.totalWounded();
   let s = `<div class="stats"><div class="stat"><small>Yaralılar</small><b>${G.fmt(w)} / ${G.fmt(cap)}</b></div><div class="stat"><small>İksir</small><b>🧪 ${G.S.potions}</b></div></div>`;
@@ -568,6 +588,8 @@ $('sheet').addEventListener('click', (e) => {
   if (go) { closeSheet(); navigate(go.dataset.go); return; }
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act, id = sheetId;
+  if (act === 'research') { const r = G.startResearch(a.dataset.k); if (!r.ok) toast(r.why, true); else { toast('🔬 Araştırma başladı'); sfx('build'); } }
+  if (act === 'speedres') { if (!G.speedResearch()) needGold(); else sfx('coin'); }
   if (act === 'close') return closeSheet();
   if (act === 'upgrade') { const r = G.startUpgrade(id); if (!r.ok) toast(r.why, true); else { toast('🔨 İnşaat başladı'); sfx('build'); refreshPlot(id); tutEvent('upgrade'); } }
   if (act === 'speed') { if (G.speedUp(id)) { sfx('coin'); tutEvent('speed'); } else needGold(); }
@@ -613,6 +635,7 @@ function renderModal() {
   if (k === 'reports') { G.S.reportsSeen = G.S.reports.length ? G.S.reports[0].t : 0; G.save(); $('repDot').classList.add('hidden'); return openModal(reportsUI()); }
   if (k === 'profile') return openModal(profileUI());
   if (k === 'army') return openModal(armyUI());
+  if (k === 'quests') return openModal(questsUI());
   if (k === 'attack') return openModal(attackUI());
 }
 function worldUI() {
@@ -662,6 +685,53 @@ function attackUI() {
     <div class="stats" style="margin-top:8px"><div class="stat"><small>Ordu gücün</small><b>⚔ ${G.fmt(myP)}</b></div><div class="stat"><small>Düşman gücü</small><b>⚔ ${G.fmt(e.power)}</b></div></div>
     <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${G.totalTroops(atk.troops) ? '' : 'disabled'}>🚩 Yürüyüş başlat</button></div>`;
 }
+let questTab = 'main';
+const rewardTxt = (r) => Object.entries(r).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ');
+function questsUI() {
+  G.dailyReset();
+  let body = '';
+  if (questTab === 'main') {
+    const list = G.activeQuests();
+    if (!list.length) body = '<p class="desc">🏆 Tüm ana görevleri tamamladın!</p>';
+    for (const q of list) {
+      const [x, y] = G.questProgress(q), ok = x >= y;
+      body += `<div class="quest ${ok ? 'ok' : ''}"><div class="qi">${q.text}<div class="qr">Ödül: ${rewardTxt(q.reward)}</div>
+        <div class="progress ${ok ? 'green' : ''}" style="height:10px;margin:5px 0 0"><span style="width:${x / y * 100}%"></span></div></div>
+        ${ok ? `<button class="btn gold" data-claimq="${q.id}">Al</button>` : `<small style="font-weight:900">${G.fmt(x)}/${G.fmt(y)}</small>`}</div>`;
+    }
+    body += `<p class="demo">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length} görev tamamlandı</p>`;
+  } else {
+    for (const d of DAILY) {
+      const x = G.dailyProg(d), ok = x >= d.n, got = G.S.daily.claimed[d.id];
+      body += `<div class="quest ${ok ? 'ok' : ''}" style="${got ? 'opacity:.5' : ''}"><div class="qi">${d.text}<div class="qr">Ödül: ${rewardTxt(d.reward)}</div>
+        <div class="progress ${ok ? 'green' : ''}" style="height:10px;margin:5px 0 0"><span style="width:${x / d.n * 100}%"></span></div></div>
+        ${got ? '✅' : ok ? `<button class="btn gold" data-claimd="${d.id}">Al</button>` : `<small style="font-weight:900">${x}/${d.n}</small>`}</div>`;
+    }
+    const n = G.dailyClaimedCount();
+    body += `<div class="chest"><div style="font-size:36px">${G.S.daily.chest ? '📭' : '🎁'}</div><b>Günlük Sandık</b> — ${Math.min(n, DAILY_CHEST.need)}/${DAILY_CHEST.need} görev<div class="qr" style="margin:4px 0 8px">${rewardTxt(DAILY_CHEST.reward)}</div>
+      <button class="btn gold" data-chest ${!G.S.daily.chest && n >= DAILY_CHEST.need ? '' : 'disabled'}>${G.S.daily.chest ? 'Alındı' : 'Sandığı aç'}</button></div>`;
+  }
+  return head('Görevler', '📋') + `<div class="tabs"><button data-qtab="main" class="${questTab === 'main' ? 'on' : ''}">Ana görevler</button><button data-qtab="daily" class="${questTab === 'daily' ? 'on' : ''}">Günlük</button></div>` + body;
+}
+function loginUI() {
+  const streak = G.S.login.streak || 0, pending = G.loginPending();
+  const yk = (() => { const y = new Date(Date.now() - 86400000); return `${y.getFullYear()}-${y.getMonth()}-${y.getDate()}`; })();
+  const nextDay = pending ? (G.S.login.last === yk ? streak % 7 : 0) : (streak - 1) % 7;
+  const cells = LOGIN_REWARDS.map((r, i) => { const k = Object.keys(r); return `<div class="${i < nextDay ? 'got' : ''} ${i === nextDay ? 'today' : ''}">Gün ${i + 1}<i>${r.gold ? '🪙' : RES[k[0]].icon}</i>${r.gold ? r.gold : G.fmt(r[k[0]])}</div>`; }).join('');
+  return head('Günlük Giriş Ödülü', '📅') + `<p class="desc">Her gün gir, ödüller büyüsün! 7. gün büyük ödül seni bekliyor.</p><div class="cal">${cells}</div>
+    <button class="btn gold" style="width:100%" data-m="login" ${pending ? '' : 'disabled'}>${pending ? '🎁 Ödülü al' : 'Yarın tekrar gel'}</button>`;
+}
+function updateQuestUI() {
+  const n = G.claimableCount();
+  $('questDot').classList.toggle('hidden', !n);
+  const q = G.activeQuests()[0], el = $('qtrack');
+  if (!q) { el.innerHTML = ''; return; }
+  const [x, y] = G.questProgress(q), ok = x >= y;
+  const html = `<b>📋 GÖREV ${ok ? '— ÖDÜLÜ AL!' : ''}</b>${q.text}<div class="qb"><span style="width:${x / y * 100}%"></span></div>`;
+  if (el._h !== html) { el.innerHTML = html; el._h = html; }
+  el.classList.toggle('done', ok);
+}
+$('qtrack').onclick = () => navigate('quests');
 function armyUI() {
   let rows = '';
   for (const t in TROOPS) rows += `<div class="stat"><small>${TROOPS[t].icon} ${TROOPS[t].name}</small><b>${G.fmt(G.S.troops[t])}</b> <small style="display:inline;color:#ffaa8a">🤕 ${G.S.wounded[t]}</small></div>`;
@@ -717,6 +787,10 @@ $('modalBox').addEventListener('input', (e) => {
 });
 $('modalBox').addEventListener('change', (e) => { if (e.target.dataset.hero !== undefined) { atk.hero = e.target.value; const y = $('modalBox').scrollTop; renderModal(); $('modalBox').scrollTop = y; } });
 $('modalBox').addEventListener('click', (e) => {
+  const qt = e.target.closest('[data-qtab]'); if (qt) { questTab = qt.dataset.qtab; return renderModal(); }
+  const cq = e.target.closest('[data-claimq]'); if (cq) { const r = G.claimQuest(cq.dataset.claimq); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('coin'); updateTop(); } return renderModal(); }
+  const cd = e.target.closest('[data-claimd]'); if (cd) { const r = G.claimDaily(cd.dataset.claimd); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('coin'); updateTop(); } return renderModal(); }
+  if (e.target.closest('[data-chest]')) { const r = G.claimChest(); if (r) { toast('🎁 ' + rewardTxt(r)); sfx('built'); updateTop(); } return renderModal(); }
   const kd = e.target.closest('[data-k]');
   if (kd) { worldSel = kd.dataset.k; atk.init = false; return renderModal(); }
   const tab = e.target.closest('[data-tab]');
@@ -738,6 +812,7 @@ $('modalBox').addEventListener('click', (e) => {
   const m = e.target.closest('[data-m]'); if (!m) return;
   const a = m.dataset.m;
   if (a === 'close') closeModal();
+  if (a === 'login') { const r = G.claimLogin(); if (r) { toast(`📅 Gün ${r.day}: ` + rewardTxt(r.reward)); sfx('built'); updateTop(); } closeModal(); }
   if (a === 'world') { modalKind = 'world'; renderModal(); }
   if (a === 'toattack') { modalKind = 'attack'; atk.init = false; renderModal(); tutEvent('attackOpen'); }
   if (a === 'march') {
@@ -770,6 +845,8 @@ G.onChange((ev, data) => {
   if (ev === 'trained') toast(`⚔ ${data.n} ${TROOPS[data.type].name} hazır!`);
   if (ev === 'healed') toast(`💚 ${G.totalTroops(data.counts)} asker iyileşti`);
   if (ev === 'battle') $('repDot').classList.remove('hidden');
+  if (ev === 'quests') { updateQuestUI(); }
+  if (ev === 'researched') { toast(`🔬 ${RESEARCH[data].name} Sv.${G.S.research.levels[data]} tamamlandı!`); sfx('built'); }
 });
 export function onSceneClosed() { tutEvent('sceneClosed'); setNav('city'); updateTop(); updateLabels(true); for (const id in holders) refreshPlot(id); }
 
@@ -804,7 +881,7 @@ function gameTick(dt) {
     slow = 0;
     G.tick();
     for (const id in holders) refreshPlot(id);
-    updateTop();
+    updateTop(); updateQuestUI();
     if (sheetId && !document.activeElement?.classList.contains('slider')) renderSheet();
     // baskın
     const left = G.S.raid.at - Date.now() / 1000;
@@ -855,6 +932,8 @@ async function boot() {
   const away = Date.now() / 1000 - (G.S.lastSeenBoot || Date.now() / 1000);
   G.S.lastSeenBoot = Date.now() / 1000;
   initTutorial({ sfx, toast, updateTop, getPortrait, plotScreen, focusPlot });
+  updateQuestUI();
+  if (G.S.tut === 'done' && G.loginPending()) setTimeout(() => { modalKind = 'login'; openModal(loginUI()); }, 900);
   requestAnimationFrame(loop);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });

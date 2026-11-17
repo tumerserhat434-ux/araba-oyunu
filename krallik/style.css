@@ -47,7 +47,7 @@ nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 20; display: flex;
   padding: 6px 4px max(6px, env(safe-area-inset-bottom)); background: linear-gradient(180deg, #3a2814, #1e1408); border-top: 2px solid var(--gold2);
   box-shadow: 0 -6px 20px rgba(0,0,0,.5); }
 nav button { position: relative; flex: 1; background: none; border: 0; color: #d8c49a; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 2px 0; font-weight: 900; font-size: 10.5px; }
-nav button i { font-style: normal; font-size: 23px; filter: drop-shadow(0 2px 2px #000); transition: transform .15s; }
+nav button i { font-style: normal; font-size: 21px; filter: drop-shadow(0 2px 2px #000); transition: transform .15s; }
 nav button.on { color: var(--gold); }
 nav button.on i { transform: translateY(-3px) scale(1.12); }
 .dot { position: absolute; top: 0; right: 22%; width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; border: 2px solid #1e1408; }
@@ -192,3 +192,27 @@ nav button.on i { transform: translateY(-3px) scale(1.12); }
 @keyframes up { to { transform: translateY(-50px); opacity: 0; } }
 
 @media (min-width: 700px) { .res { font-size: 14px; padding: 4px 10px; } .pinfo b { max-width: 140px; } }
+
+/* Görev takipçisi */
+.qtrack { max-width: 170px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 6px 9px; font-size: 11.5px; font-weight: 800; line-height: 1.25; cursor: pointer; }
+.qtrack:empty { display: none; }
+.qtrack b { color: var(--gold); font-size: 10px; display: block; letter-spacing: .5px; }
+.qtrack .qb { height: 5px; border-radius: 4px; background: #00000066; margin-top: 4px; overflow: hidden; }
+.qtrack .qb span { display: block; height: 100%; background: linear-gradient(90deg, #b8801c, #ffd76a); }
+.qtrack.done { border-color: #7dff9a; box-shadow: 0 0 14px #3fd06a88; animation: pulse 1s infinite; }
+.quest { display: flex; align-items: center; gap: 10px; background: #00000033; border-radius: 12px; padding: 10px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,.06); }
+.quest .qi { flex: 1; font-size: 13px; font-weight: 800; }
+.quest .qr { font-size: 11.5px; color: #e8d6b0; margin-top: 3px; }
+.quest .btn { padding: 8px 12px; font-size: 13px; }
+.quest.ok { border-color: #7dff9a66; }
+.chest { text-align: center; padding: 10px; border-radius: 14px; background: radial-gradient(circle at 50% 30%, #6a4a20, #2a1a0a); border: 2px solid var(--gold2); margin-top: 6px; }
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 10px 0; }
+.cal div { border-radius: 10px; padding: 6px 2px; text-align: center; font-size: 10px; font-weight: 900; background: #00000044; border: 1px solid rgba(255,255,255,.08); }
+.cal div.got { opacity: .45; }
+.cal div.today { border: 2px solid var(--gold); background: #f3c24a33; box-shadow: 0 0 12px #f3c24a66; }
+.cal div i { display: block; font-style: normal; font-size: 18px; margin: 2px 0; }
+.rsch { display: flex; gap: 10px; align-items: center; background: #00000033; border-radius: 12px; padding: 8px 10px; margin-bottom: 6px; }
+.rsch .ri { font-size: 26px; }
+.rsch .rt { flex: 1; font-size: 12.5px; }
+.rsch .rt b { font-size: 13.5px; }
+.rsch .btn { padding: 7px 10px; font-size: 12px; }

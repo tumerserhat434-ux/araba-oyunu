@@ -21,6 +21,7 @@ export const BUILDINGS = {
   farm: { name: 'Çiftlik', icon: '🌾', desc: 'Yiyecek üretir.', base: { food: 40, wood: 90, stone: 0 }, time: 5, reqTH: 1, prod: 'food', rate: 900 },
   lumber: { name: 'Kereste Atölyesi', icon: '🪵', desc: 'Odun üretir.', base: { food: 90, wood: 40, stone: 0 }, time: 5, reqTH: 1, prod: 'wood', rate: 800 },
   quarry: { name: 'Taş Ocağı', icon: '🪨', desc: 'Taş üretir.', base: { food: 90, wood: 90, stone: 0 }, time: 6, reqTH: 2, prod: 'stone', rate: 500 },
+  academy: { name: 'Akademi', icon: '📚', desc: 'Araştırma yapılır. Araştırmalar üretimi, eğitimi, savaş gücünü ve hastaneyi kalıcı olarak güçlendirir.', base: { food: 300, wood: 300, stone: 200 }, time: 12, reqTH: 3 },
   warehouse: { name: 'Ambar', icon: '📦', desc: 'Kaynak depolama sınırını artırır ve yağmada kaynaklarının bir kısmını korur.', base: { food: 120, wood: 150, stone: 80 }, time: 8, reqTH: 2 },
 };
 export const MAX_LEVEL = 10;
@@ -36,6 +37,7 @@ export const PLOTS = [
   { id: 'archery1', key: 'archery', x: -13, z: -13 },
   { id: 'archery2', key: 'archery', x: 13, z: -13 },
   { id: 'warehouse', key: 'warehouse', x: 0, z: -15 },
+  { id: 'academy', key: 'academy', x: 16, z: 28 },
   { id: 'farm1', key: 'farm', x: -28, z: -6 },
   { id: 'farm2', key: 'farm', x: -28, z: 12 },
   { id: 'lumber1', key: 'lumber', x: 28, z: -6 },
@@ -123,3 +125,57 @@ export const RES_PACKS = [
 // Düşman krallık isimleri (simüle oyuncular)
 export const KINGDOM_NAMES = ['Kuzey Kurtları', 'Altın Vadi', 'Demir Kale', 'Kızıl Şafak', 'Gümüş Nehir', 'Kara Orman', 'Fırtına Burnu', 'Kartal Yuvası', 'Ejder Tepesi', 'Ay Işığı', 'Taş Liman', 'Sisli Dağlar', 'Bozkır Atlıları', 'Kehribar Ova', 'Buzul Sınırı', 'Yeşil Çayır'];
 export const LORD_NAMES = ['Lord Kerem', 'Leydi Aslı', 'Lord Tolga', 'Kraliçe Nehir', 'Lord Batu', 'Leydi Ilgın', 'Lord Arda', 'Kral Oktay', 'Leydi Mira', 'Lord Kuzey', 'Lord Doruk', 'Leydi Ece', 'Lord Atlas', 'Leydi Su', 'Lord Yağız', 'Kral Alp'];
+
+// ---------------------------------------------------------------------
+//  Akademi araştırmaları
+// ---------------------------------------------------------------------
+export const RESEARCH = {
+  agri: { name: 'Tarım', icon: '🌾', desc: 'Tüm kaynak üretimi', per: 6, unit: '%', base: { food: 400, wood: 300 }, time: 20 },
+  mason: { name: 'Taş İşçiliği', icon: '🧱', desc: 'İnşaat süresi azalır', per: 5, unit: '%', base: { wood: 400, stone: 300 }, time: 25 },
+  drill: { name: 'Talim', icon: '🎯', desc: 'Asker eğitim hızı', per: 8, unit: '%', base: { food: 500, wood: 300 }, time: 25 },
+  blade: { name: 'Demircilik', icon: '⚔️', desc: 'Birliklerin saldırısı', per: 4, unit: '%', base: { food: 300, stone: 500 }, time: 35 },
+  armor: { name: 'Zırhçılık', icon: '🛡️', desc: 'Birliklerin savunması', per: 4, unit: '%', base: { wood: 300, stone: 500 }, time: 35 },
+  medic: { name: 'Hekimlik', icon: '💚', desc: 'Hastane kapasitesi', per: 15, unit: '%', base: { food: 600, wood: 200 }, time: 30 },
+  logis: { name: 'Lojistik', icon: '🐂', desc: 'Ganimet taşıma kapasitesi', per: 10, unit: '%', base: { food: 400, wood: 400 }, time: 30 },
+};
+export const RESEARCH_MAX = 5;
+export function researchCost(key, toLevel) { const b = RESEARCH[key].base, o = {}; for (const r in b) o[r] = Math.round(b[r] * Math.pow(2.1, toLevel - 1) / 10) * 10; return o; }
+export function researchTime(key, toLevel) { return Math.round(RESEARCH[key].time * Math.pow(1.8, toLevel - 1)); }
+
+// ---------------------------------------------------------------------
+//  Görevler
+// ---------------------------------------------------------------------
+// t: koşul türü — th(level), bld(plotKey, level), stat(name, n), hero(rarity), res(key, level)
+export const QUESTS = [
+  { id: 'q1', text: 'Belediye Binası\'nı Sv.2 yap', t: ['bld', 'townhall', 2], reward: { food: 1000, wood: 1000 } },
+  { id: 'q2', text: '100 asker eğit', t: ['stat', 'trained', 100], reward: { food: 1500, gold: 30 } },
+  { id: 'q3', text: 'Hastane inşa et', t: ['bld', 'hospital', 1], reward: { wood: 1500, stone: 500 } },
+  { id: 'q4', text: 'İlk savaşını kazan', t: ['stat', 'wins', 1], reward: { gold: 50, stone: 800 } },
+  { id: 'q5', text: 'Kaynakları 10 kez topla', t: ['stat', 'collects', 10], reward: { food: 2000, wood: 2000 } },
+  { id: 'q6', text: 'Belediye Binası\'nı Sv.3 yap', t: ['bld', 'townhall', 3], reward: { gold: 80, stone: 1500 } },
+  { id: 'q7', text: 'Akademi inşa et', t: ['bld', 'academy', 1], reward: { food: 2500, wood: 2500 } },
+  { id: 'q8', text: 'Bir araştırma tamamla', t: ['stat', 'researched', 1], reward: { gold: 60 } },
+  { id: 'q9', text: 'Toplam 10 kahraman çağır', t: ['stat', 'summons', 10], reward: { gold: 100 } },
+  { id: 'q10', text: 'Kışla\'yı Sv.3 yap (süvari açılır)', t: ['bld', 'barracks', 3], reward: { food: 3000, stone: 1500 } },
+  { id: 'q11', text: '5 savaş kazan', t: ['stat', 'wins', 5], reward: { gold: 120 } },
+  { id: 'q12', text: 'Belediye Binası\'nı Sv.5 yap', t: ['bld', 'townhall', 5], reward: { gold: 150, food: 5000, wood: 5000 } },
+  { id: 'q13', text: '4★ veya daha iyi bir kahraman edin', t: ['hero', 4], reward: { gold: 150 } },
+  { id: 'q14', text: '1000 asker eğit', t: ['stat', 'trained', 1000], reward: { gold: 150, food: 8000 } },
+  { id: 'q15', text: 'Okçu Kulesi\'ni Sv.5 yap', t: ['bld', 'archery', 5], reward: { stone: 8000, gold: 100 } },
+  { id: 'q16', text: 'Belediye Binası\'nı Sv.7 yap', t: ['bld', 'townhall', 7], reward: { gold: 250 } },
+  { id: 'q17', text: '20 savaş kazan', t: ['stat', 'wins', 20], reward: { gold: 300 } },
+  { id: 'q18', text: 'Bir araştırmayı Sv.5 yap', t: ['res', 'any', 5], reward: { gold: 300 } },
+  { id: 'q19', text: 'Belediye Binası\'nı Sv.10 yap', t: ['bld', 'townhall', 10], reward: { gold: 1000 } },
+];
+export const DAILY = [
+  { id: 'd1', text: 'Kaynakları 5 kez topla', stat: 'collects', n: 5, reward: { gold: 15 } },
+  { id: 'd2', text: '100 asker eğit', stat: 'trained', n: 100, reward: { gold: 20 } },
+  { id: 'd3', text: '1 bina yükselt', stat: 'upgrades', n: 1, reward: { gold: 15 } },
+  { id: 'd4', text: '2 savaş kazan', stat: 'wins', n: 2, reward: { gold: 30 } },
+  { id: 'd5', text: '1 kahraman çağır', stat: 'summons', n: 1, reward: { gold: 15 } },
+  { id: 'd6', text: 'Yaralı asker iyileştir', stat: 'heals', n: 1, reward: { gold: 15 } },
+];
+export const DAILY_CHEST = { need: 4, reward: { gold: 100, food: 3000, wood: 3000 } };
+export const LOGIN_REWARDS = [
+  { food: 2000, wood: 2000 }, { gold: 50 }, { stone: 2000, food: 2000 }, { gold: 100 }, { food: 5000, wood: 5000, stone: 2000 }, { gold: 150 }, { gold: 300 },
+];

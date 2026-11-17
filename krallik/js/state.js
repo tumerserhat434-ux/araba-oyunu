@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime, prodPerHour, prodCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, KINGDOM_NAMES, LORD_NAMES } from './data.js';
+import { BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -9,6 +9,11 @@ const rand = (a, b) => a + Math.random() * (b - a);
 const randi = (a, b) => Math.floor(rand(a, b + 1));
 
 export let S = null;
+// araştırma etkisi (oran)
+export const rb = (k) => ((S && S.research && S.research.levels[k]) || 0) * RESEARCH[k].per / 100;
+export const prodPerHour = (key, level) => Math.round(baseProd(key, level) * (1 + rb('agri')));
+export const prodCap = (key, level) => prodPerHour(key, level) * 3;
+export const upgradeTime = (key, level) => Math.max(3, Math.round(baseUpgradeTime(key, level) * (1 - rb('mason'))));
 const listeners = new Set();
 export function onChange(fn) { listeners.add(fn); }
 export function emit(ev, data) { for (const f of listeners) f(ev, data); }
@@ -43,10 +48,64 @@ export function load() {
   if (!S || S.v !== 1) S = freshState();
   // eksik alanları tamamla (eski kayıtlar için)
   for (const p of PLOTS) if (!S.buildings[p.id]) S.buildings[p.id] = { level: 0, busyUntil: 0, busyStart: 0, collectedAt: now() };
+  S.counters ||= { trained: 0, collects: 0, upgrades: 0, wins: S.stats?.wins || 0, summons: S.totalPulls || 0, heals: 0, researched: 0 };
+  S.qClaimed ||= {};
+  S.daily ||= { day: '', c: {}, claimed: {}, chest: false };
+  S.login ||= { last: '', streak: 0 };
+  S.research ||= { levels: {}, cur: null };
+  dailyReset();
   catchUp();
   save();
   return S;
 }
+export function dailyReset() { const d = todayKey(); if (S.daily.day !== d) S.daily = { day: d, c: {}, claimed: {}, chest: false }; }
+export function count(name, n = 1) { S.counters[name] = (S.counters[name] || 0) + n; dailyReset(); S.daily.c[name] = (S.daily.c[name] || 0) + n; emit('quests'); }
+export function questProgress(q) {
+  const [t, a, b] = q.t;
+  if (t === 'bld') return [Math.min(b, maxLevelOf(a)), b];
+  if (t === 'stat') return [Math.min(b, S.counters[a] || 0), b];
+  if (t === 'hero') return [Object.keys(S.heroes).some((id) => HERO_BY_ID[id].rarity >= a) ? 1 : 0, 1];
+  if (t === 'res') return [Math.min(b, Math.max(0, ...Object.values(S.research.levels))), b];
+  return [0, 1];
+}
+export const questDone = (q) => { const [x, y] = questProgress(q); return x >= y; };
+export function activeQuests() { return QUESTS.filter((q) => !S.qClaimed[q.id]).slice(0, 4); }
+export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); save(); emit('quests'); return q.reward; }
+export const dailyProg = (d) => Math.min(d.n, S.daily.c[d.stat] || 0);
+export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; gainRes(d.reward); save(); emit('quests'); return d.reward; }
+export const dailyClaimedCount = () => Object.keys(S.daily.claimed).length;
+export function claimChest() { if (S.daily.chest || dailyClaimedCount() < DAILY_CHEST.need) return null; S.daily.chest = true; gainRes(DAILY_CHEST.reward); save(); emit('quests'); return DAILY_CHEST.reward; }
+export function claimableCount() {
+  let n = activeQuests().filter(questDone).length;
+  n += DAILY.filter((d) => !S.daily.claimed[d.id] && dailyProg(d) >= d.n).length;
+  if (!S.daily.chest && dailyClaimedCount() >= DAILY_CHEST.need) n++;
+  return n;
+}
+// günlük giriş
+export function loginPending() { return S.login.last !== todayKey(); }
+export function claimLogin() {
+  if (!loginPending()) return null;
+  const y = new Date(Date.now() - 86400000), yk = `${y.getFullYear()}-${y.getMonth()}-${y.getDate()}`;
+  S.login.streak = S.login.last === yk ? S.login.streak + 1 : 1;
+  S.login.last = todayKey();
+  const r = LOGIN_REWARDS[(S.login.streak - 1) % 7];
+  gainRes(r); save(); emit('res');
+  return { reward: r, day: ((S.login.streak - 1) % 7) + 1 };
+}
+// araştırma
+export const academyLevel = () => maxLevelOf('academy');
+export function canResearch(k) {
+  const L = (S.research.levels[k] || 0) + 1;
+  if (!academyLevel()) return { ok: false, why: 'Önce Akademi inşa et' };
+  if (S.research.cur) return { ok: false, why: 'Başka bir araştırma sürüyor' };
+  if (L > RESEARCH_MAX) return { ok: false, why: 'En yüksek seviye' };
+  if (L > Math.ceil(academyLevel() / 2)) return { ok: false, why: `Akademi Sv.${L * 2 - 1} gerekli` };
+  const cost = researchCost(k, L);
+  if (!canAfford(cost)) return { ok: false, why: 'Yetersiz kaynak', cost };
+  return { ok: true, cost, time: researchTime(k, L) * (1 - academyLevel() * 0.03) };
+}
+export function startResearch(k) { const c = canResearch(k); if (!c.ok) return c; pay(c.cost); S.research.cur = { key: k, start: now(), end: now() + c.time }; save(); emit('research'); return c; }
+export function speedResearch() { const c = S.research.cur; if (!c) return false; const g = gemCostForTime(c.end - now()); if (S.res.gold < g) return false; S.res.gold -= g; c.end = now(); tick(); save(); return true; }
 export function save() { try { S.lastSeen = now(); localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* yok say */ } }
 export function resetGame() { localStorage.removeItem(SAVE_KEY); S = freshState(); save(); emit('reset'); }
 
@@ -104,6 +163,7 @@ export function startUpgrade(id) {
   pay(c.cost);
   const b = S.buildings[id];
   b.busyStart = now(); b.busyUntil = now() + c.time;
+  count('upgrades');
   save(); emit('building', id);
   return c;
 }
@@ -123,6 +183,7 @@ export function collect(id) {
   if (amt < 1) return 0;
   addRes({ [def.prod]: amt });
   b.collectedAt = now();
+  count('collects');
   save(); emit('res');
   return amt;
 }
@@ -137,8 +198,8 @@ export function pending(id) {
 // ---------------------------------------------------------------------
 export const barracksLevel = () => maxLevelOf('barracks');
 export const trainBatchMax = () => 40 + barracksLevel() * 30;
-export const trainSpeed = () => 1 + barracksLevel() * 0.12;
-export const hospitalCap = () => maxLevelOf('hospital') * 180;
+export const trainSpeed = () => (1 + barracksLevel() * 0.12) * (1 + rb('drill'));
+export const hospitalCap = () => Math.round(maxLevelOf('hospital') * 180 * (1 + rb('medic')));
 export const potionCap = () => (maxLevelOf('potion') ? 3 + maxLevelOf('potion') * 2 : 0);
 export const potionInterval = () => 150 / Math.max(1, maxLevelOf('potion'));
 export const totalWounded = () => totalTroops(S.wounded);
@@ -153,6 +214,7 @@ export function startTraining(type, n) {
   pay(cost);
   const dur = TROOPS[type].time * n / trainSpeed();
   S.training = { type, n, start: now(), end: now() + dur };
+  count('trained', n);
   save(); emit('training');
   return { ok: true };
 }
@@ -172,6 +234,7 @@ export function startHealing() {
   pay(cost);
   for (const t in S.wounded) S.wounded[t] = 0;
   S.healing = { counts, start: now(), end: now() + n * 0.35 / (1 + maxLevelOf('hospital') * 0.1) };
+  count('heals');
   save(); emit('healing');
   return { ok: true };
 }
@@ -184,6 +247,7 @@ export function usePotion() {
   }
   if (!healed && !S.healing) return { ok: false, why: 'Yaralı asker yok' };
   S.potions--;
+  count('heals');
   tick(); save(); emit('troops');
   return { ok: true, healed };
 }
@@ -235,6 +299,7 @@ export function summon(count, free = false) {
     out.push({ id: h.id, rarity: rar, isNew });
   }
   S.totalPulls += count;
+  globalThis.__dsCount?.('summons', count);
   save(); emit('heroes');
   return { ok: true, results: out };
 }
@@ -300,7 +365,7 @@ export function simulateBattle(att, def) {
       for (const yt in Y) {
         if (!Y[yt]) continue;
         const share = Y[yt] / ytot;
-        out[yt] += X[xt] * d.atk * bonusFor(side, xt) * COUNTER[xt][yt] * share;
+        out[yt] += X[xt] * d.atk * bonusFor(side, xt) * COUNTER[xt][yt] * share * (side.atkMul || 1);
       }
     }
     return out;
@@ -314,7 +379,7 @@ export function simulateBattle(att, def) {
       for (const t in Y) {
         const d = TROOPS[t];
         const defMul = 1 + (side.hero ? side.hero.bonus / 100 * 0.5 : 0);
-        const k = dmg[t] * 0.11 / (d.hp * 0.08 + d.def * 0.1 * defMul) * rand(0.9, 1.1);
+        const k = dmg[t] * 0.11 / ((d.hp * 0.08 + d.def * 0.1 * defMul) * (side.defMul || 1)) * rand(0.9, 1.1);
         Y[t] = Math.max(0, Y[t] - Math.round(Math.min(Y[t], k)));
       }
     };
@@ -346,16 +411,16 @@ export function attackEnemy(enemyId, sent, heroId) {
   for (const t in sent) { sent[t] = Math.min(sent[t], S.troops[t]); }
   if (!totalTroops(sent)) return null;
   for (const t in sent) S.troops[t] -= sent[t];
-  const res = simulateBattle({ troops: sent, hero: heroOf(heroId) }, { troops: e.troops, hero: null, tower: e.tower * 120 });
+  const res = simulateBattle({ troops: sent, hero: heroOf(heroId), atkMul: 1 + rb('blade'), defMul: 1 + rb('armor') }, { troops: e.troops, hero: null, tower: e.tower * 120 });
   const split = applyLosses(res.aLoss);
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {};
   if (res.win) {
-    let cap = Object.entries(res.A).reduce((s, [t, n]) => s + n * TROOPS[t].load, 0);
+    let cap = Object.entries(res.A).reduce((s, [t, n]) => s + n * TROOPS[t].load, 0) * (1 + rb('logis'));
     for (const r of ['food', 'wood', 'stone']) { const take = Math.min(Math.floor(e.res[r] * 0.6), Math.floor(cap / 3)); loot[r] = take; e.res[r] -= take; }
     loot.gold = e.res.gold; e.res.gold = 0;
     addRes(loot);
-    S.stats.wins++;
+    S.stats.wins++; count('wins');
     e.shieldUntil = now() + 90;
   } else S.stats.losses++;
   for (const t in e.troops) e.troops[t] = res.D[t];
@@ -375,7 +440,7 @@ export function resolveRaid() {
   const name = KINGDOM_NAMES[randi(0, KINGDOM_NAMES.length - 1)];
   const attacker = makeEnemy(name, LORD_NAMES[randi(0, LORD_NAMES.length - 1)], strength, 0);
   const home = { ...S.troops };
-  const res = simulateBattle({ troops: attacker.troops, hero: null }, { troops: home, hero: heroOf(S.commander), tower: towerPower() });
+  const res = simulateBattle({ troops: attacker.troops, hero: null }, { troops: home, hero: heroOf(S.commander), tower: towerPower(), atkMul: 1 + rb('blade'), defMul: 1 + rb('armor') });
   const defWin = !res.win;
   const split = applyLosses(res.dLoss);
   for (const t in S.troops) S.troops[t] = res.D[t];
@@ -384,7 +449,7 @@ export function resolveRaid() {
     const protect = 0.3 + maxLevelOf('warehouse') * 0.05;
     for (const r of ['food', 'wood', 'stone']) { lost[r] = Math.floor(S.res[r] * (1 - protect) * 0.25); S.res[r] -= lost[r]; }
   }
-  if (defWin) S.stats.wins++; else S.stats.losses++;
+  if (defWin) { S.stats.wins++; count('wins'); } else S.stats.losses++;
   const rep = { t: now(), kind: 'defense', win: defWin, enemy: attacker.name, lord: attacker.lord, sent: attacker.troops, aLoss: res.dLoss, dLoss: res.aLoss, wounded: split.wounded, dead: split.dead, loot: lost, hero: S.commander };
   S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
   S.raid = { at: now() + rand(300, 540), warned: false };
@@ -412,6 +477,10 @@ export function tick() {
     for (const k in S.healing.counts) S.troops[k] += S.healing.counts[k];
     emit('healed', S.healing); S.healing = null;
   }
+  if (S.research && S.research.cur && S.research.cur.end <= t) {
+    const k = S.research.cur.key; S.research.levels[k] = (S.research.levels[k] || 0) + 1; S.research.cur = null;
+    count('researched'); emit('researched', k);
+  }
   const cap = potionCap();
   if (cap) {
     const iv = potionInterval();
@@ -419,3 +488,5 @@ export function tick() {
   } else S.potionAt = t;
 }
 function catchUp() { tick(); refreshEnemies(); if (S.raid.at < now()) S.raid = { at: now() + 120, warned: false }; }
+
+globalThis.__dsCount = (n, k) => count(n, k);

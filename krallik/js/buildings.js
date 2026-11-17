@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7 };
+export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
@@ -783,7 +783,36 @@ function warehouse(L) {
   return k.build(H + 2.2);
 }
 
-const BUILDERS = { townhall, barracks, archery, hospital, potion, heroes, summon, farm, lumber, quarry, warehouse };
+
+function academy(L) {
+  const k = new Kit(), g = geos(), t = tier(L);
+  const r = 1.9 + L * 0.05, H = 3.6 + L * 0.35;
+  for (let i = 0; i < 2; i++) k.add(new THREE.CylinderGeometry(r + 1.0 - i * 0.4, r + 1.1 - i * 0.4, 0.22, 20), i ? 'marble' : 'stone', 0, 0.11 + i * 0.22, -0.8);
+  k.add(cylUV(r, r * 1.04, H, 20, 2), t === 1 ? 'plaster' : 'stone', 0, 0.44 + H / 2, -0.8);
+  // sütun halkası
+  const nc = t === 1 ? 6 : 10;
+  for (let i = 0; i < nc; i++) { const a = (i / nc) * TAU; k.add(cylUV(0.14, 0.16, H * 0.7, 10, 1), t === 1 ? 'timber' : 'marble', Math.cos(a) * (r + 0.35), 0.44 + H * 0.35, -0.8 + Math.sin(a) * (r + 0.35)); }
+  k.add(new THREE.TorusGeometry(r + 0.35, 0.12, 6, 28), t === 3 ? 'gold' : 'stoneDark', 0, 0.44 + H * 0.7, -0.8, Math.PI / 2, 0, 0);
+  k.add(new THREE.CylinderGeometry(r + 0.55, r + 0.55, 0.2, 24), t === 1 ? 'timber' : 'marble', 0, 0.44 + H * 0.7 + 0.12, -0.8);
+  // kubbe
+  k.add(new THREE.SphereGeometry(r * 0.98, 20, 10, 0, TAU, 0, Math.PI / 2), t === 3 ? 'gold' : t === 2 ? 'roofBlue' : 'roofRed', 0, 0.44 + H, -0.8);
+  k.add(cylUV(0.35, 0.4, 0.8, 12, 1), 'stone', 0, 0.44 + H + r * 0.98 - 0.1, -0.8);
+  k.add(g.cone16, t === 3 ? 'gold' : 'roofBlue', 0, 0.44 + H + r * 0.98 + 0.6, -0.8, 0, 0, 0, 0.45, 0.6, 0.45);
+  // teleskop
+  if (L >= 3) { k.add(g.cyl8, 'gold', 0.9, 0.44 + H + r * 0.6, -0.4, 0.9, 0, -0.4, 0.09, 1.3, 0.09); k.add(g.cyl8, 'iron', 0.75, 0.44 + H + r * 0.45, -0.55, 0, 0, 0, 0.04, 0.6, 0.04); }
+  doorAt(k, 0, -0.8 + r + 0.02, 0, 1.0, 1.8, t >= 2 ? 'gold' : 'plank');
+  for (let i = 0; i < 4; i++) { const a = Math.PI / 2 + (i - 1.5) * 0.5; if (Math.abs(i - 1.5) < 0.6) continue; windowAt(k, Math.cos(a) * r * 1.01, 0.44 + H * 0.55, -0.8 + Math.sin(a) * r * 1.01, Math.PI / 2 - a, 0.4, 0.9, true); }
+  // dışarıda kitap rafı, masa ve parşömenler
+  k.add(boxUV(1.2, 1.3, 0.35, 1), 'plank', -2.6, 0.65, 2.1, 0, 0.5, 0);
+  const bookCols = ['red', 'blue', 'hay', 'leafDark', 'timber'];
+  for (let sh = 0; sh < 3; sh++) for (let i = 0; i < 6; i++) k.add(g.box, bookCols[(i + sh) % 5], -2.6 + Math.cos(0.5) * (-0.45 + i * 0.18), 0.25 + sh * 0.4, 2.1 - Math.sin(0.5) * (-0.45 + i * 0.18) + 0.08, 0, 0.5, 0, 0.12, 0.3, 0.22);
+  k.add(boxUV(1.0, 0.08, 0.6, 1), 'plank', 2.4, 0.75, 2.2); for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.add(g.cyl8, 'timber', 2.4 + sx * 0.4, 0.37, 2.2 + sz * 0.22, 0, 0, 0, 0.04, 0.74, 0.04);
+  k.add(g.cyl8, 'cloth', 2.3, 0.84, 2.2, 0, 0.3, Math.PI / 2, 0.06, 0.5, 0.06); k.add(g.sphere, 'crystal', 2.65, 0.9, 2.15, 0, 0, 0, 0.12, 0.12, 0.12);
+  addBanner(k, -r - 0.8, 3.4, -0.8, 0.6, 1.0);
+  return k.build(0.44 + H + r + 1.4);
+}
+
+const BUILDERS = { academy, townhall, barracks, archery, hospital, potion, heroes, summon, farm, lumber, quarry, warehouse };
 export function createBuilding(key, level) {
   mats(); geos();
   const f = BUILDERS[key];
