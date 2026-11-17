@@ -377,6 +377,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - Sınırlama: hesaplar istemcide (hile mümkün). 3. aşama Cloud Functions ile sunucu tarafı doğrulama (Blaze planı gerekir).
 - Ortam ağ izinleri: www.gstatic.com, firestore/identitytoolkit/securetoken.googleapis.com.
 
+### 5.13 3D krallık haritası ve seferler
+- `krallik/js/worldmap.js`: Dünya düğmesi (öğretici bittiyse) 3D haritayı açar. 1000×1000 harita, çim dokusu, tohumlu orman kümeleri, dağlar; şehirler Belediye modelleriyle (seviyeye göre townhall/2/3/4), altında renkli halka (sarı: ben, mavi: gerçek oyuncu, kırmızı: bilgisayar), kalkan kubbesi, HTML etiketleri (seviye rozeti + ad).
+- Kaydır/iki parmakla yakınlaştır, şehre dokun → kart (güç, zorluk, konum, yürüyüş süresi) → "Saldır" → Sefer Kampı → "Yürüyüşe çık".
+- Sefer (`state.js → startMarch / tickMarches / recallMarch`): askerler çıkar, haritada kesik çizgi boyunca yürür (süre mesafeye göre 10–240 sn; tank yavaş, sadece süvari hızlı), varınca `attackEnemy` ile savaş, sonra aynı sürede geri döner ve sağ kalanlar şehre eklenir. Aynı anda en fazla 3 sefer; komutan aynı anda tek seferde. Varışta "Zafer/Yenilgi • İzle ▶" bandı (`showBattleBanner`).
+- Her oyuncunun `S.server` (varsayılan 300) ve `S.mapX/mapY` koordinatı var; profil bunları da paylaşır. Haritada sunucudaki tüm gerçek oyuncular (`online.serverPlayers`, son 30 gün) + çevrede 36 bilgisayar krallığı (`ensureMapKingdoms`).
+- Sunucu düğmesi (#300 ⇄ #301): başka sunucuyu görüntüle; orada tohumlu 30 bilgisayar krallığı (`foreignBots`) ve o sunucunun gerçek oyuncuları; saldırı mümkün (krallıklar arası savaş, yürüyüş uzun).
+- Öğretici sırasında eski 2D harita penceresi kullanılır (öğretici adımları ona bağlı).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

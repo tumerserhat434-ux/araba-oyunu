@@ -122,3 +122,12 @@ export async function clearInbox(ids) {
   if (!ready) return;
   await Promise.all(ids.map((id) => FS.deleteDoc(FS.doc(db, 'players', user.uid, 'inbox', id)).catch(() => {})));
 }
+// Bir sunucudaki bütün oyuncular (son 30 günde aktif). Eşitlik sorgusu → ek dizin gerekmez.
+export async function serverPlayers(server, n = 200) {
+  if (!ready) return [];
+  try {
+    const q = FS.query(FS.collection(db, 'players'), FS.where('server', '==', server), FS.limit(n));
+    const s = await FS.getDocs(q), since = Date.now() - 30 * 86400000;
+    return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => p.uid !== user.uid && (p.updated || 0) > since);
+  } catch (e) { lastErr = e.code || e.message; return []; }
+}

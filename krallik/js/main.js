@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
 import * as ASSETS from './assets.js';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js';
+import { serverPlayers } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
@@ -775,7 +777,7 @@ export function navigate(go) {
   if (go === 'events') { questTab = 'daily'; go = 'quests'; }
   if (go === 'offers') go = 'shop';
   if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); tutEvent('summonOpen'); return; }
-  if (go === 'world') tutEvent('worldOpen');
+  if (go === 'world') { tutEvent('worldOpen'); if (G.S.tut === 'done') { closeModal(); setNav('world'); sfx('open'); openWorldMap(); return; } }
   sfx('open');
   modalKind = go;
   renderModal();
@@ -1085,10 +1087,11 @@ $('modalBox').addEventListener('click', (e) => {
   const a = m.dataset.m;
   if (a === 'close') closeModal();
   if (a === 'login') { const r = G.claimLogin(); if (r) { toast(`📅 Gün ${r.day}: ` + rewardTxt(r.reward)); sfx('built'); updateTop(); } closeModal(); }
-  if (a === 'world') { modalKind = 'world'; renderModal(); }
+  if (a === 'world') { if (worldOpen()) { $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; atk.init = false; return; } modalKind = 'world'; renderModal(); }
   if (a === 'toattack') { modalKind = 'attack'; atk.init = false; renderModal(); tutEvent('attackOpen'); }
   if (a === 'march') {
     const troops = { ...atk.troops }, hero = atk.heroes[0];
+    if (worldOpen()) { const sm = G.startMarch(worldSel, troops, atk.heroes); if (!sm.ok) return toast(sm.why, true); $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; atk.init = false; sfx('horn'); toast(`🚩 Ordu yola çıktı • varış ${G.fmtTime(sm.march.dur)}`); refreshWorldUI(); syncSoon(); return; }
     const r = G.attackEnemy(worldSel, troops, atk.heroes);
     if (!r) return toast('Asker seç', true);
     closeModal(); atk.init = false; tutEvent('battle');
@@ -1121,8 +1124,26 @@ G.onChange((ev, data) => {
   if (ev === 'healed') toast(`💚 ${G.totalTroops(data.counts)} asker iyileşti`);
   if (ev === 'battle') { $('repDot').classList.remove('hidden'); if (data.win && data.kind === 'attack') pushNews(`<u>${G.S.name}</u> <em>${data.enemy}</em> krallığını fethetti!`); }
   if (ev === 'quests') { updateQuestUI(); }
+  if (ev === 'marchArrived') {
+    const { r } = data; if (r.enemy.real) sendAttack(r.enemy.uid, { name: G.S.name, win: r.res.win, loot: r.rep.loot, sent: r.sent, aLoss: r.res.aLoss, dLoss: r.res.dLoss });
+    lastBattle = r; sfx(r.res.win ? 'win' : 'lose');
+    showBattleBanner(r); refreshWorldUI(); syncSoon();
+  }
+  if (ev === 'marchHome') { toast('↩ Ordun şehre döndü'); refreshWorldUI(); updateTop(); }
+  if (ev === 'marchBlocked') { toast('🛡️ Hedefin kalkanı var, ordu geri dönüyor', true); refreshWorldUI(); }
   if (ev === 'researched') { toast(`🔬 ${RESEARCH[data].name} Sv.${G.S.research.levels[data]} tamamlandı!`); sfx('built'); }
 });
+let lastBattle = null;
+function showBattleBanner(r) {
+  let b = $('battleBanner'); if (!b) { b = document.createElement('div'); b.id = 'battleBanner'; document.body.appendChild(b); }
+  const loot = r.rep.loot || {};
+  b.className = 'bb ' + (r.res.win ? 'win' : 'lose');
+  b.innerHTML = `<i>${r.res.win ? '🏆' : '💀'}</i><div><b>${r.res.win ? 'Zafer!' : 'Yenilgi'} • ${r.enemy.name}</b><small>${r.res.win ? `🌾${G.fmt(loot.food || 0)} 🪵${G.fmt(loot.wood || 0)} 🪨${G.fmt(loot.stone || 0)} 🪙${loot.gold || 0}` : 'Ordun geri çekiliyor'}</small></div><button id="bbWatch">İzle ▶</button><button id="bbX">✕</button>`;
+  b.style.display = 'flex';
+  $('bbX').onclick = () => { b.style.display = 'none'; };
+  $('bbWatch').onclick = () => { b.style.display = 'none'; const x = lastBattle; if (!x) return; openBattle({ mode: 'attack', result: x.res, attacker: { troops: x.sent, hero: x.rep.hero }, defender: { troops: addBack(x.res.D, x.res.dLoss), tower: x.enemy.tower }, report: x.rep, title: x.enemy.name }); };
+  clearTimeout(b._t); b._t = setTimeout(() => { b.style.display = 'none'; }, 12000);
+}
 export function onSceneClosed() { tutEvent('sceneClosed'); setNav('city'); updateTop(); updateLabels(true); for (const id in holders) refreshPlot(id); }
 
 // ---------------------------------------------------------------------
@@ -1248,6 +1269,9 @@ async function boot() {
   buildPatrols();
   buildNight();
   initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
+  const onAttack = (id) => { worldSel = id; atk.init = false; modalKind = 'attack'; renderModal(); };
+  window.__dsAttack = onAttack;
+  initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack });
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   applyCam();
   setLoad(95, 'Son dokunuşlar…'); await frame();

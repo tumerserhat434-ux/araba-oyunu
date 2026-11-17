@@ -20,6 +20,7 @@ const stars = (n) => '★'.repeat(n);
 const ov = () => $('overlay');
 
 export function initScenes(ctx) { C = ctx; }
+export { open as openScene, close as closeScene, ov as sceneOverlay };
 export const sceneActive = () => !!active;
 export function renderActive(dt, t) {
   if (!active) return false;

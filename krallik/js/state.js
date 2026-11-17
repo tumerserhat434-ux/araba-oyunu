@@ -55,6 +55,11 @@ export function load() {
   S.research ||= { levels: {}, cur: null };
   for (const t in TROOPS) { S.troops[t] ??= 0; S.wounded[t] ??= 0; }
   for (const e of S.enemies) e.troops.tank ??= 0;
+  // dünya haritası: sunucu, koordinat, seferler ve harita krallıkları
+  S.server ??= 300;
+  if (S.mapX == null) { S.mapX = Math.round(rand(220, 780)); S.mapY = Math.round(rand(220, 780)); }
+  S.marches ||= [];
+  ensureMapKingdoms();
   S.tankTraining ??= null;
   dailyReset();
   catchUp();
@@ -357,6 +362,21 @@ export function cityPower() {
 }
 export function towerPower() { let p = 0; for (const pl of PLOTS) if (pl.key === 'archery') p += lvl(pl.id) * 260; return p; }
 
+// Haritada oyuncunun çevresine yayılmış bilgisayar krallıkları (36 adet)
+const MAP_BOTS = 36, ROMAN = ['', ' II', ' III', ' IV'];
+function ensureMapKingdoms() {
+  const base = Math.max(2500, armyPower(S.troops) + towerPower() + 6000);
+  while (S.enemies.length < MAP_BOTS) { const i = S.enemies.length; S.enemies.push(makeEnemy(KINGDOM_NAMES[i % KINGDOM_NAMES.length] + ROMAN[Math.floor(i / KINGDOM_NAMES.length)], LORD_NAMES[(i * 7) % LORD_NAMES.length], base * rand(0.3, 1.9), i)); }
+  S.enemies.forEach((e, i) => { if (e.mapX == null) placeOnMap(e, i); });
+}
+function placeOnMap(e, i) {
+  for (let k = 0; k < 40; k++) {
+    const ang = (i * 2.399) + rand(-0.4, 0.4), dist = 32 + Math.sqrt(i + 1) * 24 + rand(-8, 8);
+    const x = Math.round(S.mapX + Math.cos(ang) * dist), y = Math.round(S.mapY + Math.sin(ang) * dist);
+    if (S.enemies.every((o) => o === e || o.mapX == null || Math.hypot(o.mapX - x, o.mapY - y) > 27)) { e.mapX = Math.max(20, Math.min(980, x)); e.mapY = Math.max(20, Math.min(980, y)); return; }
+  }
+  e.mapX = S.mapX + rand(-300, 300); e.mapY = S.mapY + rand(-300, 300);
+}
 function genEnemies(basePower) {
   const list = [];
   const names = [...KINGDOM_NAMES].sort(() => Math.random() - 0.5), lords = [...LORD_NAMES].sort(() => Math.random() - 0.5);
@@ -456,20 +476,74 @@ function applyLosses(loss) {
   return { wounded, dead };
 }
 // ---- Çevrimiçi: gerçek oyuncular ----
-export const ONLINE = { enemies: [], top: [], topAt: 0, rivalsAt: 0 };
+export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0 };
+export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
+// Başka sunucunun bilgisayar krallıkları (görüntülenirken üretilir, kalıcı değil)
+export function foreignBots(server) {
+  let seed = server * 9973; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const base = Math.max(3000, armyPower(S.troops) + towerPower() + 6000), out = [];
+  for (let i = 0; i < 30; i++) {
+    const e = { id: 'f' + server + '_' + i, name: KINGDOM_NAMES[(i * 5 + server) % KINGDOM_NAMES.length] + ' #' + server, lord: LORD_NAMES[(i * 3 + server) % LORD_NAMES.length], mapX: Math.round(80 + rnd() * 840), mapY: Math.round(80 + rnd() * 840), troops: {}, tower: 0, th: 1, res: {}, power: 0, shieldUntil: 0, foreign: server };
+    regenEnemy(e, base * (0.4 + rnd() * 1.6)); out.push(e);
+  }
+  return out;
+}
+// ---- Seferler: ordu haritada yürür, varınca savaşır, sonra geri döner ----
+export const mapDist = (e) => (e.foreign || (e.server && e.server !== (S.server || 300)) ? 900 : Math.hypot((e.mapX ?? S.mapX) - S.mapX, (e.mapY ?? S.mapY) - S.mapY));
+export function marchTime(e, troops) {
+  const slow = troops && (troops.tank > 0) ? 1.25 : troops && troops.infantry + troops.spearman + troops.archer === 0 && troops.cavalry > 0 ? 0.7 : 1;
+  return Math.round(Math.min(240, Math.max(10, 8 + mapDist(e) * 0.22)) * slow);
+}
+export function startMarch(enemyId, sent, heroIds) {
+  const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
+  if (S.marches.length >= 3) return { ok: false, why: 'En fazla 3 sefer aynı anda' };
+  const troops = {}; let n = 0;
+  for (const t in TROOPS) { troops[t] = Math.max(0, Math.min(sent[t] || 0, S.troops[t] || 0)); n += troops[t]; }
+  if (!n) return { ok: false, why: 'Asker seç' };
+  heroIds = (heroIds || []).filter((id) => S.heroes[id] && !S.marches.some((m) => m.heroes.includes(id))).slice(0, MAX_COMMANDERS);
+  for (const t in troops) S.troops[t] -= troops[t];
+  const dur = marchTime(e, troops), t0 = now();
+  const m = { id: 'm' + Math.random().toString(36).slice(2, 8), target: enemyId, tname: e.name, tx: e.mapX, ty: e.mapY, foreign: e.foreign || (e.server && e.server !== S.server ? e.server : 0), snap: e.real || e.foreign ? JSON.parse(JSON.stringify(e)) : null, troops, heroes: heroIds, start: t0, arrive: t0 + dur, dur, phase: 'go' };
+  S.marches.push(m); save(); emit('march', m);
+  return { ok: true, march: m };
+}
+export function recallMarch(id) {
+  const m = S.marches.find((q) => q.id === id); if (!m || m.phase !== 'go') return false;
+  const el = now() - m.start; m.phase = 'back'; m.survivors = m.troops; m.start = now(); m.arrive = now() + Math.max(3, el); save(); return true;
+}
+function tickMarches() {
+  const t = now();
+  for (const m of [...S.marches]) {
+    if (m.phase === 'go' && t >= m.arrive) {
+      if (m.snap && !findEnemy(m.target)) (m.snap.foreign ? ONLINE.foreign : ONLINE.enemies).push(m.snap);
+      const e = findEnemy(m.target);
+      if (!e || e.shieldUntil > t) { m.phase = 'back'; m.survivors = m.troops; m.start = t; m.arrive = t + m.dur; m.blocked = true; emit('marchBlocked', m); continue; }
+      for (const k in m.troops) S.troops[k] += m.troops[k];
+      const r = attackEnemy(m.target, { ...m.troops }, m.heroes);
+      if (!r) { m.phase = 'back'; m.survivors = m.troops; m.start = t; m.arrive = t + m.dur; continue; }
+      m.survivors = {}; for (const k in r.res.A) { m.survivors[k] = r.res.A[k]; S.troops[k] -= r.res.A[k]; }
+      m.phase = 'back'; m.start = t; m.arrive = t + m.dur; m.result = { win: r.res.win };
+      emit('marchArrived', { m, r });
+    } else if (m.phase === 'back' && t >= m.arrive) {
+      for (const k in (m.survivors || {})) S.troops[k] += m.survivors[k];
+      S.marches = S.marches.filter((q) => q !== m); save(); emit('marchHome', m);
+    }
+  }
+}
+export const troopsAway = () => { const o = {}; for (const m of S.marches) for (const k in (m.phase === 'go' ? m.troops : m.survivors || {})) o[k] = (o[k] || 0) + (m.phase === 'go' ? m.troops : m.survivors)[k]; return o; };
 export function importSave(json) { localStorage.setItem(SAVE_KEY, json); }
 export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 // Diğer oyuncuların göreceği herkese açık profil (savunma bilgisi dahil)
 export function publicProfile() {
   const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
-  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins };
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 300, mapX: S.mapX, mapY: S.mapY };
 }
 // Gerçek oyuncuyu haritadaki düşman biçimine çevir
 export function rivalToEnemy(p) {
   let hsh = 0; for (const ch of p.uid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
   const ang = (hsh % 360) * Math.PI / 180, dist = 0.25 + ((hsh >> 9) % 60) / 100;
-  return { id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
+  return { mapX: p.mapX ?? (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY ?? (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 300, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
     troops: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0, ...(p.troops || {}) }, tower: (p.towerPow || 0) / 120, th: p.th || 1, hero: p.hero || null,
     res: { food: (p.lootable?.food || 0) / 0.6, wood: (p.lootable?.wood || 0) / 0.6, stone: (p.lootable?.stone || 0) / 0.6, gold: 0 }, power: p.power || 0, shieldUntil: (S.pvpCooldown?.[p.uid] || 0) };
 }
@@ -488,7 +562,7 @@ export function attackEnemy(enemyId, sent, heroIds) {
   if (!Array.isArray(heroIds)) heroIds = heroIds ? [heroIds] : [];
   heroIds = heroIds.filter((id) => S.heroes[id]).slice(0, MAX_COMMANDERS);
   const heroId = heroIds[0];
-  const e = S.enemies.find((q) => q.id === enemyId) || ONLINE.enemies.find((q) => q.id === enemyId);
+  const e = findEnemy(enemyId);
   if (!e) return null;
   for (const t in sent) { sent[t] = Math.min(sent[t], S.troops[t]); }
   if (!totalTroops(sent)) return null;
@@ -545,6 +619,7 @@ export function resolveRaid() {
 // ---------------------------------------------------------------------
 export function tick() {
   const t = now();
+  if (S.marches?.length) tickMarches();
   for (const p of PLOTS) {
     const b = S.buildings[p.id];
     if (b.busyUntil && b.busyUntil <= t) {
