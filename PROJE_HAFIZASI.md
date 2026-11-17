@@ -326,6 +326,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - Pencere kaydırma düzeltmesi: `.modal-box.win` yükseklik sınırlı, `.w-main` kendi içinde kayar (iPhone dahil).
 - Yeni görevler: qf1 (Demirhane), qr1 (Toplanma Kampı), qt1 (Tank Atölyesi), qt2 (5 tank üret, sayaç `tanks`).
 
+### 5.7 Savaş alanı, görev çubuğu, çağırma atölyesi (v2)
+- **Savaş alanı:** Gündüz arena. Arka plan resmi `assets/ui/bg_battle.webp` (şelale, köprü, düşman kalesi) `scene.background` olarak, ekranın üstüne `fitBattleBg` ile yerleşir. Oval toprak arena (canvas doku), KayKit çit (kamera tarafı açık), ateşli mangallar, uzak köşelerde iki kule, yanlarda ağaçlar.
+  - Üstte mavi/kırmızı şeritler (avatar, isim, güç) + ortada kalkan; "Savaş Alanı" levhası.
+  - Savaş "Savaşı Başlat" düğmesiyle başlar (9 sn dokunulmazsa kendiliğinden). Başlayınca can çubukları görünür.
+- **Görev çubuğu:** Lacivert, altın çerçeveli, üstte taç (`assets/ui/crown.webp`), solda parşömen, "Bölüm N:" + görev + (x/y), yeşil yüzdeli çubuk, yeşil "Git »" düğmesi.
+- **Çağırma atölyesi:** Arka plan `assets/ui/bg_summon.webp` (mistik tapınak), Higgsfield portal modeli `assets/hf/p_portal.glb` (parça listesinde), halkada dönen girdap, kristal ışıltıları, zeminde rün dairesi. Kahraman portal kaidesinde çıkar, önden ışıkla aydınlanır.
+- Bu adımda ~10 kredi harcandı (4 görsel + 1 Tripo).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
@@ -385,7 +393,7 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Bakiye geçmişi:**
   - Başta 113 kredi vardı, ~111'i 12 bina için harcandı.
   - Kullanıcı yükleme yaptı: plus plan, 1000 kredi.
-  - Son bilinen bakiye ~**576 kredi** (tank + 3 bina için ~37 kredi harcandı).
+  - Son bilinen bakiye ~**566 kredi**.
 - **Yaklaşık maliyetler:**
 
   | İş | Model | Kredi |

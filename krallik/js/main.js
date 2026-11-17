@@ -884,13 +884,15 @@ function updateQuestUI() {
   const n = G.claimableCount();
   $('questDot').classList.toggle('hidden', !n);
   const q = G.activeQuests()[0];
-  if (!q) { $('qText').textContent = 'Tüm görevler tamamlandı!'; $('qProg').style.width = '100%'; return; }
-  const [x, y] = G.questProgress(q), ok = x >= y;
-  const txt = `${q.text} (${G.fmt(x)}/${G.fmt(y)})`;
-  if ($('qText').textContent !== txt) $('qText').textContent = txt;
-  $('qProg').style.width = (x / y * 100) + '%';
+  if (!q) { $('qCh').textContent = 'Tebrikler:'; $('qText').textContent = 'Tüm görevler tamamlandı!'; $('qNum').textContent = ''; $('qProg').style.width = '100%'; $('qPct').textContent = '100%'; return; }
+  const [x, y] = G.questProgress(q), ok = x >= y, pct = Math.floor(Math.min(1, x / y) * 100);
+  const ch = `Bölüm ${QUESTS.indexOf(q) + 1}:`, num = `(${G.fmt(x)}/${G.fmt(y)})`;
+  if ($('qText').textContent !== q.text) $('qText').textContent = q.text;
+  if ($('qCh').textContent !== ch) $('qCh').textContent = ch;
+  if ($('qNum').textContent !== num) $('qNum').textContent = num;
+  $('qProg').style.width = pct + '%'; $('qPct').textContent = pct + '%';
   $('qbar').classList.toggle('done', ok);
-  $('qBtn').textContent = ok ? 'Al' : 'Git';
+  $('qBtn').innerHTML = ok ? 'Al <s>✓</s>' : 'Git <s>»</s>';
 }
 $('qbar').onclick = () => {
   const q = G.activeQuests()[0];

@@ -3,6 +3,7 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BLD from './buildings.js';
+import * as A from './assets.js';
 import { createSoldier, createHero, animateUnit } from './units.js';
 import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost } from './data.js';
 import * as G from './state.js';
@@ -70,32 +71,94 @@ function disposeScene(scene) {
 //  SAVAŞ
 // =====================================================================
 let grassTex = null;
+let battleBg = null, dirtTex = null, fadeTex = null;
+function battleBackground() {
+  if (!battleBg) { battleBg = new THREE.TextureLoader().load('assets/ui/bg_battle.webp'); battleBg.colorSpace = THREE.SRGBColorSpace; }
+  return battleBg;
+}
+// arka plan resmini ekranın üst kısmına "cover" gibi yerleştir (ufuk çizgisi ≈ ekranın %70'i)
+function fitBattleBg(tex) {
+  const W = innerWidth, H = innerHeight, IA = 1344 / 752;
+  const dispH = Math.max(H * 0.5, W / IA * 0.98), dispW = dispH * IA;
+  tex.repeat.set(Math.min(1, W / dispW), H / dispH);
+  tex.offset.set(Math.max(0, Math.min(1 - tex.repeat.x, 0.56 - tex.repeat.x / 2)), 1 - tex.repeat.y);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.needsUpdate = true;
+}
 export function openBattle(opts) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0b1430);
-  scene.fog = new THREE.Fog(0x0e1a3a, 50, 150);
-  scene.environment = C.makeEnv(0x1a2a5a, 0x2a3a6a, 0x0a1010, false);
-  scene.environmentIntensity = 0.5;
+  const bg = battleBackground(); fitBattleBg(bg); scene.background = bg;
+  scene.environment = C.makeEnv(0x8ab8ff, 0xd8e8ff, 0x4a6a2a, false);
+  scene.environmentIntensity = 0.6;
   const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 400);
-  const sun = new THREE.DirectionalLight(0x9fb8ff, 1.7); sun.position.set(20, 40, 18); sun.castShadow = true;
-  Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 5, far: 120 }); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
-  scene.add(sun, new THREE.HemisphereLight(0x5a74c8, 0x1a2a20, 0.7));
-  for (const sx of [-1, 1]) { const tl = new THREE.PointLight(0xff9a40, 80, 40, 1.4); tl.position.set(sx * 16, 6, 0); scene.add(tl); }
+  const sun = new THREE.DirectionalLight(0xfff0d8, 2.6); sun.position.set(18, 40, 26); sun.castShadow = true;
+  Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 5, far: 120 }); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
+  scene.add(sun, new THREE.HemisphereLight(0xbfdcff, 0x5a7a30, 1.25));
+  // zemin: kenarları saydamlaşan çim + ortada oval toprak arena
   if (!grassTex) {
     grassTex = canvasTex(512, 512, (ctx, w, h) => {
-      ctx.fillStyle = '#668f3e'; ctx.fillRect(0, 0, w, h);
-      for (let i = 0; i < 6000; i++) { ctx.fillStyle = ['#4f7f30', '#7aac4a', '#5a8a34', '#8ab656', '#6a5a3a'][i % 5]; ctx.globalAlpha = rand(0.2, 0.8); ctx.fillRect(Math.random() * w, Math.random() * h, rand(1, 3), rand(1, 3)); }
+      ctx.fillStyle = '#6aa23a'; ctx.fillRect(0, 0, w, h);
+      for (let i = 0; i < 7000; i++) { ctx.fillStyle = ['#5a9230', '#82bc4a', '#6aa836', '#9acc5a', '#5a8a2a'][i % 5]; ctx.globalAlpha = rand(0.25, 0.8); ctx.fillRect(Math.random() * w, Math.random() * h, rand(1, 3), rand(2, 4)); }
       ctx.globalAlpha = 1;
     });
-    grassTex.repeat.set(30, 30);
+    grassTex.repeat.set(26, 26);
   }
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: grassTex, color: 0x4a5a78, roughness: 1 }));
-  ground.receiveShadow = true; scene.add(ground);
-  for (let i = 0; i < 40; i++) {
-    const a = Math.random() * 6.28, r = rand(30, 70), t = BLD.createTree(Math.floor(Math.random() * 4));
-    t.position.set(Math.cos(a) * r, 0, Math.sin(a) * r - 10); t.rotation.y = rand(0, 6); scene.add(t);
+  if (!dirtTex) {
+    dirtTex = canvasTex(1024, 1024, (ctx, w, h) => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.save(); ctx.translate(w / 2, h / 2); ctx.scale(1, 0.66);
+      const g = ctx.createRadialGradient(0, 0, w * 0.2, 0, 0, w * 0.5); g.addColorStop(0, '#c8955a'); g.addColorStop(0.8, '#b07d48'); g.addColorStop(0.93, 'rgba(150,110,60,.85)'); g.addColorStop(1, 'rgba(120,100,50,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, w * 0.5, 0, 7); ctx.fill(); ctx.restore();
+      ctx.globalCompositeOperation = 'source-atop';
+      for (let i = 0; i < 9000; i++) { ctx.fillStyle = ['#9a6a3a', '#d8aa70', '#a87848', '#e0b880', '#7a5a34'][i % 5]; ctx.globalAlpha = rand(0.15, 0.55); const r = rand(1, 4); ctx.fillRect(Math.random() * w, Math.random() * h, r, r); }
+      for (let i = 0; i < 70; i++) { ctx.fillStyle = '#8a8a80'; ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.ellipse(Math.random() * w, Math.random() * h, rand(3, 7), rand(2, 4), rand(0, 3), 0, 7); ctx.fill(); }
+      for (let i = 0; i < 40; i++) { ctx.strokeStyle = '#8a6034'; ctx.globalAlpha = 0.25; ctx.lineWidth = rand(2, 5); ctx.beginPath(); const x = Math.random() * w, y = Math.random() * h; ctx.moveTo(x, y); ctx.quadraticCurveTo(x + rand(-60, 60), y + rand(-20, 20), x + rand(-120, 120), y + rand(-30, 30)); ctx.stroke(); }
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+    }, false);
+    dirtTex.colorSpace = THREE.SRGBColorSpace;
+    fadeTex = canvasTex(256, 256, (ctx, w, h) => { const g = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.5); g.addColorStop(0, '#fff'); g.addColorStop(1, '#000'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }, false);
+    fadeTex.colorSpace = THREE.NoColorSpace;
   }
-  for (let i = 0; i < 14; i++) { const rk = BLD.createRock(rand(0.4, 1.2)); rk.position.set(rand(-26, 26), 0, rand(-14, 10)); if (Math.abs(rk.position.z) < 9 && Math.abs(rk.position.x) < 18) continue; scene.add(rk); }
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(48, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: grassTex, alphaMap: fadeTex, transparent: true, depthWrite: false, roughness: 1 }));
+  ground.receiveShadow = true; ground.renderOrder = -2; scene.add(ground);
+  const AX = 23, AZ = 15; // arena yarıçapları (x: iki ordu ekseni)
+  const dirt = new THREE.Mesh(new THREE.PlaneGeometry(AX * 2.25, AX * 2.25).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: dirtTex, transparent: true, depthWrite: false, roughness: 1 }));
+  dirt.scale.z = AZ / AX; dirt.position.y = 0.02; dirt.receiveShadow = true; dirt.renderOrder = -1; scene.add(dirt);
+  // çit, mangallar, kuleler (kameranın olduğu yakın kenar boş bırakılır)
+  const camSide = opts.mode === 'attack' ? -1 : 1; // mavi tarafın işareti
+  const fireMat = new THREE.MeshStandardMaterial({ color: 0x6a6a72, roughness: 0.8 }), rimMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7, metalness: 0.3 });
+  const braziers = [];
+  const fenceLen = A.modelSize('fence_wood_straight');
+  const nF = 34;
+  for (let i = 0; i < nF; i++) {
+    const a0 = (i / nF) * Math.PI * 2, a1 = ((i + 1) / nF) * Math.PI * 2;
+    const x0 = Math.cos(a0) * (AX + 1.6), z0 = Math.sin(a0) * (AZ + 1.6), x1 = Math.cos(a1) * (AX + 1.6), z1 = Math.sin(a1) * (AZ + 1.6);
+    const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+    if (Math.sign(mx) === camSide && Math.abs(mx) > AX * 0.35) continue; // kamera tarafı açık
+    const len = Math.hypot(x1 - x0, z1 - z0);
+    const f = fenceLen && A.model('fence_wood_straight');
+    if (f) { f.scale.setScalar(len / Math.max(fenceLen.x, fenceLen.z) * 1.04); f.position.set(mx, 0, mz); f.rotation.y = -Math.atan2(z1 - z0, x1 - x0) + (fenceLen.z > fenceLen.x ? Math.PI / 2 : 0); scene.add(f); }
+  }
+  const brazierAt = (x, z) => {
+    const b = new THREE.Group(); b.position.set(x, 0, z);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.75, 1.1, 10), fireMat); base.position.y = 0.55; base.castShadow = true; b.add(base);
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.55, 0.45, 12), rimMat); bowl.position.y = 1.3; b.add(bowl);
+    const f1 = sprite(0xff8a20, 1.8, 0.95), f2 = sprite(0xffe070, 0.9, 1); f1.position.y = f2.position.y = 1.9; b.add(f1, f2);
+    scene.add(b); braziers.push({ f1, f2, ph: Math.random() * 6 });
+  };
+  for (const [a, k] of [[0.42, 1], [-0.42, 1], [Math.PI - 0.55, 1], [Math.PI + 0.55, 1], [Math.PI / 2, 1], [-Math.PI / 2, 1]]) {
+    const ang = camSide > 0 ? Math.PI - a : a; // yakın taraftaki iki mangal kameraya göre ayarlanır
+    const x = Math.cos(ang) * (AX + 3) * k, z = Math.sin(ang) * (AZ + 3) * k;
+    if (Math.sign(x) === camSide && Math.abs(x) > AX * 0.5) continue;
+    brazierAt(x, z);
+  }
+  for (const z of [-1, 1]) { // uzak köşelerde süs kuleleri
+    const tw = BLD.createBuilding('archery', 3); tw.position.set(-camSide * (AX + 2), 0, z * (AZ + 5)); tw.rotation.y = camSide * Math.PI / 2; scene.add(tw);
+  }
+  for (let i = 0; i < 26; i++) { // yanlarda ağaçlar
+    const side = i % 2 ? 1 : -1, x = rand(-AX - 10, AX + 4) * 1, z = side * rand(AZ + 6, AZ + 22);
+    const t = BLD.createTree(Math.floor(Math.random() * 4)); t.position.set(x, 0, z); t.rotation.y = rand(0, 6); t.scale.setScalar(rand(0.9, 1.3)); scene.add(t);
+  }
+  for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28; const rk = BLD.createRock(rand(0.4, 1.1)); rk.position.set(Math.cos(a) * (AX + rand(3, 7)), 0, Math.sin(a) * (AZ + rand(3, 7))); if (Math.sign(rk.position.x) === camSide && Math.abs(rk.position.x) > AX * 0.6) continue; scene.add(rk); }
 
   // tarafları belirle: oyuncu her zaman mavi
   const blueIsAtt = opts.mode === 'attack';
@@ -178,12 +241,24 @@ export function openBattle(opts) {
 
   // arayüz
   const win = opts.mode === 'attack' ? opts.result.win : !opts.result.win;
-  ov().innerHTML = `<div class="ov-top"><div class="ov-title">${opts.mode === 'attack' ? '⚔ ' + opts.title : '🛡️ ' + opts.title + ' saldırıyor!'}</div><button class="btn gray" id="bSkip" style="padding:8px 12px;font-size:13px">Geç ⏭</button></div>
-    <div class="ov-bottom" id="bHud">
-      <div class="armybar blue"><span>🔵 <b id="bBlue">${T0.blue}</b></span><div class="hp"><span id="bBlueHp" style="width:100%"></span></div></div>
-      <div class="armybar red"><span>🔴 <b id="bRed">${T0.red}</b></span><div class="hp"><span id="bRedHp" style="width:100%"></span></div></div>
+  const myHero = opts.mode === 'attack' ? opts.attacker.hero : opts.defender.hero;
+  const pw = (tr) => G.fmt(G.armyPower(tr || {}));
+  ov().innerHTML = `<div class="bt-top">
+      <div class="bt-side blue"><img class="bt-ava" src="assets/heroes/${myHero || G.S.commander || 'emre'}_a.webp" alt=""><div><b>${G.S.name}</b><span>⚔ ${pw(sides.blue.troops)}</span></div></div>
+      <div class="bt-vs"><span>⚔</span></div>
+      <div class="bt-side red"><div><b>${opts.title}</b><span>⚔ ${pw(sides.red.troops)}</span></div><img class="bt-ava" src="assets/heroes/oguz_a.webp" alt=""></div>
+    </div>
+    <div class="bt-plaque">${opts.mode === 'attack' ? 'Savaş Alanı' : 'Şehir Savunması'}</div>
+    <div class="ov-bottom bt-bottom" id="bHud">
+      <div class="bt-ctrl" id="bCtrl"><div class="bt-units"><i>👥</i><div><small>Birlikler</small><b>${G.fmt(T0.blue)}</b></div></div>
+        <button class="bt-start" id="bStart"><i>⚔</i>Savaşı Başlat</button>
+        <button class="bt-skip" id="bSkip" title="Geç">⏭</button></div>
+      <div class="bt-bars hidden" id="bBars">
+        <div class="armybar blue"><span>🔵 <b id="bBlue">${T0.blue}</b></span><div class="hp"><span id="bBlueHp" style="width:100%"></span></div></div>
+        <div class="armybar red"><span>🔴 <b id="bRed">${T0.red}</b></span><div class="hp"><span id="bRedHp" style="width:100%"></span></div></div>
+      </div>
     </div>`;
-  let T = 0, done = false;
+  let T = 0, done = false, started = false;
   const finish = () => {
     if (done) return; done = true;
     C.sfx(win ? 'win' : 'lose');
@@ -201,22 +276,23 @@ export function openBattle(opts) {
       <button class="btn gold" style="width:100%" id="bBack">🏰 Şehre dön</button></div>`;
     $('bBack').onclick = close;
   };
-  $('bSkip').onclick = () => { T = 11; };
-  C.sfx('horn');
+  const begin = () => { if (started) return; started = true; C.sfx('horn'); $('bCtrl')?.classList.add('hidden'); $('bBars')?.classList.remove('hidden'); };
+  $('bStart').onclick = begin;
+  $('bSkip').onclick = () => { begin(); T = 11; };
+  const autoStart = setTimeout(begin, 9000); // dokunulmazsa kendiliğinden başlar
 
   const camAng = { a: 0 };
+  let lastW = 0, lastH = 0;
   const update = (dt, t) => {
-    T += dt;
+    if (started) T += dt;
+    if (innerWidth !== lastW || innerHeight !== lastH) { lastW = innerWidth; lastH = innerHeight; fitBattleBg(bg); }
     camAng.a += dt * 0.05;
-    const ca = Math.sin(camAng.a) * 0.3;
-    if (innerWidth < innerHeight) {
-      const bs = sides.blue.sign;
-      camera.position.set(bs * (30 + Math.cos(ca) * 2), 19, Math.sin(ca) * 10 + 6);
-      camera.lookAt(-bs * 2, 0, 0);
-    } else {
-      camera.position.set(Math.sin(ca) * 34, 17, Math.cos(ca) * 34);
-      camera.lookAt(0, 1, 0);
-    }
+    const ca = Math.sin(camAng.a) * 0.12, bs = sides.blue.sign;
+    const portrait = innerWidth < innerHeight;
+    const cd = portrait ? 31 : 25, ch = portrait ? 15 : 13;
+    camera.position.set(bs * cd, ch, Math.sin(ca) * 4);
+    camera.lookAt(-bs * (portrait ? 7 : 4), 0, Math.sin(ca) * 1.5);
+    for (const b of braziers) { const q = 0.85 + Math.sin(t * 13 + b.ph) * 0.1 + Math.sin(t * 7.3 + b.ph) * 0.08; b.f1.scale.set(1.5 * q, 2.1 * q, 1); b.f2.scale.setScalar(0.85 * q); }
     const p = clamp((T - 2.6) / 7, 0, 1), ep = ease(p);
     // ölüm kontrolü
     for (const team of ['blue', 'red']) {
@@ -303,56 +379,75 @@ export function openBattle(opts) {
     for (const f of sparks) { if (f.life > 0) { f.life -= dt; f.s.material.opacity = Math.max(0, f.life * 4); f.s.scale.setScalar(0.4 + (0.25 - f.life) * 4); } }
     if (T > 11.2) finish();
   };
-  open({ scene, camera, update, dispose: () => disposeScene(scene) }, 'battle');
+  open({ scene, camera, update, dispose: () => { clearTimeout(autoStart); disposeScene(scene); } }, 'battle');
 }
 
 // =====================================================================
 //  ÇAĞIRMA ATÖLYESİ
 // =====================================================================
 let summonCtx = null;
+function fitCover(tex, IA, cx = 0.5) {
+  const SA = innerWidth / innerHeight;
+  if (SA < IA) { tex.repeat.set(SA / IA, 1); tex.offset.set((1 - SA / IA) * cx, 0); } else { tex.repeat.set(1, IA / SA); tex.offset.set(0, (1 - IA / SA) * 0.5); }
+  tex.needsUpdate = true;
+}
+let swirlT = null;
+function swirlTex() {
+  if (swirlT) return swirlT;
+  swirlT = canvasTex(512, 512, (x) => {
+    const g = x.createRadialGradient(256, 256, 0, 256, 256, 256); g.addColorStop(0, 'rgba(255,245,255,1)'); g.addColorStop(0.25, 'rgba(210,140,255,.95)'); g.addColorStop(0.7, 'rgba(110,40,220,.75)'); g.addColorStop(1, 'rgba(40,0,120,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+    x.lineCap = 'round';
+    for (let arm = 0; arm < 5; arm++) { x.strokeStyle = `rgba(255,255,255,${0.35 + (arm % 2) * 0.3})`; x.lineWidth = 10 - arm; x.beginPath(); for (let t = 0; t < 1; t += 0.01) { const a = arm * 1.2566 + t * 7.5, r = t * 240; const px = 256 + Math.cos(a) * r, py = 256 + Math.sin(a) * r; t ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); }
+  }, false);
+  return swirlT;
+}
 function buildSummonScene() {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x120a20);
-  scene.fog = new THREE.FogExp2(0x120a20, 0.035);
-  scene.environment = C.makeEnv(0x4a2a8a, 0x2a1a40, 0x0a0614, false);
+  const bg = new THREE.TextureLoader().load('assets/ui/bg_summon.webp'); bg.colorSpace = THREE.SRGBColorSpace; fitCover(bg, 768 / 1366);
+  scene.background = bg;
+  scene.environment = C.makeEnv(0x8a6aff, 0x3a2a70, 0x140a28, false);
   scene.environmentIntensity = 1.0;
   const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 200);
   camera.position.set(0, 2.2, 7.5); camera.lookAt(0, 1.3, 0);
-  scene.add(new THREE.HemisphereLight(0x8a7aff, 0x1a1020, 0.8));
-  const key = new THREE.SpotLight(0xfff0e0, 60, 20, 0.6, 0.6, 1.2); key.position.set(2.5, 7, 4); key.target.position.set(0, 1, 0); key.castShadow = true; scene.add(key, key.target);
-  const rim = new THREE.PointLight(0xb06bff, 30, 12, 1.5); rim.position.set(0, 2.5, -2.5); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xf0e8ff, 1.4); fill.position.set(0, 2, 8); scene.add(fill);
-  // zemin: rün dairesi
+  scene.add(new THREE.HemisphereLight(0xc8b8ff, 0x2a1a40, 1.3));
+  const key = new THREE.SpotLight(0xfff0e0, 90, 22, 0.6, 0.6, 1.2); key.position.set(2.5, 8, 5); key.target.position.set(0, 1, 0); key.castShadow = true; scene.add(key, key.target);
+  const rim = new THREE.PointLight(0xb06bff, 40, 12, 1.5); rim.position.set(0, 2.8, -1.8); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xf0e8ff, 2.2); fill.position.set(0, 3, 8); scene.add(fill);
+  const face = new THREE.SpotLight(0xfff4ea, 0, 14, 0.45, 0.7, 1.2); face.position.set(0, 2.6, 4.5); face.target.position.set(0, 1.3, -0.45); scene.add(face, face.target);
+  // gölge yakalayıcı zemin
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(12, 48).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.45 }));
+  floor.receiveShadow = true; scene.add(floor);
+  // zeminde dönen rün dairesi
   const rune = canvasTex(512, 512, (ctx) => {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 4;
-    for (const r of [240, 200, 120]) { ctx.beginPath(); ctx.arc(256, 256, r, 0, 7); ctx.stroke(); }
-    ctx.font = 'bold 28px serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    for (const r of [244, 214]) { ctx.beginPath(); ctx.arc(256, 256, r, 0, 7); ctx.stroke(); }
+    ctx.font = 'bold 26px serif'; ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
     const glyphs = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
-    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; ctx.save(); ctx.translate(256 + Math.cos(a) * 220, 256 + Math.sin(a) * 220); ctx.rotate(a + Math.PI / 2); ctx.fillText(glyphs[i], 0, 10); ctx.restore(); }
-    ctx.beginPath(); for (let i = 0; i <= 6; i++) { const a = (i / 6) * Math.PI * 2 * 2; const x = 256 + Math.cos(a) * 190, y = 256 + Math.sin(a) * 190; i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke();
+    for (let i = 0; i < 24; i++) { const a = (i / 24) * Math.PI * 2; ctx.save(); ctx.translate(256 + Math.cos(a) * 229, 256 + Math.sin(a) * 229); ctx.rotate(a + Math.PI / 2); ctx.fillText(glyphs[i], 0, 9); ctx.restore(); }
   }, false);
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(30, 48).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x1a1428, roughness: 0.6, metalness: 0.3 }));
-  floor.receiveShadow = true; scene.add(floor);
-  const runeMat = new THREE.MeshBasicMaterial({ map: rune, color: new THREE.Color(0.9, 0.5, 2.2), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
-  const runeMesh = new THREE.Mesh(new THREE.PlaneGeometry(5.5, 5.5).rotateX(-Math.PI / 2), runeMat); runeMesh.position.y = 0.02; scene.add(runeMesh);
-  // kaide
-  const ped = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 0.35, 32), new THREE.MeshStandardMaterial({ color: 0x3a3048, roughness: 0.4, metalness: 0.6 }));
-  ped.position.y = 0.175; ped.castShadow = ped.receiveShadow = true; scene.add(ped);
-  const pedRim = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.04, 8, 48).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 1.4, 0.5) })); pedRim.position.y = 0.36; scene.add(pedRim);
-  // portal halkası
-  const portal = new THREE.Group(); portal.position.set(0, 2.2, -1.2); scene.add(portal);
-  const ringMat = new THREE.MeshStandardMaterial({ color: 0x2a2038, metalness: 0.9, roughness: 0.3, emissive: 0x6a2aff, emissiveIntensity: 0.6 });
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.12, 12, 64), ringMat); portal.add(ring);
-  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(1.7, 0.04, 8, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.5, 0.8, 3) })); portal.add(ring2);
-  const disc = new THREE.Mesh(new THREE.CircleGeometry(1.68, 48), new THREE.MeshBasicMaterial({ map: glow(), color: new THREE.Color(0.6, 0.3, 1.4), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.8 })); portal.add(disc);
-  // yüzen kristaller
-  const crystals = [];
-  const cg = new THREE.OctahedronGeometry(0.25, 0);
-  for (let i = 0; i < 8; i++) {
-    const m = new THREE.Mesh(cg, new THREE.MeshStandardMaterial({ color: 0x8a6aff, emissive: 0x6a3aff, emissiveIntensity: 1.5, metalness: 0.2, roughness: 0.1 }));
-    m.scale.set(1, 1.8, 1); scene.add(m); crystals.push({ m, a: (i / 8) * Math.PI * 2, r: 3 + (i % 2) * 0.6, y: 1 + (i % 3) * 0.7 });
+  const runeMat = new THREE.MeshBasicMaterial({ map: rune, color: new THREE.Color(0.9, 0.5, 2.2), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
+  const runeMesh = new THREE.Mesh(new THREE.PlaneGeometry(7.2, 7.2).rotateX(-Math.PI / 2), runeMat); runeMesh.position.set(0, 0.02, -0.4); scene.add(runeMesh);
+  // Higgsfield portal modeli
+  const portal = new THREE.Group(); portal.position.set(0, 0, -0.6); scene.add(portal);
+  const PH = 4.8; let P = { ringY: PH * 0.56, ringR: PH * 0.27, daisY: PH * 0.12 };
+  const pm = A.hfModel('p_portal');
+  if (pm) {
+    const sz = A.hfSize('p_portal'); const k = PH / sz.y; pm.scale.setScalar(k);
+    pm.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x2a2240); } } });
+    portal.add(pm);
   }
+  // halkanın içindeki girdap
+  const swMat = new THREE.MeshBasicMaterial({ map: swirlTex(), color: new THREE.Color(0.75, 0.45, 1.4), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.7 });
+  const ring = new THREE.Mesh(new THREE.CircleGeometry(P.ringR, 48), swMat); ring.position.set(0, P.ringY, -0.05); portal.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.CircleGeometry(P.ringR * 0.8, 48), swMat.clone()); ring2.material.color = new THREE.Color(0.6, 0.8, 1.6); ring2.material.opacity = 0.5; ring2.position.set(0, P.ringY, -0.02); portal.add(ring2);
+  const disc = sprite(0xb070ff, P.ringR * 3.2, 0.6); disc.position.set(0, P.ringY, 0.05); portal.add(disc);
+  const pedRim = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.03, 8, 48).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2, 1.2, 2.6), transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); pedRim.position.set(0, P.daisY + 0.03, 0.15); portal.add(pedRim);
+  // kristal ışıltıları (modeldeki kristallerin üstünde)
+  const crystals = [];
+  for (const [x, y] of [[-0.42, 0.2], [0.42, 0.2], [0, 0.96], [-0.12, 0.92], [0.12, 0.92]]) { const g = sprite(0xc080ff, 0.9, 0.5); g.position.set(x * PH * 0.98, y * PH, 0.3); portal.add(g); crystals.push({ m: g, ph: Math.random() * 6 }); }
+  const heroBase = P.daisY + 0.02;
   // parçacıklar
   const PN = 300, pg = new THREE.BufferGeometry(), pp = new Float32Array(PN * 3);
   for (let i = 0; i < PN; i++) { pp[i * 3] = rand(-6, 6); pp[i * 3 + 1] = rand(0, 7); pp[i * 3 + 2] = rand(-6, 4); }
@@ -364,7 +459,7 @@ function buildSummonScene() {
   beam.position.y = 7; scene.add(beam);
   const flash = sprite(0xffffff, 0.1, 0); flash.position.set(0, 1.5, 0); scene.add(flash);
   const aura = sprite(0xffffff, 4, 0); aura.position.set(0, 1.2, -0.3); scene.add(aura);
-  return { scene, camera, portal, ring, ring2, disc, crystals, parts, beam, flash, aura, runeMesh, rim, heroSlot: null, spin: 0 };
+  return { scene, camera, portal, ring, ring2, disc, crystals, parts, beam, flash, aura, runeMesh, rim, bg, heroBase, face, heroSlot: null, spin: 0 };
 }
 export function openSummon() {
   if (!summonCtx) summonCtx = buildSummonScene();
@@ -405,7 +500,7 @@ export function openSummon() {
   const showHero = (r) => {
     const h = HERO_BY_ID[r.id];
     if (S.heroSlot) S.scene.remove(S.heroSlot);
-    const m = createHero(h); m.position.set(0, 0.35, 0); m.rotation.y = 0;
+    const m = createHero(h); m.position.set(0, S.heroBase, -0.45); m.rotation.y = 0;
     S.scene.add(m); S.heroSlot = m; S.heroState = 'cheer'; S.heroT = 0;
     S.aura.material.color.set(RARITY[r.rarity].color).multiplyScalar(1.6); S.aura.material.opacity = 0.9;
     C.sfx(r.rarity >= 4 ? 'reveal5' : 'reveal');
@@ -429,9 +524,10 @@ export function openSummon() {
     pT += dt;
     const speed = phase === 'charge' ? 1 + pT * 8 : 1;
     S.spin += dt * speed;
-    S.ring.rotation.z = S.spin * 0.6; S.ring2.rotation.z = -S.spin; S.runeMesh.rotation.y = S.spin * 0.2;
-    S.disc.material.opacity = 0.6 + Math.sin(t * 2) * 0.15 + (phase === 'charge' ? pT * 0.3 : 0);
-    S.crystals.forEach((c, i) => { const a = c.a + S.spin * 0.4; c.m.position.set(Math.cos(a) * c.r, c.y + Math.sin(t * 1.5 + i) * 0.25 + (phase === 'charge' ? pT * 0.5 : 0) + (S.heroSlot ? 2.4 : 0), Math.sin(a) * c.r - 1.5); c.m.rotation.y = t * 2; });
+    S.ring.rotation.z = -S.spin * 0.9; S.ring2.rotation.z = S.spin * 1.4; S.runeMesh.rotation.y = S.spin * 0.2;
+    S.disc.material.opacity = 0.22 + Math.sin(t * 2) * 0.08 + (phase === 'charge' ? pT * 0.3 : 0);
+    S.crystals.forEach((c) => { c.m.material.opacity = 0.35 + Math.sin(t * 2.2 + c.ph) * 0.2 + (phase === 'charge' ? pT * 0.3 : 0); });
+    if (innerWidth !== S.lw || innerHeight !== S.lh) { S.lw = innerWidth; S.lh = innerHeight; fitCover(S.bg, 768 / 1366); }
     const pa = S.parts.geometry.attributes.position.array;
     for (let i = 0; i < pa.length; i += 3) { pa[i + 1] += dt * (0.3 + (phase === 'charge' ? pT * 3 : 0)); if (pa[i + 1] > 7) pa[i + 1] = 0; }
     S.parts.geometry.attributes.position.needsUpdate = true;
@@ -453,12 +549,13 @@ export function openSummon() {
       S.heroSlot.rotation.y = Math.sin(S.heroT * 0.5) * 0.5;
       animateUnit(S.heroSlot, S.heroT < 2 ? 'cheer' : 'idle', t, dt);
       S.aura.material.opacity = 0.6 + Math.sin(t * 3) * 0.2;
-    } else S.aura.material.opacity = Math.max(0, S.aura.material.opacity - dt);
+      S.face.intensity = Math.min(70, S.face.intensity + dt * 140);
+    } else { S.aura.material.opacity = Math.max(0, S.aura.material.opacity - dt); S.face.intensity = Math.max(0, S.face.intensity - dt * 140); }
     const mounted = S.heroSlot && S.heroSlot.userData.mounted;
     const ty = mounted ? 1.5 : 1.15;
     const k = innerWidth < innerHeight ? Math.min(2.1, 0.85 / (innerWidth / innerHeight)) : 1;
-    S.camera.position.set(Math.sin(t * 0.15) * 0.6, S.heroSlot ? 1.7 + (mounted ? 0.5 : 0) : 2.6, (S.heroSlot ? (mounted ? 6.5 : 4.6) : 8.5) * k);
-    S.camera.lookAt(0, S.heroSlot ? ty - (k > 1 ? 0.25 : 0) : 1.9, 0);
+    S.camera.position.set(Math.sin(t * 0.15) * 0.6, S.heroSlot ? 2.0 + (mounted ? 0.5 : 0) : 2.6, (S.heroSlot ? (mounted ? 6.8 : 5.4) : 8.5) * k);
+    S.camera.lookAt(0, S.heroSlot ? S.heroBase + ty + (k > 1 ? 0.75 : 0.2) : 1.9, 0);
   };
   open({ scene: S.scene, camera: S.camera, update }, 'summon');
 }
