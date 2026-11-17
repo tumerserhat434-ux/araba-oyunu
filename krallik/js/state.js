@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
+import { BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -120,7 +120,7 @@ export const thLevel = () => lvl('townhall');
 export function maxLevelOf(key) { let m = 0; for (const p of PLOTS) if (p.key === key) m = Math.max(m, lvl(p.id)); return m; }
 export function canAfford(cost) { for (const r in cost) if ((S.res[r] || 0) < cost[r]) return false; return true; }
 export function pay(cost) { for (const r in cost) S.res[r] -= cost[r]; }
-export function storageCap() { return 20000 + maxLevelOf('warehouse') * 25000 + thLevel() * 10000; }
+export function storageCap() { const w = maxLevelOf('warehouse'), t = thLevel(); return 20000 + w * 25000 + w * w * 3500 + t * 10000 + t * t * 1200; }
 export function addRes(obj) {
   const cap = storageCap();
   for (const r in obj) {
@@ -153,7 +153,8 @@ export function busyBuilders() { const t = now(); return PLOTS.filter((p) => S.b
 export function canUpgrade(id) {
   const p = PLOTS.find((q) => q.id === id), b = S.buildings[id], key = p.key, to = b.level + 1;
   if (b.busyUntil > now()) return { ok: false, why: 'İnşaat sürüyor' };
-  if (to > MAX_LEVEL) return { ok: false, why: 'En yüksek seviye' };
+  if (to > maxLevel(key)) return { ok: false, why: 'En yüksek seviye' };
+  if (key === 'townhall') for (const [rk, rl] of thRequirements(to)) if (maxLevelOf(rk) < rl) return { ok: false, why: `Önce ${BUILDINGS[rk].name} Sv.${rl} olmalı`, req: rk };
   if (key !== 'townhall' && to > thLevel()) return { ok: false, why: `Belediye Binası Sv.${to} gerekli` };
   if (key !== 'townhall' && b.level === 0 && BUILDINGS[key].reqTH > thLevel()) return { ok: false, why: `Belediye Binası Sv.${BUILDINGS[key].reqTH} gerekli` };
   if (b.level === 0 && BUILDINGS[key].reqB) for (const rk in BUILDINGS[key].reqB) if (maxLevelOf(rk) < BUILDINGS[key].reqB[rk]) return { ok: false, why: `${BUILDINGS[rk].name} Sv.${BUILDINGS[key].reqB[rk]} gerekli` };

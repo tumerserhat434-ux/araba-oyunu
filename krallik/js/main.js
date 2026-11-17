@@ -6,7 +6,7 @@ import * as BLD from './buildings.js';
 import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
 import * as ASSETS from './assets.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
-import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
+import { RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { getAvatar } from './scenes.js';
 import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
@@ -537,8 +537,13 @@ function updateLabels(force) {
 //  Arayüz yardımcıları
 // ---------------------------------------------------------------------
 export function toast(msg, bad = false) {
-  const d = document.createElement('div'); d.className = 'toast' + (bad ? ' bad' : ''); d.textContent = msg;
-  $('toasts').appendChild(d); setTimeout(() => d.remove(), 2300);
+  const d = document.createElement('div'); d.className = 'toast' + (bad ? ' bad' : '');
+  const m = String(msg).match(/^(\p{Extended_Pictographic}\uFE0F?|[✓✗⚡⚔⬆])\s*/u);
+  const ic = document.createElement('i'), tx = document.createElement('span');
+  ic.textContent = m ? m[1] : (bad ? '⚠️' : '✨'); tx.textContent = m ? String(msg).slice(m[0].length) : msg;
+  d.append(ic, tx);
+  const box = $('toasts'); while (box.children.length >= 3) box.firstChild.remove();
+  box.appendChild(d); setTimeout(() => d.remove(), 2600);
 }
 function floaty(text, x, y, color = '#fff') {
   const d = document.createElement('div'); d.className = 'floaty'; d.textContent = text; d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.color = color;
@@ -578,10 +583,15 @@ function upgradeBlock(id) {
     return `<div class="progress"><span style="width:${pct}%"></span><em>🔨 ${b.level ? 'Yükseltiliyor' : 'İnşa ediliyor'} • ${G.fmtTime(b.busyUntil - t)}</em></div>
       <button class="btn gold" style="width:100%" data-act="speed">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(b.busyUntil - t)}</button>`;
   }
-  if (b.level >= MAX_LEVEL) return `<p class="desc">✨ En yüksek seviyeye ulaştı.</p>`;
+  if (b.level >= maxLevel(p.key)) return `<p class="desc">✨ En yüksek seviyeye ulaştı (Sv.${maxLevel(p.key)}).</p>`;
+  let reqHtml = '';
+  if (p.key === 'townhall') {
+    const reqs = thRequirements(b.level + 1);
+    if (reqs.length) reqHtml = `<div class="req-box"><div class="req-h">Sv.${b.level + 1} için gerekenler</div>${reqs.map(([rk, rl]) => { const have = G.maxLevelOf(rk), ok = have >= rl; return `<div class="req-row ${ok ? 'ok' : ''}"><span class="req-ic">${ok ? '✓' : '✗'}</span><b>${BUILDINGS[rk].name} Sv.${rl}</b><small>Şu an Sv.${have}</small>${ok ? '' : `<button class="w-btn" data-gobld="${rk}">Git</button>`}</div>`; }).join('')}</div>`;
+  } else if (b.level + 1 > G.thLevel()) reqHtml = `<div class="req-box"><div class="req-row"><span class="req-ic">✗</span><b>Belediye Binası Sv.${b.level + 1}</b><small>Şu an Sv.${G.thLevel()}</small><button class="w-btn" data-gobld="townhall">Git</button></div></div>`;
   const c = G.canUpgrade(id), cost = upgradeCost(p.key, b.level + 1), time = G.upgradeTime(p.key, b.level + 1);
-  return `<div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
-    ${c.ok ? '' : `<div class="why">${c.why}</div>`}
+  return `${reqHtml}<div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
+    ${c.ok || c.req ? '' : `<div class="why">${c.why}</div>`}
     <button class="btn" style="width:100%" data-act="upgrade" ${c.ok ? '' : 'disabled'}>${b.level ? `⬆ Seviye ${b.level + 1}'e yükselt` : '🔨 İnşa et'}</button>`;
 }
 function renderSheet() {
@@ -593,17 +603,17 @@ function renderSheet() {
     if (key === 'townhall') body += `<div class="stats">${stat('Krallık gücü', G.fmt(G.cityPower()))}${stat('Bina seviye sınırı', L)}${stat('Depo sınırı', G.fmt(G.storageCap()))}${stat('Zafer / Yenilgi', `${G.S.stats.wins} / ${G.S.stats.losses}`)}</div>`;
     if (def.prod) {
       const pend = G.pending(id);
-      body += `<div class="stats">${stat('Üretim / saat', G.fmt(G.prodPerHour(key, L)), L < MAX_LEVEL ? G.fmt(G.prodPerHour(key, L + 1)) : '')}${stat('Kapasite', G.fmt(G.prodCap(key, L)))}</div>
+      body += `<div class="stats">${stat('Üretim / saat', G.fmt(G.prodPerHour(key, L)), L < maxLevel(key) ? G.fmt(G.prodPerHour(key, L + 1)) : '')}${stat('Kapasite', G.fmt(G.prodCap(key, L)))}</div>
         <button class="btn blue" style="width:100%;margin-bottom:10px" data-act="collect" ${pend >= 1 ? '' : 'disabled'}>${RES[def.prod].icon} Topla • ${G.fmt(pend)}</button>`;
     }
-    if (key === 'archery') body += `<div class="stats">${stat('Kule hasarı', G.fmt(L * 260), L < MAX_LEVEL ? G.fmt((L + 1) * 260) : '')}${stat('Toplam savunma', G.fmt(G.towerPower()))}</div>`;
+    if (key === 'archery') body += `<div class="stats">${stat('Kule hasarı', G.fmt(L * 260), L < maxLevel(key) ? G.fmt((L + 1) * 260) : '')}${stat('Toplam savunma', G.fmt(G.towerPower()))}</div>`;
     if (key === 'warehouse') body += `<div class="stats">${stat('Depo sınırı', G.fmt(G.storageCap()))}${stat('Yağmadan korunan', Math.round((0.3 + L * 0.05) * 100) + '%')}</div>`;
     if (key === 'heroes') body += `<div class="stats">${stat('Kahraman sayısı', Object.keys(G.S.heroes).length + ' / ' + HEROES.length)}${stat('Kahraman seviye sınırı', G.heroMaxLevel())}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="heroes">🛡️ Kahramanları göster</button>`;
     if (key === 'summon') body += `<div class="stats">${stat('5★ şansı', '%0,6')}${stat('5★ garanti', `${G.S.pity5} / ${SUMMON.pity5}`)}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="summon">🔮 Çağırma ekranını aç</button>`;
     if (key === 'barracks') body += barracksUI();
     if (key === 'tankyard') body += tankyardUI();
-    if (key === 'forge') body += `<div class="stats">${stat('Birlik savunması', '+' + Math.round(G.forgeDefBonus() * 100) + '%', L < MAX_LEVEL ? '+' + Math.round((L + 1) * 2.5) + '%' : '')}${stat('Tank üretim hızı', '+' + L * 8 + '%', L < MAX_LEVEL ? '+' + (L + 1) * 8 + '%' : '')}</div>`;
-    if (key === 'rally') body += `<div class="stats">${stat('Saldırı gücü', '+' + L * 3 + '%', L < MAX_LEVEL ? '+' + (L + 1) * 3 + '%' : '')}${stat('Ganimet kapasitesi', '+' + L * 8 + '%', L < MAX_LEVEL ? '+' + (L + 1) * 8 + '%' : '')}${stat('Hazır ordu', G.fmt(G.totalTroops(G.S.troops)))}${stat('Tanklar', G.fmt(G.S.troops.tank || 0))}</div><button class="btn red" style="width:100%;margin-bottom:10px" data-go="world">⚔ Sefere çık</button>`;
+    if (key === 'forge') body += `<div class="stats">${stat('Birlik savunması', '+' + Math.round(G.forgeDefBonus() * 100) + '%', L < maxLevel(key) ? '+' + Math.round((L + 1) * 2.5) + '%' : '')}${stat('Tank üretim hızı', '+' + L * 8 + '%', L < maxLevel(key) ? '+' + (L + 1) * 8 + '%' : '')}</div>`;
+    if (key === 'rally') body += `<div class="stats">${stat('Saldırı gücü', '+' + L * 3 + '%', L < maxLevel(key) ? '+' + (L + 1) * 3 + '%' : '')}${stat('Ganimet kapasitesi', '+' + L * 8 + '%', L < maxLevel(key) ? '+' + (L + 1) * 8 + '%' : '')}${stat('Hazır ordu', G.fmt(G.totalTroops(G.S.troops)))}${stat('Tanklar', G.fmt(G.S.troops.tank || 0))}</div><button class="btn red" style="width:100%;margin-bottom:10px" data-go="world">⚔ Sefere çık</button>`;
     if (key === 'academy') body += academyUI();
     if (key === 'hospital') body += hospitalUI();
     if (key === 'potion') {
@@ -613,7 +623,7 @@ function renderSheet() {
     }
   }
   const pkey = key + ':' + Math.max(1, L);
-  $('sheet').innerHTML = `<div class="sh-head"><div class="sh-ico" id="shPortrait">${PORTRAIT_CACHE[pkey] ? `<img src="${PORTRAIT_CACHE[pkey]}">` : def.icon}</div><div><h2>${def.name}</h2><small>${L ? 'Seviye ' + L : 'İnşa edilmedi'}</small></div><button class="x" data-act="close">✕</button></div>
+  $('sheet').innerHTML = `<div class="sh-head"><div class="sh-ico" id="shPortrait">${PORTRAIT_CACHE[pkey] ? `<img src="${PORTRAIT_CACHE[pkey]}">` : def.icon}</div><div><h2>${def.name}</h2><small>${L ? 'Seviye ' + L + ' / ' + maxLevel(key) : 'İnşa edilmedi'}</small></div><button class="x" data-act="close">✕</button></div>
     <p class="desc">${def.desc}</p>${body}<div class="divider-orn"></div>${upgradeBlock(id)}`;
   if (!PORTRAIT_CACHE[pkey]) getBuildingPortrait(key, Math.max(1, L)).then((u) => { PORTRAIT_CACHE[pkey] = u; const el = $('shPortrait'); if (el && sheetId === id) el.innerHTML = `<img src="${u}">`; });
   const sl = $('qtySlider');
@@ -710,6 +720,8 @@ $('sheet').addEventListener('click', (e) => {
   if (tr) { trainSel = tr.dataset.troop; renderSheet(); return; }
   const go = e.target.closest('[data-go]');
   if (go) { closeSheet(); navigate(go.dataset.go); return; }
+  const gb = e.target.closest('[data-gobld]');
+  if (gb) { const pl = PLOTS.filter((q) => q.key === gb.dataset.gobld).sort((x, y) => G.lvl(x.id) - G.lvl(y.id))[0]; if (pl) { openBuilding(pl.id); focusOn(pl.x, pl.z); } return; }
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act, id = sheetId;
   if (act === 'research') { const r = G.startResearch(a.dataset.k); if (!r.ok) toast(r.why, true); else { toast('🔬 Araştırma başladı'); sfx('build'); } }
@@ -1197,4 +1209,4 @@ async function boot() {
   requestAnimationFrame(loop);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
-window.__ds = { G, cam, navigate, holders, openBuilding, createTank, closeModal, get grass() { return grassField; } };
+window.__ds = { G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };

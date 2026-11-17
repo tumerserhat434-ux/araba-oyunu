@@ -11,23 +11,37 @@ export const RES = {
 
 // Bina türleri
 export const BUILDINGS = {
-  townhall: { name: 'Belediye Binası', icon: '🏰', desc: 'Krallığının kalbi. Seviyesi diğer binaların en yüksek seviyesini belirler.', base: { food: 300, wood: 300, stone: 150 }, time: 12, reqTH: 0 },
-  barracks: { name: 'Kışla', icon: '⚔️', desc: 'Asker eğitilir. Seviye arttıkça eğitim hızlanır, parti büyür ve askerler güçlenir.', base: { food: 150, wood: 200, stone: 60 }, time: 8, reqTH: 1 },
-  archery: { name: 'Okçu Kulesi', icon: '🏹', desc: 'Şehri saldırılara karşı korur. Savunmada düşmana ok yağdırır.', base: { food: 80, wood: 220, stone: 160 }, time: 10, reqTH: 2 },
-  hospital: { name: 'Hastane', icon: '💚', desc: 'Savaşta yaralanan askerler buraya gelir ve iyileştirilir. Kapasite dolarsa yaralılar ölür.', base: { food: 200, wood: 180, stone: 80 }, time: 9, reqTH: 2 },
-  potion: { name: 'İksir Deposu', icon: '🧪', desc: 'Şifa iksiri üretir ve saklar. Her iksir yaralı askerleri anında iyileştirir.', base: { food: 160, wood: 120, stone: 140 }, time: 10, reqTH: 3 },
-  heroes: { name: 'Karakter Deposu', icon: '🛡️', desc: 'Kahramanların burada yaşar. Her seviyesi kahraman seviye sınırını 15 artırır (Sv.10 = 150).', base: { food: 180, wood: 160, stone: 120 }, time: 10, reqTH: 1 },
-  summon: { name: 'Çağırma Atölyesi', icon: '🔮', desc: 'Altınla kahraman çağır. 5 yıldızlı efsanevi kahramanlar çok nadir çıkar!', base: { food: 120, wood: 160, stone: 160 }, time: 10, reqTH: 1 },
-  farm: { name: 'Çiftlik', icon: '🌾', desc: 'Yiyecek üretir.', base: { food: 40, wood: 90, stone: 0 }, time: 5, reqTH: 1, prod: 'food', rate: 900 },
-  lumber: { name: 'Kereste Atölyesi', icon: '🪵', desc: 'Odun üretir.', base: { food: 90, wood: 40, stone: 0 }, time: 5, reqTH: 1, prod: 'wood', rate: 800 },
-  quarry: { name: 'Taş Ocağı', icon: '🪨', desc: 'Taş üretir.', base: { food: 90, wood: 90, stone: 0 }, time: 6, reqTH: 2, prod: 'stone', rate: 500 },
-  academy: { name: 'Akademi', icon: '📚', desc: 'Araştırma yapılır. Araştırmalar üretimi, eğitimi, savaş gücünü ve hastaneyi kalıcı olarak güçlendirir.', base: { food: 300, wood: 300, stone: 200 }, time: 12, reqTH: 3 },
-  forge: { name: 'Demirhane', icon: '⚒️', img: 'b_forge', desc: 'Silah ve zırh döver. Her seviye tüm birliklerin savunmasını artırır ve tank üretimini hızlandırır.', base: { food: 160, wood: 220, stone: 260 }, time: 11, reqTH: 2 },
-  rally: { name: 'Toplanma Kampı', icon: '⛺', img: 'b_rally', desc: 'Ordular seferden önce burada toplanır. Her seviye saldırı gücünü ve ganimet taşıma kapasitesini artırır.', base: { food: 260, wood: 240, stone: 120 }, time: 11, reqTH: 2 },
-  tankyard: { name: 'Tank Atölyesi', icon: '⚙️', img: 'b_tankyard', desc: 'Demir tanklar burada üretilir. Seviye arttıkça bir seferde daha çok tank üretilir ve üretim hızlanır.', base: { food: 400, wood: 480, stone: 520 }, time: 16, reqTH: 3, reqB: { forge: 1 } },
-  warehouse: { name: 'Ambar', icon: '📦', desc: 'Kaynak depolama sınırını artırır ve yağmada kaynaklarının bir kısmını korur.', base: { food: 120, wood: 150, stone: 80 }, time: 8, reqTH: 2 },
+  townhall: { name: 'Belediye Binası', icon: '🏰', desc: 'Krallığının kalbi. Seviyesi diğer binaların en yüksek seviyesini belirler.', base: { food: 300, wood: 300, stone: 150 }, time: 12, reqTH: 0, max: 40 },
+  barracks: { name: 'Kışla', icon: '⚔️', desc: 'Asker eğitilir. Seviye arttıkça eğitim hızlanır, parti büyür ve askerler güçlenir.', base: { food: 150, wood: 200, stone: 60 }, time: 8, reqTH: 1, max: 30 },
+  archery: { name: 'Okçu Kulesi', icon: '🏹', desc: 'Şehri saldırılara karşı korur. Savunmada düşmana ok yağdırır.', base: { food: 80, wood: 220, stone: 160 }, time: 10, reqTH: 2, max: 30 },
+  hospital: { name: 'Hastane', icon: '💚', desc: 'Savaşta yaralanan askerler buraya gelir ve iyileştirilir. Kapasite dolarsa yaralılar ölür.', base: { food: 200, wood: 180, stone: 80 }, time: 9, reqTH: 2, max: 25 },
+  potion: { name: 'İksir Deposu', icon: '🧪', desc: 'Şifa iksiri üretir ve saklar. Her iksir yaralı askerleri anında iyileştirir.', base: { food: 160, wood: 120, stone: 140 }, time: 10, reqTH: 3, max: 20 },
+  heroes: { name: 'Karakter Deposu', icon: '🛡️', desc: 'Kahramanların burada yaşar. Her seviyesi kahraman seviye sınırını 15 artırır (Sv.10 = 150).', base: { food: 180, wood: 160, stone: 120 }, time: 10, reqTH: 1, max: 10 },
+  summon: { name: 'Çağırma Atölyesi', icon: '🔮', desc: 'Altınla kahraman çağır. 5 yıldızlı efsanevi kahramanlar çok nadir çıkar!', base: { food: 120, wood: 160, stone: 160 }, time: 10, reqTH: 1, max: 10 },
+  farm: { name: 'Çiftlik', icon: '🌾', desc: 'Yiyecek üretir.', base: { food: 40, wood: 90, stone: 0 }, time: 5, reqTH: 1, prod: 'food', rate: 900, max: 30 },
+  lumber: { name: 'Kereste Atölyesi', icon: '🪵', desc: 'Odun üretir.', base: { food: 90, wood: 40, stone: 0 }, time: 5, reqTH: 1, prod: 'wood', rate: 800, max: 30 },
+  quarry: { name: 'Taş Ocağı', icon: '🪨', desc: 'Taş üretir.', base: { food: 90, wood: 90, stone: 0 }, time: 6, reqTH: 2, prod: 'stone', rate: 500, max: 30 },
+  academy: { name: 'Akademi', icon: '📚', desc: 'Araştırma yapılır. Araştırmalar üretimi, eğitimi, savaş gücünü ve hastaneyi kalıcı olarak güçlendirir.', base: { food: 300, wood: 300, stone: 200 }, time: 12, reqTH: 3, max: 25 },
+  forge: { name: 'Demirhane', icon: '⚒️', img: 'b_forge', desc: 'Silah ve zırh döver. Her seviye tüm birliklerin savunmasını artırır ve tank üretimini hızlandırır.', base: { food: 160, wood: 220, stone: 260 }, time: 11, reqTH: 2, max: 25 },
+  rally: { name: 'Toplanma Kampı', icon: '⛺', img: 'b_rally', desc: 'Ordular seferden önce burada toplanır. Her seviye saldırı gücünü ve ganimet taşıma kapasitesini artırır.', base: { food: 260, wood: 240, stone: 120 }, time: 11, reqTH: 2, max: 25 },
+  tankyard: { name: 'Tank Atölyesi', icon: '⚙️', img: 'b_tankyard', desc: 'Demir tanklar burada üretilir. Seviye arttıkça bir seferde daha çok tank üretilir ve üretim hızlanır.', base: { food: 400, wood: 480, stone: 520 }, time: 16, reqTH: 3, reqB: { forge: 1 }, max: 25 },
+  warehouse: { name: 'Ambar', icon: '📦', desc: 'Kaynak depolama sınırını artırır ve yağmada kaynaklarının bir kısmını korur.', base: { food: 120, wood: 150, stone: 80 }, time: 8, reqTH: 2, max: 30 },
 };
-export const MAX_LEVEL = 10;
+export const MAX_LEVEL = 40; // Belediye Binası en yüksek seviyesi
+export const maxLevel = (key) => BUILDINGS[key].max || 10;
+// Belediye Binası gereksinimleri: her seviye için 2 (Sv.15+ için 3) bina belirli seviyede olmalı
+const TH_CYCLE = ['barracks', 'warehouse', 'archery', 'academy', 'hospital', 'farm', 'forge', 'lumber', 'rally', 'quarry', 'tankyard', 'potion'];
+export function thRequirements(toLevel) {
+  if (toLevel < 3) return toLevel === 2 ? [['farm', 1]] : [];
+  const out = [], n = TH_CYCLE.length;
+  const need = toLevel >= 15 ? 3 : 2;
+  for (let i = 0; out.length < need && i < n * 2; i++) {
+    const key = TH_CYCLE[(toLevel * 7 + i * 5) % n], B = BUILDINGS[key];
+    if (out.some((r) => r[0] === key) || B.reqTH > toLevel - 1 || (B.reqB && toLevel < 6)) continue;
+    out.push([key, Math.min(maxLevel(key), toLevel - 1)]);
+  }
+  return out;
+}
 
 // Şehir yerleşimi (sabit arsalar) — x,z dünya koordinatı
 export const PLOTS = [
@@ -52,13 +66,15 @@ export const PLOTS = [
   { id: 'forge', key: 'forge', x: 12, z: -30 },
 ];
 
+// Maliyet: Sv.10'a kadar ×1.6, sonra çok daha dik artar (Sv.40 ≈ taban × 10.000)
 export function upgradeCost(key, toLevel) {
-  const b = BUILDINGS[key], k = Math.pow(1.72, toLevel - 1), out = {};
+  const b = BUILDINGS[key], k = Math.pow(1.6, Math.min(toLevel, 10) - 1) * (toLevel > 10 ? Math.pow(toLevel / 10, 3.6) : 1), out = {};
   for (const r in b.base) if (b.base[r]) out[r] = Math.round(b.base[r] * k / 10) * 10;
   return out;
 }
-export function upgradeTime(key, toLevel) { return Math.round(BUILDINGS[key].time * Math.pow(1.6, toLevel - 1)); }
-export function prodPerHour(key, level) { const b = BUILDINGS[key]; return b.prod ? Math.round(b.rate * level * Math.pow(1.12, level - 1)) : 0; }
+// Süre: Sv.12'ye kadar ×1.55, sonra dik artar (Sv.20 ≈ 3 sa, Sv.30 ≈ 10 sa, Sv.40 ≈ 1 gün — Belediye için)
+export function upgradeTime(key, toLevel) { return Math.round(BUILDINGS[key].time * 1.5 * Math.pow(1.55, Math.min(toLevel, 12) - 1) * (toLevel > 12 ? Math.pow(toLevel / 12, 3) : 1)); }
+export function prodPerHour(key, level) { const b = BUILDINGS[key]; return b.prod ? Math.round(b.rate * level * Math.pow(1.08, level - 1)) : 0; }
 export function prodCap(key, level) { return prodPerHour(key, level) * 3; }
 
 // Askerler — taş/kağıt/makas: okçu > piyade & mızrakçı, süvari > okçu, mızrakçı > süvari, piyade dengeli
@@ -191,6 +207,12 @@ export const QUESTS = [
   { id: 'q17', text: '20 savaş kazan', t: ['stat', 'wins', 20], reward: { gold: 300 } },
   { id: 'q18', text: 'Bir araştırmayı Sv.5 yap', t: ['res', 'any', 5], reward: { gold: 300 } },
   { id: 'q19', text: 'Belediye Binası\'nı Sv.10 yap', t: ['bld', 'townhall', 10], reward: { gold: 1000 } },
+  { id: 'q20', text: 'Kışla\'yı Sv.15 yap', t: ['bld', 'barracks', 15], reward: { gold: 400, food: 50000 } },
+  { id: 'q21', text: 'Belediye Binası\'nı Sv.15 yap', t: ['bld', 'townhall', 15], reward: { gold: 1200, stone: 60000 } },
+  { id: 'q22', text: 'Belediye Binası\'nı Sv.20 yap', t: ['bld', 'townhall', 20], reward: { gold: 2000 } },
+  { id: 'q23', text: 'Ambar\'ı Sv.25 yap', t: ['bld', 'warehouse', 25], reward: { gold: 2000 } },
+  { id: 'q24', text: 'Belediye Binası\'nı Sv.30 yap', t: ['bld', 'townhall', 30], reward: { gold: 3500 } },
+  { id: 'q25', text: 'Belediye Binası\'nı Sv.40 yap (Efsanevi Kale)', t: ['bld', 'townhall', 40], reward: { gold: 10000 } },
 ];
 export const DAILY = [
   { id: 'd1', text: 'Kaynakları 5 kez topla', stat: 'collects', n: 5, reward: { gold: 15 } },

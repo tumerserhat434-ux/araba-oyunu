@@ -859,14 +859,17 @@ const HF_FILL = { townhall: 0.9, archery: 0.78, summon: 0.82, farm: 0.92, quarry
 function prop(name, x, z, ry = 0, s = 1, parent) { const m = A.model(name); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(PROP_S * s); parent.add(m); return m; }
 function kkBuilding(key, L) {
   const def = KKMAP[key]; if (!def || !(A.ready.models || A.hasHF(key))) return null;
-  const isHF = A.hasHF(key);
+  // Belediye Binası her 10 seviyede tamamen yeni bir modele geçer
+  const tierKey = key === 'townhall' ? (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall') : key;
+  const hk = A.hasHF(tierKey) ? tierKey : key;
+  const isHF = A.hasHF(hk);
   const name = def.m(L);
-  const base = isHF ? A.hfModel(key) : def.tint ? A.tinted(name, def.tint) : A.model(name);
+  const base = isHF ? A.hfModel(hk) : def.tint ? A.tinted(name, def.tint) : A.model(name);
   if (!base) return null;
   const fp = FOOTPRINT[key] || 7;
   const k = new Kit();
-  const size = isHF ? A.hfSize(key) : A.modelSize(name);
-  const fill = (isHF ? (HF_FILL[key] || 0.86) : (def.fill || 0.7)) + (L - 1) * (isHF ? 0.016 : 0.022);
+  const size = isHF ? A.hfSize(hk) : A.modelSize(name);
+  const fill = (isHF ? (HF_FILL[key] || 0.86) : (def.fill || 0.7)) + (Math.min(L, 10) - 1) * (isHF ? 0.016 : 0.022) + (hk !== key ? 0.04 : 0);
   const sc = fp * fill / Math.max(size.x, size.z);
   base.scale.setScalar(sc);
   k.group.add(base);
@@ -886,7 +889,7 @@ function kkBuilding(key, L) {
   if (key === 'hospital' && L >= 3) prop('tent', -c, c - 0.4, 0.4, 0.9, k.group);
   if (key === 'potion') { prop('bucket_water', c, c, 0, 1, k.group); if (L >= 3) prop('crate_open', c - 1, c + 0.1, 0.3, 1, k.group); }
   if (key === 'warehouse') { prop('crate_A_big', -c, c, 0.2, 1, k.group); prop('sack', -c + 0.9, c + 0.2, 0, 1, k.group); if (L >= 5) prop('crate_long_A', c, c, -0.4, 1, k.group); }
-  if (key === 'townhall' && L >= 5) {
+  if (key === 'townhall' && L >= 5 && hk === key) {
     const tw = A.model(KB('tower_A')), ts = A.modelSize(KB('tower_A'));
     const tS = fp * (0.16 + L * 0.008) / Math.max(ts.x, ts.z);
     for (const [sx, sz] of L >= 8 ? [[-1, -1], [1, -1], [-1, 1], [1, 1]] : [[-1, -1], [1, -1]]) { const t = A.model(KB('tower_A')); t.scale.setScalar(tS); t.position.set(sx * fp * 0.42, 0, sz * fp * 0.4); k.group.add(t); }
@@ -925,7 +928,9 @@ function kkBuilding(key, L) {
     for (let i = 0; i < 4; i++) { const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), mats().crystal); cr.scale.set(1, 1.8, 1); cr.castShadow = true; k.group.add(cr); crystals.push(cr); }
     k.anims.push((t) => { rune.rotation.y = t * 0.3; halo.material.opacity = 0.4 + Math.sin(t * 2.2) * 0.15; crystals.forEach((cr, i) => { const a = t * 0.8 + (i / 4) * TAU; cr.position.set(Math.cos(a) * fp * 0.36, h * 0.55 + Math.sin(t * 2 + i) * 0.4, Math.sin(a) * fp * 0.36); cr.rotation.y = t * 2; }); });
   }
-  if (isHF) hfAnimate(k, key, L, size.clone().multiplyScalar(sc), fp);
+  if (isHF && hk === key) hfAnimate(k, key, L, size.clone().multiplyScalar(sc), fp);
+  if (hk !== key) thTierFx(k, size.clone().multiplyScalar(sc), L);
+  if (L > 10) tierDecor(k, key, L, fp, h, base);
   if (L >= 10) crest(k, h + 1.6);
   const grp = k.build(h + 0.5);
   if (key === 'archery') grp.userData.topY = isHF ? h * 0.66 : h * (L >= 7 ? 0.62 : 0.78);
@@ -1074,6 +1079,38 @@ function hfAnimate(k, key, L, S, fp) {
       const ph = Math.random() * 3; k.anims.push((t, dt) => animRef(u, 'idle', t + ph, dt));
     }
   }
+}
+// Yeni Belediye modelleri için ışıklar
+function thTierFx(k, S, L) {
+  const at = (x, y, z) => new THREE.Vector3(x * S.x, y * S.y, z * S.z);
+  for (const sx of [-0.3, 0.3]) flames(k, at(sx, 0.12, 0.47), S.y * 0.045);
+  const dome = glowSprite(L >= 30 ? 0x80d0ff : 0xffd860, S.y * 0.5, 0.35); dome.position.copy(at(0, 0.8, 0)); k.group.add(dome);
+  k.anims.push((t) => { dome.material.opacity = 0.2 + Math.max(0, Math.sin(t * 0.8)) * 0.3; });
+  particles(k, at(0, 0.75, 0), L >= 30 ? 0xa0e0ff : 0xfff0a0, 14, { spread: S.x * 0.3, rise: S.y * 0.35, life: 3.2, size: S.y * 0.03 });
+}
+// Sv.10 üstü: her 3 seviyede binanın görünümü zenginleşir
+const tierMatCache = new Map();
+function tierDecor(k, key, L, fp, h, base) {
+  const g = geos(), c = fp * 0.5;
+  // Sv.11+: altın kenarlı taş kaide
+  k.add(g.box, 'stoneDark', 0, 0.05, 0, 0, 0, 0, fp * 1.12, 0.1, fp * 1.12);
+  k.add(g.box, 'gold', 0, 0.11, fp * 0.56, 0, 0, 0, fp * 1.12, 0.05, 0.06); k.add(g.box, 'gold', 0, 0.11, -fp * 0.56, 0, 0, 0, fp * 1.12, 0.05, 0.06);
+  k.add(g.box, 'gold', fp * 0.56, 0.11, 0, 0, 0, 0, 0.06, 0.05, fp * 1.12); k.add(g.box, 'gold', -fp * 0.56, 0.11, 0, 0, 0, 0, 0.06, 0.05, fp * 1.12);
+  const corners = [[-c, c], [c, c], [-c, -c], [c, -c]];
+  // Sv.13+: köşelerde ateşli mangallar
+  if (L >= 13) for (const [x, z] of corners) { k.add(g.cyl8, 'stone', x, 0.45, z, 0, 0, 0, 0.22, 0.8, 0.22); k.add(g.cyl8, 'iron', x, 0.9, z, 0, 0, 0, 0.32, 0.14, 0.32); flames(k, new THREE.Vector3(x, 1.05, z), 0.55); }
+  // Sv.16+: altın sancaklar
+  if (L >= 16) for (const sx of [-1, 1]) { const x = sx * c * 0.62, z = c * 1.02; k.add(g.cyl8, 'gold', x, 1.6, z, 0, 0, 0, 0.07, 3.2, 0.07); const fl = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.1), new THREE.MeshStandardMaterial({ color: 0xe0a630, side: THREE.DoubleSide, metalness: 0.3, roughness: 0.5, emissive: 0x3a2400 })); fl.position.set(x + 0.38 * sx, 2.55, z); k.group.add(fl); const ph = Math.random() * 6; k.anims.push((t) => { fl.rotation.y = Math.sin(t * 1.6 + ph) * 0.3; }); }
+  // Sv.19+: zeminde parlayan altın halka
+  if (L >= 19) { const ring = new THREE.Mesh(new THREE.TorusGeometry(fp * 0.6, 0.035, 6, 48).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.95, 0.68, 0.22) })); ring.position.y = 0.16; k.group.add(ring); }
+  // Sv.22+: bina hafif altın parıltısı alır
+  if (L >= 22) base.traverse((o) => { if (!o.isMesh) return; const key2 = o.material.uuid + ':' + Math.floor(L / 3); if (!tierMatCache.has(key2)) { const m = o.material.clone(); m.emissive = new THREE.Color(L >= 28 ? 0x5a4410 : 0x3a2c0c); tierMatCache.set(key2, m); } o.material = tierMatCache.get(key2); });
+  // Sv.25+: arka köşelerde nöbet kuleleri
+  if (L >= 25 && key !== 'townhall') { const tn = KB('tower_A'), ts = A.modelSize(tn); if (ts) for (const sx of [-1, 1]) { const t = A.model(tn); if (!t) break; t.scale.setScalar(fp * 0.2 / Math.max(ts.x, ts.z)); t.position.set(sx * c * 0.95, 0, -c * 0.95); k.group.add(t); } }
+  // Sv.28+: tepede dönen rün halkası
+  if (L >= 28) { const rr = new THREE.Mesh(new THREE.TorusGeometry(fp * 0.32, 0.06, 6, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 1.6, 3), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false })); rr.position.y = h + 0.9; rr.rotation.x = Math.PI / 2; k.group.add(rr); k.anims.push((t) => { rr.rotation.z = t * 0.6; rr.position.y = h + 0.9 + Math.sin(t * 1.3) * 0.15; }); particles(k, new THREE.Vector3(0, h * 0.6, 0), 0xa0c8ff, 10, { spread: fp * 0.35, rise: h * 0.6, life: 3, size: 0.18 }); }
+  // Sv.31+: ışık sütunu
+  if (L >= 31) { const beam = glowSprite(0xfff0b0, fp * 0.9, 0.3); beam.scale.set(fp * 0.5, h * 2.2, 1); beam.position.y = h; k.group.add(beam); k.anims.push((t) => { beam.material.opacity = 0.18 + Math.sin(t * 1.2) * 0.08; }); }
 }
 // parça konumları (normalize) — yeni modeller için
 const HUB = { farm: [0.22, 0.86, 0.19, 0], wheel: [-0.5, 0.3, -0.2], saw: [0.05, 0.34, 0.27] };

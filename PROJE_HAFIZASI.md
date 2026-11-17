@@ -349,6 +349,15 @@ cd araba-oyunu && python3 -m http.server 8000
 - Tetikleme: kahraman görüntüleyici açılınca ve kahramana dokununca; çağırmada kahraman çıkınca; Sefer Kampı'nda komutan seçince (sadece ses).
 - Görüntüleyici artık kahramanı sürekli döndürmüyor; önden hafif salınım yapıyor (sürükleyerek çevrilebilir).
 
+### 5.10 Seviye 40 sistemi (zorlaştırılmış ilerleme)
+- `data.js`: Belediye en fazla **Sv.40** (`MAX_LEVEL`), diğer binaların kendi sınırı `BUILDINGS[k].max` / `maxLevel(k)`: Kışla, Okçu, Çiftlik, Kereste, Taş Ocağı, Ambar 30; Hastane, Akademi, Demirhane, Toplanma, Tank Atölyesi 25; İksir 20; Karakter Deposu ve Çağırma 10.
+- Belediye gereksinimleri `thRequirements(L)`: her seviyede 2 bina (Sv.15+ 3 bina) en az L-1 seviyede olmalı (döngüsel liste). Panelde ✓/✗ listesi ve "Git" düğmesi (`data-gobld`).
+- Maliyet: Sv.10'a kadar ×1.6, sonra (L/10)^3.6 (Belediye Sv.40 ≈ 3M yiyecek/odun). Süre ×1.5 ve Sv.12 sonrası (L/12)^3 (Belediye Sv.20 ≈ 3 sa, Sv.30 ≈ 10 sa, Sv.40 ≈ 23 sa). Altınla hızlandırmayı teşvik eder.
+- Üretim büyümesi 1.08^(L-1) (eskiden 1.12). Depo: 20000 + 25000w + 3500w² + 10000t + 1200t².
+- Görsel kademeler: Belediye Sv.10 `townhall2` (kale), Sv.20 `townhall3` (altın kubbeli saray), Sv.30 `townhall4` (kristal kale) — Higgsfield, ~28 kredi. Diğer binalar Sv.10 üstünde her 3 seviyede `tierDecor`: altın kenarlı taş kaide (11), mangallar (13), altın sancaklar (16), zemin halkası (19), altın parıltı (22), nöbet kuleleri (25), dönen rün halkası (28), ışık sütunu (31). Model büyümesi Sv.10'da sabitlenir.
+- Yeni görevler q20–q25 (Belediye 15/20/30/40 vb.).
+- Bildirim (toast) v2: lacivert-altın çerçeve, solda madalyon simge (mesajın başındaki emoji), hata için kırmızı.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
