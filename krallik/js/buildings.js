@@ -147,7 +147,7 @@ function mats() {
   M.thatch = std({ map: t.thatch, roughness: 1 });
   M.gold = std({ color: 0xe0b040, metalness: 1, roughness: 0.28 });
   M.iron = std({ color: 0x3a3a40, metalness: 0.9, roughness: 0.45 });
-  M.window = new THREE.MeshStandardMaterial({ color: 0x2a1a08, emissive: 0xffa040, emissiveIntensity: 1.1, roughness: 0.4 });
+  M.window = new THREE.MeshStandardMaterial({ color: 0x2a1a08, emissive: 0xffa040, emissiveIntensity: 2.2, roughness: 0.4 });
   M.dark = std({ color: 0x141010, roughness: 1 });
   M.dirt = std({ map: t.dirt, roughness: 1 });
   M.hay = std({ color: 0xd8b860, roughness: 1 });

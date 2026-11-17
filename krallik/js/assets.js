@@ -48,7 +48,7 @@ export async function loadAll(onProgress = () => {}) {
   const cjobs = CHAR_LIST.map((n) => loader.loadAsync(CH + n + '.glb').then((g) => { prep(g.scene); chars.set(n, { scene: g.scene, clips: g.animations }); tick(); }).catch((e) => { console.warn('karakter yüklenemedi', n, e); tick(); }));
   const hjobs = HF_LIST.map((k) => loader.loadAsync('assets/hf/' + k + '.glb').then((g) => {
     const root = g.scene; prep(root);
-    root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.8; o.material.metalness = 0; } });
+    root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.8; o.material.metalness = 0; if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x40384a); } } });
     const pivot = new THREE.Group(); pivot.add(root);
     root.rotation.y = -Math.PI / 2;
     root.updateMatrixWorld(true);

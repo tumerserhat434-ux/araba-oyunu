@@ -33,7 +33,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.6 : 2));
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.15;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -54,16 +54,16 @@ export function makeEnv(top = 0x8ec4ee, hor = 0xf4e2c0, bot = 0x4a5a3a, sun = tr
 //  Şehir sahnesi
 // ---------------------------------------------------------------------
 export const city = new THREE.Scene();
-city.background = new THREE.Color(0x9fcbe6);
-city.fog = new THREE.Fog(0xbad6e6, 140, 340);
+city.background = new THREE.Color(0x0b1430);
+city.fog = new THREE.Fog(0x0e1a3a, 120, 320);
 const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 1, 600);
-const sun = new THREE.DirectionalLight(0xfff0d6, 2.6);
+const sun = new THREE.DirectionalLight(0x9fb8ff, 1.55);
 sun.position.set(45, 70, 30); sun.castShadow = true;
 Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, near: 10, far: 200 });
 sun.shadow.mapSize.set(isMobile ? 2048 : 4096, isMobile ? 2048 : 4096);
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
 city.add(sun, sun.target);
-city.add(new THREE.HemisphereLight(0xd8ecff, 0x5a7a3a, 0.85));
+const hemiNight = new THREE.HemisphereLight(0x5a74c8, 0x1a2a20, 0.62); city.add(hemiNight);
 
 function canvasTex(w, h, draw, repeat = true, srgb = true) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
@@ -110,7 +110,7 @@ function buildTerrain() {
   const p = geo.attributes.position;
   for (let i = 1; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), a = Math.atan2(y, x), k = 1 + Math.sin(a * 5) * 0.05 + Math.sin(a * 11 + 1) * 0.03; p.setXY(i, x * k, y * k); }
   geo.rotateX(-Math.PI / 2);
-  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x5fa83a, roughness: 1 }));
+  const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x3a7430, roughness: 1 }));
   ground.receiveShadow = true; city.add(ground);
   const sand = new THREE.Mesh(new THREE.RingGeometry(70, 95, 96).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd8c08a, roughness: 1 }));
   sand.position.y = -0.25; sand.receiveShadow = true; city.add(sand);
@@ -120,13 +120,13 @@ function buildTerrain() {
     for (let i = 0; i < 400; i++) { const x = Math.random() * w, y = Math.random() * h, r = rand(4, 18); const g = ctx.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${rand(100, 160)},${rand(100, 160)},255,.5)`); g.addColorStop(1, 'rgba(128,128,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); }
   }, true, false);
   waterNormal.repeat.set(40, 40);
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2c7aa0, roughness: 0.12, metalness: 0.15, normalMap: waterNormal, normalScale: new THREE.Vector2(0.5, 0.5) }));
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x0e2a48, roughness: 0.08, metalness: 0.3, normalMap: waterNormal, normalScale: new THREE.Vector2(0.5, 0.5) }));
   water.position.y = -0.6; city.add(water);
   // uzak dağlar
   if (ASSETS.ready.models) {
     const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees', 'hills_B_trees'];
     for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2 + rand(-0.08, 0.08), r = rand(120, 170), m = ASSETS.model(mts[i % 5]); if (!m) continue; const sc = i % 5 > 2 ? rand(14, 20) : rand(22, 34); m.scale.setScalar(sc); m.position.set(Math.cos(a) * r, -1, Math.sin(a) * r); m.rotation.y = rand(0, 6); m.traverse((o) => { if (o.isMesh) o.castShadow = false; }); city.add(m); }
-    for (let i = 0; i < 9; i++) { const c = ASSETS.model(i % 2 ? 'cloud_big' : 'cloud_small'); if (!c) continue; c.scale.setScalar(rand(8, 14)); c.position.set(rand(-120, 120), rand(38, 55), rand(-120, 80)); c.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.9; } }); city.add(c); CLOUDS.push(c); }
+    for (let i = 0; i < 9; i++) { const c = ASSETS.model(i % 2 ? 'cloud_big' : 'cloud_small'); if (!c) continue; c.scale.setScalar(rand(8, 14)); c.position.set(rand(-120, 120), rand(38, 55), rand(-120, 80)); c.traverse((o) => { if (o.isMesh) { o.castShadow = false; o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.55; o.material.color.setHex(0x5a6a9a); } }); city.add(c); CLOUDS.push(c); }
     return;
   }
   const mm = new THREE.MeshStandardMaterial({ color: 0x6a7a6a, flatShading: true, roughness: 1 });
@@ -327,6 +327,57 @@ function FOUNTAIN_FX(f, h) {
   fountainTick = (t) => { for (let i = 0; i < n; i++) { const d = dat[i], u = (t * 0.8 * d.v + d.o) % 1, r = 0.15 + u * 1.0; pos[i * 3] = Math.cos(d.a) * r; pos[i * 3 + 1] = h * 0.72 + u * 0.5 - u * u * h * 0.6; pos[i * 3 + 2] = Math.sin(d.a) * r; } g.attributes.position.needsUpdate = true; };
 }
 let fountainTick = null;
+// =====================================================================
+//  GECE ATMOSFERİ: yıldızlar, ay, ateşböcekleri, fener ışık havuzları
+// =====================================================================
+let nightTick = null;
+function glowTexture(inner = 'rgba(255,255,255,1)') { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, inner); gr.addColorStop(0.3, 'rgba(255,255,255,.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return new THREE.CanvasTexture(c); }
+function buildNight() {
+  const glow = glowTexture();
+  // yıldızlı gök kubbesi
+  const N = 1400, pos = new Float32Array(N * 3), col = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) { const th = Math.random() * Math.PI * 2, ph = Math.acos(Math.random() * 0.92); const r = 420; pos[i * 3] = Math.sin(ph) * Math.cos(th) * r; pos[i * 3 + 1] = Math.cos(ph) * r * 0.75 + 20; pos[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * r; const w = 0.6 + Math.random() * 0.4; col[i * 3] = w; col[i * 3 + 1] = w; col[i * 3 + 2] = 0.8 + Math.random() * 0.2; }
+  const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); sg.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const stars = new THREE.Points(sg, new THREE.PointsMaterial({ size: 1.8, map: glow, vertexColors: true, transparent: true, depthWrite: false, fog: false, sizeAttenuation: true }));
+  city.add(stars);
+  // ay
+  const mc = document.createElement('canvas'); mc.width = mc.height = 256; const mx = mc.getContext('2d');
+  let g = mx.createRadialGradient(128, 128, 30, 128, 128, 128); g.addColorStop(0, 'rgba(220,230,255,.9)'); g.addColorStop(0.45, 'rgba(160,190,255,.25)'); g.addColorStop(1, 'rgba(120,150,255,0)'); mx.fillStyle = g; mx.fillRect(0, 0, 256, 256);
+  g = mx.createRadialGradient(118, 116, 4, 128, 128, 46); g.addColorStop(0, '#fffdf0'); g.addColorStop(1, '#d8dcf0'); mx.fillStyle = g; mx.beginPath(); mx.arc(128, 128, 44, 0, 7); mx.fill();
+  mx.fillStyle = 'rgba(160,165,190,.45)'; for (const [x, y, r] of [[112, 118, 9], [140, 138, 7], [132, 108, 5], [116, 146, 6]]) { mx.beginPath(); mx.arc(x, y, r, 0, 7); mx.fill(); }
+  const moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(mc), fog: false, depthWrite: false, transparent: true }));
+  moon.scale.setScalar(120); city.add(moon);
+  // binalarda sıcak ışık havuzları + birkaç gerçek ışık
+  const poolMat = new THREE.MeshBasicMaterial({ map: glow, color: 0xff9030, transparent: true, opacity: 0.38, blending: THREE.AdditiveBlending, depthWrite: false });
+  const pools = [];
+  const lit = ['townhall', 'barracks', 'summon', 'hospital', 'heroes', 'potion'];
+  for (const p of PLOTS) {
+    const fp = (BLD.FOOTPRINT[p.key] || 7);
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(fp * 1.7, fp * 1.7).rotateX(-Math.PI / 2), poolMat); pool.position.set(p.x, 0.05, p.z + fp * 0.15); pool.renderOrder = 2; city.add(pool); pools.push(pool);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: p.key === 'summon' ? 0xb070ff : p.key === 'hospital' ? 0x70ffa0 : 0xffb050, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.35 }));
+    halo.position.set(p.x, fp * 0.45, p.z + fp * 0.35); halo.scale.setScalar(fp * 1.1); city.add(halo); pools.push(halo);
+    if (lit.includes(p.key) && !isMobile || (isMobile && ['townhall', 'summon', 'barracks'].includes(p.key))) {
+      const L = new THREE.PointLight(p.key === 'summon' ? 0xb070ff : p.key === 'hospital' ? 0x80ffb0 : 0xffa850, p.key === 'townhall' ? 45 : 22, fp * 2.0, 1.7);
+      L.position.set(p.x, fp * 0.5, p.z + fp * 0.6); city.add(L);
+    }
+  }
+  // meydan çeşmesi ışığı
+  { const L = new THREE.PointLight(0x80c8ff, 25, 12, 1.6); L.position.set(0, 3, 9.3); city.add(L); }
+  // ateşböcekleri
+  const FN = isMobile ? 70 : 130, fpos = new Float32Array(FN * 3), fd = [];
+  for (let i = 0; i < FN; i++) { const a = Math.random() * 6.28, r = 12 + Math.random() * 56; fd.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, y: 0.6 + Math.random() * 3, p: Math.random() * 6.28, s: 0.3 + Math.random() * 0.6 }); }
+  const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fpos, 3));
+  const flies = new THREE.Points(fg, new THREE.PointsMaterial({ size: 0.7, map: glow, color: 0xd8ff70, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  city.add(flies);
+  nightTick = (t) => {
+    moon.position.set(camera.position.x - 160, camera.position.y + 110, camera.position.z - 260);
+    stars.position.set(camera.position.x, 0, camera.position.z);
+    for (let i = 0; i < FN; i++) { const d = fd[i]; fpos[i * 3] = d.x + Math.sin(t * d.s + d.p) * 1.6; fpos[i * 3 + 1] = d.y + Math.sin(t * d.s * 1.7 + d.p) * 0.5; fpos[i * 3 + 2] = d.z + Math.cos(t * d.s * 0.8 + d.p) * 1.6; }
+    fg.attributes.position.needsUpdate = true;
+    flies.material.opacity = 0.65 + Math.sin(t * 3) * 0.25;
+    poolMat.opacity = 0.35 + Math.sin(t * 7) * 0.03 + Math.sin(t * 13) * 0.02;
+  };
+}
 function buildPatrols() {
   life = createLife(city, { roads: ROAD_LINES, mobile: isMobile, fountainAt: null, stalls: [] });
   { const f = ASSETS.hfModel('p_fountain'); if (f) { const fs = ASSETS.hfSize('p_fountain'); f.scale.setScalar(3.4 / Math.max(fs.x, fs.z)); f.position.set(0, 0, 9.3); city.add(f); FOUNTAIN_FX(f, 3.4 * fs.y / Math.max(fs.x, fs.z)); } }
@@ -1001,6 +1052,7 @@ function loop(now) {
   updateAmbient(tAcc, dt);
   if (life) life.update(tAcc, dt);
   if (fountainTick) fountainTick(tAcc);
+  if (nightTick) nightTick(tAcc);
   for (const id in holders) { const w = holders[id].workers; if (w) w.forEach((v, i) => (v.userData.kk ? animateUnit(v, 'work', tAcc + i * 0.4, dt) : animVillager(v, 'work', tAcc + i * 0.4))); }
   waterNormal.offset.set(tAcc * 0.01, tAcc * 0.006);
   renderer.render(city, camera);
@@ -1043,8 +1095,8 @@ async function boot() {
   await ASSETS.loadAll((f) => setLoad(4 + f * 40, `Modeller yükleniyor… %${Math.round(f * 100)}`));
   BLD.setUnitFactory(createSoldier, animateUnit);
   setLoad(46, 'Arazi hazırlanıyor…'); await frame();
-  city.environment = makeEnv();
-  city.environmentIntensity = 0.7;
+  city.environment = makeEnv(0x1a2a5a, 0x2a3a6a, 0x0a1010, false);
+  city.environmentIntensity = 0.55;
   buildTerrain();
   setLoad(30, 'Orman dikiliyor…'); await frame();
   buildNature();
@@ -1054,6 +1106,7 @@ async function boot() {
   buildPlots();
   setLoad(80, 'Askerler toplanıyor…'); await frame();
   buildPatrols();
+  buildNight();
   initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   applyCam();

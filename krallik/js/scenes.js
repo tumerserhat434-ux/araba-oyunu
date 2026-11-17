@@ -72,14 +72,15 @@ function disposeScene(scene) {
 let grassTex = null;
 export function openBattle(opts) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xa8cfe6);
-  scene.fog = new THREE.Fog(0xc0d8e6, 60, 160);
-  scene.environment = C.makeEnv();
-  scene.environmentIntensity = 0.7;
+  scene.background = new THREE.Color(0x0b1430);
+  scene.fog = new THREE.Fog(0x0e1a3a, 50, 150);
+  scene.environment = C.makeEnv(0x1a2a5a, 0x2a3a6a, 0x0a1010, false);
+  scene.environmentIntensity = 0.5;
   const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 400);
-  const sun = new THREE.DirectionalLight(0xfff0d6, 2.6); sun.position.set(20, 40, 18); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight(0x9fb8ff, 1.7); sun.position.set(20, 40, 18); sun.castShadow = true;
   Object.assign(sun.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 5, far: 120 }); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
-  scene.add(sun, new THREE.HemisphereLight(0xcfe6ff, 0x6a5a3a, 1.0));
+  scene.add(sun, new THREE.HemisphereLight(0x5a74c8, 0x1a2a20, 0.7));
+  for (const sx of [-1, 1]) { const tl = new THREE.PointLight(0xff9a40, 80, 40, 1.4); tl.position.set(sx * 16, 6, 0); scene.add(tl); }
   if (!grassTex) {
     grassTex = canvasTex(512, 512, (ctx, w, h) => {
       ctx.fillStyle = '#668f3e'; ctx.fillRect(0, 0, w, h);
@@ -88,7 +89,7 @@ export function openBattle(opts) {
     });
     grassTex.repeat.set(30, 30);
   }
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: grassTex, roughness: 1 }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: grassTex, color: 0x4a5a78, roughness: 1 }));
   ground.receiveShadow = true; scene.add(ground);
   for (let i = 0; i < 40; i++) {
     const a = Math.random() * 6.28, r = rand(30, 70), t = BLD.createTree(Math.floor(Math.random() * 4));
