@@ -385,6 +385,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - Sunucu düğmesi (#300 ⇄ #301): başka sunucuyu görüntüle; orada tohumlu 30 bilgisayar krallığı (`foreignBots`) ve o sunucunun gerçek oyuncuları; saldırı mümkün (krallıklar arası savaş, yürüyüş uzun).
 - Öğretici sırasında eski 2D harita penceresi kullanılır (öğretici adımları ona bağlı).
 
+### 5.14 Gece krallık haritası, ışınlama, otomatik sunucular
+- Harita gece temalı (`worldmap.js → nightGround`): 2048 px boyalı zemin, şehirleri birbirine bağlayan taş yollar, göller, çam ormanları (~2400 örnek), dağlar/kayalar, gözetleme kuleleri (alevli), harabeler, mavi kristaller, ~420 meşale + her şehrin etrafında 4 meşale, süzülen bulutlar. Benim şehrim daha büyük, iki mavi sancaklı; halkalar parlayan renkli.
+- Bilgisayar krallığı sayısı 3'e indirildi (`MAP_BOTS = 3`, eski kayıtlarda en yakın 3 tutulur).
+- Gerçek oyuncular: haritayı açınca ve harita açıkken her 30 sn'de bir sunucudaki tüm oyuncular çekilir (`serverPlayers`); yeni katılanlar hemen görünür.
+- Işınlama: şehir kartında "📍 Yanına ışınlan", boş zemine dokununca "📍 Buraya ışınlan" (200 altın; seferdeyken olmaz; başka şehre 24 birimden yakın olmaz). `state.js → teleport / spotNear / spotFree`.
+- Sunucular 1'den başlar. Yeni oyuncu `online.assignServer()`: 300'den küçük en yüksek sunucu numarasını bulur, o sunucuda 500 oyuncu varsa bir sonrakini açar; `placeOnServer` boş bir yere yerleştirir. Eski 300 numaralı kayıtlar yeniden atanır.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

@@ -6,7 +6,7 @@ import * as BLD from './buildings.js';
 import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
 import * as ASSETS from './assets.js';
 import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js';
-import { serverPlayers } from './online.js';
+import { serverPlayers, assignServer } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
@@ -1215,7 +1215,7 @@ function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 3
 async function refreshRivals(force) {
   if (!online.ready || (!force && Date.now() - G.ONLINE.rivalsAt < 90000)) return;
   G.ONLINE.rivalsAt = Date.now();
-  const list = await rivals(G.cityPower(), 6);
+  const list = await serverPlayers(G.S.server || 1, 200);
   G.ONLINE.enemies = list.map(G.rivalToEnemy);
   if (modalKind === 'world' && $('modal').classList.contains('open')) renderModal();
 }
@@ -1243,6 +1243,7 @@ async function startOnline() {
   const fresh = Date.now() / 1000 - G.S.created < 900 && G.thLevel() <= 2;
   let cTh = 0; try { cTh = JSON.parse(cloud?.data || '{}').buildings?.townhall?.level || 0; } catch (e) { /* bozuk */ }
   if (cloud && (fresh ? cTh > G.thLevel() : cloud.updated > G.S.lastSeen * 1000 + 120000)) { if (await adoptCloud(cloud, true)) return; }
+  if (!G.S.server) { const n = await assignServer(); G.placeOnServer(n); toast(`🌐 Sunucu #${n}'e katıldın!`); }
   await syncNow();
   processInbox(); refreshRivals(true);
   setInterval(() => { if (Date.now() - lastSync > 60000) syncNow(); }, 15000);
@@ -1271,7 +1272,7 @@ async function boot() {
   initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
   const onAttack = (id) => { worldSel = id; atk.init = false; modalKind = 'attack'; renderModal(); };
   window.__dsAttack = onAttack;
-  initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack });
+  initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack, onTeleport: () => syncNow() });
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   applyCam();
   setLoad(95, 'Son dokunuşlar…'); await frame();

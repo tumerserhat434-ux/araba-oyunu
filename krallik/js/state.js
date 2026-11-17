@@ -56,7 +56,7 @@ export function load() {
   for (const t in TROOPS) { S.troops[t] ??= 0; S.wounded[t] ??= 0; }
   for (const e of S.enemies) e.troops.tank ??= 0;
   // dünya haritası: sunucu, koordinat, seferler ve harita krallıkları
-  S.server ??= 300;
+  if (S.server >= 300) S.server = null; // eski deneme numarası → yeniden atanır (sunucular 1'den başlar)
   if (S.mapX == null) { S.mapX = Math.round(rand(220, 780)); S.mapY = Math.round(rand(220, 780)); }
   S.marches ||= [];
   ensureMapKingdoms();
@@ -363,11 +363,35 @@ export function cityPower() {
 export function towerPower() { let p = 0; for (const pl of PLOTS) if (pl.key === 'archery') p += lvl(pl.id) * 260; return p; }
 
 // Haritada oyuncunun çevresine yayılmış bilgisayar krallıkları (36 adet)
-const MAP_BOTS = 36, ROMAN = ['', ' II', ' III', ' IV'];
+const MAP_BOTS = 3, ROMAN = ['', ' II', ' III', ' IV'];
 function ensureMapKingdoms() {
   const base = Math.max(2500, armyPower(S.troops) + towerPower() + 6000);
   while (S.enemies.length < MAP_BOTS) { const i = S.enemies.length; S.enemies.push(makeEnemy(KINGDOM_NAMES[i % KINGDOM_NAMES.length] + ROMAN[Math.floor(i / KINGDOM_NAMES.length)], LORD_NAMES[(i * 7) % LORD_NAMES.length], base * rand(0.3, 1.9), i)); }
+  if (S.enemies.length > MAP_BOTS) S.enemies = S.enemies.filter((e) => e.mapX != null).sort((a, b) => Math.hypot(a.mapX - S.mapX, a.mapY - S.mapY) - Math.hypot(b.mapX - S.mapX, b.mapY - S.mapY)).concat(S.enemies.filter((e) => e.mapX == null)).slice(0, MAP_BOTS);
   S.enemies.forEach((e, i) => { if (e.mapX == null) placeOnMap(e, i); });
+}
+// Haritadaki dolu yerler (şehirler) — ışınlama ve yeni oyuncu yerleşimi için
+function occupied() { return S.enemies.concat(ONLINE.enemies.filter((e) => (e.server || 1) === (S.server || 1))).map((e) => [e.mapX, e.mapY]); }
+export const spotFree = (x, y, r = 24) => x > 30 && x < 970 && y > 30 && y < 970 && occupied().every(([a, b]) => Math.hypot(a - x, b - y) > r);
+export const TELEPORT_COST = 200;
+export function teleport(x, y) {
+  if (S.marches.length) return { ok: false, why: 'Seferdeki ordular dönmeden ışınlanamazsın' };
+  if (!spotFree(x, y)) return { ok: false, why: 'Bu nokta dolu' };
+  if (S.res.gold < TELEPORT_COST) return { ok: false, why: 'Yetersiz altın', needGold: true };
+  S.res.gold -= TELEPORT_COST; S.mapX = Math.round(x); S.mapY = Math.round(y);
+  S.enemies.forEach((e) => { if (Math.hypot(e.mapX - S.mapX, e.mapY - S.mapY) < 24) placeOnMap(e, S.enemies.indexOf(e)); });
+  save(); emit('teleport'); return { ok: true };
+}
+// Hedefin yakınında boş yer bul
+export function spotNear(x, y) {
+  for (let r = 26; r < 90; r += 8) for (let a = 0; a < 12; a++) { const ang = a / 12 * Math.PI * 2 + r; const px = x + Math.cos(ang) * r, py = y + Math.sin(ang) * r; if (spotFree(px, py)) return [Math.round(px), Math.round(py)]; }
+  return null;
+}
+// Yeni sunucuya yerleş: rastgele boş bir yer
+export function placeOnServer(server) {
+  S.server = server;
+  for (let k = 0; k < 60; k++) { const x = 120 + Math.random() * 760, y = 120 + Math.random() * 760; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
+  S.enemies.forEach((e, i) => placeOnMap(e, i)); save();
 }
 function placeOnMap(e, i) {
   for (let k = 0; k < 40; k++) {
@@ -489,7 +513,7 @@ export function foreignBots(server) {
   return out;
 }
 // ---- Seferler: ordu haritada yürür, varınca savaşır, sonra geri döner ----
-export const mapDist = (e) => (e.foreign || (e.server && e.server !== (S.server || 300)) ? 900 : Math.hypot((e.mapX ?? S.mapX) - S.mapX, (e.mapY ?? S.mapY) - S.mapY));
+export const mapDist = (e) => (e.foreign || (e.server && e.server !== (S.server || 1)) ? 900 : Math.hypot((e.mapX ?? S.mapX) - S.mapX, (e.mapY ?? S.mapY) - S.mapY));
 export function marchTime(e, troops) {
   const slow = troops && (troops.tank > 0) ? 1.25 : troops && troops.infantry + troops.spearman + troops.archer === 0 && troops.cavalry > 0 ? 0.7 : 1;
   return Math.round(Math.min(240, Math.max(10, 8 + mapDist(e) * 0.22)) * slow);
@@ -537,13 +561,13 @@ export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 export function publicProfile() {
   const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
-  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 300, mapX: S.mapX, mapY: S.mapY };
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY };
 }
 // Gerçek oyuncuyu haritadaki düşman biçimine çevir
 export function rivalToEnemy(p) {
   let hsh = 0; for (const ch of p.uid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
   const ang = (hsh % 360) * Math.PI / 180, dist = 0.25 + ((hsh >> 9) % 60) / 100;
-  return { mapX: p.mapX ?? (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY ?? (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 300, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
+  return { mapX: p.mapX ?? (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY ?? (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 1, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
     troops: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0, ...(p.troops || {}) }, tower: (p.towerPow || 0) / 120, th: p.th || 1, hero: p.hero || null,
     res: { food: (p.lootable?.food || 0) / 0.6, wood: (p.lootable?.wood || 0) / 0.6, stone: (p.lootable?.stone || 0) / 0.6, gold: 0 }, power: p.power || 0, shieldUntil: (S.pvpCooldown?.[p.uid] || 0) };
 }

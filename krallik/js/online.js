@@ -131,3 +131,16 @@ export async function serverPlayers(server, n = 200) {
     return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => p.uid !== user.uid && (p.updated || 0) > since);
   } catch (e) { lastErr = e.code || e.message; return []; }
 }
+// Yeni oyuncu için sunucu seç: en yeni sunucu 500 oyuncuya ulaştıysa bir sonrakini aç
+export const SERVER_CAP = 500;
+export async function assignServer() {
+  if (!ready) return 1;
+  try {
+    const qTop = FS.query(FS.collection(db, 'players'), FS.where('server', '<', 300), FS.orderBy('server', 'desc'), FS.limit(1));
+    const top = await FS.getDocs(qTop);
+    let n = top.empty ? 1 : Math.max(1, top.docs[0].data().server || 1);
+    const cnt = await FS.getCountFromServer(FS.query(FS.collection(db, 'players'), FS.where('server', '==', n)));
+    if (cnt.data().count >= SERVER_CAP) n += 1;
+    return n;
+  } catch (e) { lastErr = e.code || e.message; return 1; }
+}

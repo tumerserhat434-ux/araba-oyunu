@@ -676,3 +676,4 @@ nav#nav .dot::after { content: '!'; position: absolute; inset: 0; display: grid;
 #battleBanner b { display: block; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 16px; } #battleBanner small { font-size: 12px; font-weight: 800; color: #ffe7a0; }
 #battleBanner button { border: 0; padding: 7px 11px; border-radius: 11px; font-family: 'Lilita One', sans-serif; font-size: 13px; color: #3a1a00; background: linear-gradient(180deg, #fff09a, #e08a10); }
 #battleBanner button#bbX { background: rgba(255,255,255,.15); color: #fff; padding: 7px 9px; }
+.wm-tp { width: 100%; margin-top: 8px; }
