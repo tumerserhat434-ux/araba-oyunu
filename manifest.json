@@ -1,0 +1,12 @@
+{
+  "name": "Orman Kaçışı",
+  "short_name": "Orman Kaçışı",
+  "description": "Yağmur ormanında gece geçen sonsuz koşu oyunu",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#040a09",
+  "theme_color": "#050d0b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

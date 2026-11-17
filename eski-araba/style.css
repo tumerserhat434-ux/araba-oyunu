@@ -1,0 +1,21 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  height: 100vh;
+  background: url("assets/road.png");
+  background-size: cover;
+  animation: road 1s linear infinite;
+}
+
+@keyframes road {
+  from { background-position-y: 0; }
+  to { background-position-y: 100%; }
+}
+
+#car {
+  position: absolute;
+  bottom: 8%;
+  width: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+}
