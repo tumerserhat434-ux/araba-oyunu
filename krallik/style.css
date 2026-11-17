@@ -293,3 +293,70 @@ nav button.on .ico { transform: translateY(-4px) scale(1.12); }
 .rankrow .rn { flex: 1; }
 .rankrow .rp { font-family: 'Lilita One', sans-serif; color: #ffe070; }
 @media (max-width: 380px) { .res { font-size: 12px; padding-right: 6px; } .res .ico { width: 19px; height: 19px; } }
+
+/* ================= ÖZEL PANEL TASARIMI ================= */
+:root { --frameA: #f7d77a; --frameB: #b07814; --wood1: #3b2616; --wood2: #24160b; }
+.sheet, .modal-box {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255, 210, 120, .18), transparent 60%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>"),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 2px, transparent 2px 38px),
+    linear-gradient(180deg, var(--wood1), var(--wood2));
+  border: 0;
+  box-shadow: 0 0 0 2px #1a0e04, 0 0 0 4px var(--frameB), 0 0 0 5px var(--frameA), 0 0 0 7px #3a2408, 0 18px 50px rgba(0,0,0,.75), inset 0 0 40px rgba(0,0,0,.55);
+}
+.sheet { border-radius: 26px 26px 0 0; padding-top: 22px; }
+.modal-box { border-radius: 22px; padding-top: 20px; position: relative; overflow: visible; }
+.modal-box { max-height: calc(100vh - 40px); overflow-y: auto; }
+.sheet::before, .modal-box::before, .sheet::after, .modal-box::after {
+  position: absolute;
+  content: ''; top: 4px; width: 46px; height: 46px; pointer-events: none; z-index: 2;
+  background: radial-gradient(circle at 50% 50%, #fff6c8 0 3px, #e8b030 4px 7px, #8a5408 8px 9px, transparent 10px),
+    conic-gradient(from 45deg, var(--frameA), var(--frameB), var(--frameA), var(--frameB), var(--frameA));
+  -webkit-mask: radial-gradient(circle, #000 60%, transparent 61%); mask: radial-gradient(circle, #000 60%, transparent 61%);
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.6));
+}
+.sheet::before, .modal-box::before { left: 4px; }
+.sheet::after, .modal-box::after { right: 4px; }
+.sh-head { position: relative; gap: 12px; margin: -6px -4px 12px; padding: 8px 10px; border-radius: 16px;
+  background: linear-gradient(90deg, rgba(120, 70, 10, .55), rgba(60, 30, 5, .25) 70%, transparent);
+  border-top: 1px solid rgba(255, 215, 120, .35); border-bottom: 1px solid rgba(0,0,0,.5); }
+.sh-ico { width: 74px; height: 74px; border-radius: 50%; font-size: 34px; overflow: hidden; flex-shrink: 0;
+  background: radial-gradient(circle at 50% 35%, #6aa0d8, #24406a); border: 0;
+  box-shadow: 0 0 0 3px #2a1606, 0 0 0 5px var(--frameA), 0 0 0 7px var(--frameB), 0 4px 12px rgba(0,0,0,.6), inset 0 -8px 16px rgba(0,0,0,.35); }
+.sh-ico img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sh-head h2 { font-size: 22px; letter-spacing: .5px;
+  background: linear-gradient(180deg, #fff4c8 0%, #ffd060 45%, #c88618 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 2px 0 #2a1404) drop-shadow(0 0 10px rgba(255,190,60,.25)); }
+.sh-head small { display: inline-block; margin-top: 4px; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 13px; color: #fff;
+  background: linear-gradient(180deg, #5a9aff, #1a4ab0); padding: 2px 12px 2px 10px; border-radius: 0 10px 10px 0; position: relative; box-shadow: 0 2px 0 #0a2460; }
+.sh-head small::before { content: ''; position: absolute; left: -8px; top: 0; border: 10px solid transparent; border-right: 8px solid #3a7ae0; border-left: 0; height: 0; transform: translateY(0); display: none; }
+.x { width: 38px; height: 38px; border: 0; color: #fff3c8; font-weight: 900; background: radial-gradient(circle at 40% 30%, #c0402a, #6a1408);
+  box-shadow: 0 0 0 2px #2a0804, 0 0 0 4px var(--frameB), 0 3px 6px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.25); }
+.desc { background: rgba(0,0,0,.22); border-left: 3px solid var(--frameB); border-radius: 0 10px 10px 0; padding: 8px 10px; color: #f0e2c0; }
+.stat { background: linear-gradient(180deg, rgba(255, 220, 150, .1), rgba(0,0,0,.25)); border: 1px solid rgba(255, 210, 120, .18); border-radius: 12px; position: relative; padding-left: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 4px rgba(0,0,0,.3); }
+.stat small { color: #e0c48a; letter-spacing: .3px; font-weight: 800; }
+.stat b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 19px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+.cost { gap: 6px; }
+.cost > span { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,210,120,.25); border-radius: 14px; padding: 3px 10px 3px 4px;
+  font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 14px; }
+.cost > span .ico { width: 20px; height: 20px; }
+.cost > span.no { color: #ff8a7a; border-color: #ff6a5a66; }
+.btn { position: relative; overflow: hidden; border-radius: 16px; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 17px; letter-spacing: .3px; text-shadow: 0 2px 0 rgba(0,0,0,.35); }
+.btn::after { content: ''; position: absolute; left: 6%; right: 6%; top: 3px; height: 42%; border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0)); pointer-events: none; }
+.btn::before { content: ''; position: absolute; top: 0; bottom: 0; width: 40%; left: -60%; background: linear-gradient(100deg, transparent, rgba(255,255,255,.35), transparent); transform: skewX(-20deg); animation: shine 3.5s ease-in-out infinite; pointer-events: none; }
+@keyframes shine { 0%, 60% { left: -60%; } 100% { left: 130%; } }
+.btn[disabled]::before { display: none; }
+.btn.gold { color: #4a2600; text-shadow: 0 1px 0 rgba(255,255,255,.4); }
+.why { background: rgba(140, 20, 10, .35); border: 1px solid rgba(255, 100, 80, .35); border-radius: 10px; padding: 6px 10px; }
+.progress { height: 20px; border-radius: 12px; background: rgba(0,0,0,.6); box-shadow: inset 0 2px 4px rgba(0,0,0,.6), 0 0 0 2px #2a1606, 0 0 0 3px rgba(255,210,120,.3); }
+.progress span { background: linear-gradient(180deg, #8ac8ff, #2a6ad8 60%, #1a4aa0); box-shadow: inset 0 2px 0 rgba(255,255,255,.4); border-radius: 12px; }
+.progress.green span { background: linear-gradient(180deg, #a8ffb0, #2fa84a 60%, #1a7030); }
+.progress em { font-family: 'Lilita One', sans-serif; font-size: 12.5px; }
+.troop { background: linear-gradient(180deg, rgba(255,220,150,.1), rgba(0,0,0,.35)); border: 2px solid rgba(255,210,120,.15); border-radius: 14px; }
+.troop.sel { border-color: var(--frameA); background: linear-gradient(180deg, rgba(255,210,90,.35), rgba(120,70,10,.3)); box-shadow: 0 0 12px rgba(255,200,80,.4); }
+.tabs button { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 14px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,210,120,.3); }
+.tabs button.on { background: linear-gradient(180deg, #ffe07a, #d8961a); color: #3a1e00; box-shadow: 0 3px 0 #7a4800; border-color: #ffe9a8; }
+.divider-orn { height: 14px; margin: 10px 0 12px; background: radial-gradient(circle, var(--frameA) 0 3px, transparent 4px) center/14px 14px no-repeat,
+  linear-gradient(90deg, transparent, var(--frameB) 20%, var(--frameA) 50%, var(--frameB) 80%, transparent) center/100% 2px no-repeat; }

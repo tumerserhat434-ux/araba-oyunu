@@ -8,7 +8,7 @@ import * as ASSETS from './assets.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
-import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, sceneActive, renderActive } from './scenes.js';
+import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
 import { createGrass } from './grass.js';
 import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState } from './audio.js';
 import { initTutorial, tutEvent } from './tut.js';
@@ -298,7 +298,7 @@ function placeArchers(id) {
     const o = createSoldier('archer', 'blue');
     o.position.set(i ? 0.8 : -0.8, top, 0.6); o.rotation.y = rand(-0.6, 0.6);
     h.group.add(o);
-    const a = { obj: o, state: 'idle', phase: rand(0, 10) };
+    const a = { obj: o, state: i ? 'attack' : 'idle', phase: rand(0, 10) };
     ambient.push(a); h.archers.push(a);
   }
 }
@@ -317,9 +317,19 @@ function makeBush(spots) {
   const proto = BLD.createTree(3);
   return instancify(proto, spots.map(([x, z]) => { const s = rand(0.5, 0.75); return new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rand(0, 6), 0)), new THREE.Vector3(s, s, s)); }));
 }
+function FOUNTAIN_FX(f, h) {
+  const n = 70, g = new THREE.BufferGeometry(), pos = new Float32Array(n * 3), dat = [];
+  for (let i = 0; i < n; i++) dat.push({ a: Math.random() * 6.28, o: Math.random(), v: rand(0.9, 1.2) });
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xd8f4ff, size: 0.12, transparent: true, opacity: 0.9 }));
+  pts.position.copy(f.position); city.add(pts);
+  fountainTick = (t) => { for (let i = 0; i < n; i++) { const d = dat[i], u = (t * 0.8 * d.v + d.o) % 1, r = 0.15 + u * 1.0; pos[i * 3] = Math.cos(d.a) * r; pos[i * 3 + 1] = h * 0.72 + u * 0.5 - u * u * h * 0.6; pos[i * 3 + 2] = Math.sin(d.a) * r; } g.attributes.position.needsUpdate = true; };
+}
+let fountainTick = null;
 function buildPatrols() {
   life = createLife(city, { roads: ROAD_LINES, mobile: isMobile, fountainAt: null, stalls: [] });
-  for (const sx of [-1, 1]) { const g = createSoldier('spearman', 'blue'); g.position.set(sx * 1.9, 0, 7.0); city.add(g); ambient.push({ obj: g, state: 'idle', phase: rand(0, 5) }); }
+  { const f = ASSETS.hfModel('p_fountain'); if (f) { const fs = ASSETS.hfSize('p_fountain'); f.scale.setScalar(3.4 / Math.max(fs.x, fs.z)); f.position.set(0, 0, 9.3); city.add(f); FOUNTAIN_FX(f, 3.4 * fs.y / Math.max(fs.x, fs.z)); } }
+  for (const sx of [-1, 1]) { const g = createSoldier('spearman', 'blue'); g.position.set(sx * 2.6, 0, 7.2); city.add(g); ambient.push({ obj: g, state: 'idle', phase: rand(0, 5) }); }
   const loops = [
     [[-6, 30], [6, 30], [6, 34], [-6, 34]],
     [[-30, 24], [-10, 24], [-10, 28], [-30, 28]],
@@ -467,7 +477,7 @@ function floaty(text, x, y, color = '#fff') {
   const d = document.createElement('div'); d.className = 'floaty'; d.textContent = text; d.style.left = x + 'px'; d.style.top = y + 'px'; d.style.color = color;
   document.body.appendChild(d); setTimeout(() => d.remove(), 1300);
 }
-const costHtml = (cost) => Object.entries(cost).filter(([, v]) => v > 0).map(([r, v]) => `<span class="${G.S.res[r] >= v ? '' : 'no'}">${RES[r].icon} ${G.fmt(v)}</span>`).join('');
+const costHtml = (cost) => Object.entries(cost).filter(([, v]) => v > 0).map(([r, v]) => `<span class="${G.S.res[r] >= v ? '' : 'no'}">${icon(r, 20)} ${G.fmt(v)}</span>`).join('');
 const stars = (n) => '★'.repeat(n);
 let avatarFor = null;
 function updateTop() {
@@ -489,6 +499,7 @@ function updateTop() {
 // ---------------------------------------------------------------------
 //  Bina paneli
 // ---------------------------------------------------------------------
+const PORTRAIT_CACHE = {};
 let sheetId = null, sheetTimer = 0, trainSel = 'infantry', trainQty = 50;
 function openBuilding(id) { sheetId = id; renderSheet(); $('sheetWrap').classList.add('open'); sfx('open'); tutEvent('sheet:' + id); }
 export function closeSheet() { sheetId = null; $('sheetWrap').classList.remove('open'); }
@@ -531,8 +542,10 @@ function renderSheet() {
         <button class="btn" style="width:100%;margin-bottom:10px" data-act="potion" ${G.S.potions ? '' : 'disabled'}>🧪 İksir kullan</button>`;
     }
   }
-  $('sheet').innerHTML = `<div class="sh-head"><div class="sh-ico">${def.icon}</div><div><h2>${def.name}</h2><small>${L ? 'Seviye ' + L : 'İnşa edilmedi'}</small></div><button class="x" data-act="close">✕</button></div>
-    <p class="desc">${def.desc}</p>${body}<div style="height:1px;background:var(--line);margin:8px 0 12px"></div>${upgradeBlock(id)}`;
+  const pkey = key + ':' + Math.max(1, L);
+  $('sheet').innerHTML = `<div class="sh-head"><div class="sh-ico" id="shPortrait">${PORTRAIT_CACHE[pkey] ? `<img src="${PORTRAIT_CACHE[pkey]}">` : def.icon}</div><div><h2>${def.name}</h2><small>${L ? 'Seviye ' + L : 'İnşa edilmedi'}</small></div><button class="x" data-act="close">✕</button></div>
+    <p class="desc">${def.desc}</p>${body}<div class="divider-orn"></div>${upgradeBlock(id)}`;
+  if (!PORTRAIT_CACHE[pkey]) getBuildingPortrait(key, Math.max(1, L)).then((u) => { PORTRAIT_CACHE[pkey] = u; const el = $('shPortrait'); if (el && sheetId === id) el.innerHTML = `<img src="${u}">`; });
   const sl = $('qtySlider');
   if (sl) sl.oninput = () => { trainQty = +sl.value; renderSheetSoon(); };
 }
@@ -931,6 +944,7 @@ function loop(now) {
   if (wallGroup) wallGroup.children.forEach((c) => c.userData.update && c.userData.update(tAcc, dt));
   updateAmbient(tAcc, dt);
   if (life) life.update(tAcc, dt);
+  if (fountainTick) fountainTick(tAcc);
   for (const id in holders) { const w = holders[id].workers; if (w) w.forEach((v, i) => (v.userData.kk ? animateUnit(v, 'work', tAcc + i * 0.4, dt) : animVillager(v, 'work', tAcc + i * 0.4))); }
   waterNormal.offset.set(tAcc * 0.01, tAcc * 0.006);
   renderer.render(city, camera);
@@ -971,6 +985,7 @@ async function boot() {
   G.load();
   setLoad(4, 'Modeller yükleniyor…'); await frame();
   await ASSETS.loadAll((f) => setLoad(4 + f * 40, `Modeller yükleniyor… %${Math.round(f * 100)}`));
+  BLD.setUnitFactory(createSoldier, animateUnit);
   setLoad(46, 'Arazi hazırlanıyor…'); await frame();
   city.environment = makeEnv();
   city.environmentIntensity = 0.7;
@@ -1002,4 +1017,4 @@ async function boot() {
   requestAnimationFrame(loop);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
-window.__ds = { G, cam, navigate, holders, get grass() { return grassField; } };
+window.__ds = { G, cam, navigate, holders, openBuilding, get grass() { return grassField; } };

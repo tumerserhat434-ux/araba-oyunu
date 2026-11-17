@@ -922,11 +922,136 @@ function kkBuilding(key, L) {
     for (let i = 0; i < 4; i++) { const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.3, 0), mats().crystal); cr.scale.set(1, 1.8, 1); cr.castShadow = true; k.group.add(cr); crystals.push(cr); }
     k.anims.push((t) => { rune.rotation.y = t * 0.3; halo.material.opacity = 0.4 + Math.sin(t * 2.2) * 0.15; crystals.forEach((cr, i) => { const a = t * 0.8 + (i / 4) * TAU; cr.position.set(Math.cos(a) * fp * 0.36, h * 0.55 + Math.sin(t * 2 + i) * 0.4, Math.sin(a) * fp * 0.36); cr.rotation.y = t * 2; }); });
   }
+  if (isHF) hfAnimate(k, key, L, size.clone().multiplyScalar(sc), fp);
   if (L >= 10) crest(k, h + 1.6);
   const grp = k.build(h + 0.5);
   if (key === 'archery') grp.userData.topY = isHF ? h * 0.66 : h * (L >= 7 ? 0.62 : 0.78);
   return grp;
 }
+
+// =====================================================================
+//  HIGGSFIELD BİNALARI İÇİN HAREKETLİ PARÇALAR
+//  Konumlar normalize: x,z ∈ [-0.5,0.5] (genişlik/derinlik), y ∈ [0,1] (yükseklik), +z = ön
+// =====================================================================
+let swirlTex = null;
+function swirl() {
+  if (swirlTex) return swirlTex;
+  const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, 'rgba(255,240,255,1)'); g.addColorStop(0.35, 'rgba(200,120,255,.8)'); g.addColorStop(1, 'rgba(80,0,160,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  x.strokeStyle = 'rgba(255,255,255,.75)'; x.lineWidth = 6; x.lineCap = 'round';
+  for (let arm = 0; arm < 3; arm++) { x.beginPath(); for (let t = 0; t < 1; t += 0.02) { const a = arm * 2.094 + t * 7, r = t * 118; const px = 128 + Math.cos(a) * r, py = 128 + Math.sin(a) * r; t ? x.lineTo(px, py) : x.moveTo(px, py); } x.stroke(); }
+  swirlTex = new THREE.CanvasTexture(c); return swirlTex;
+}
+function glowSprite(color, scale, opacity = 0.7) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity })); s.scale.setScalar(scale); return s; }
+function particles(k, P, color, n, opts = {}) {
+  const { spread = 0.4, rise = 2, life = 2, size = 0.25, add = true } = opts, list = [];
+  for (let i = 0; i < n; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, depthWrite: false, transparent: true, opacity: 0 })); k.group.add(s); list.push({ s, o: i / n, a: Math.random() * TAU, r: Math.random() * spread }); }
+  k.anims.push((t) => { for (const p of list) { const u = (t / life + p.o) % 1; p.s.position.set(P.x + Math.cos(p.a + u * 2) * p.r, P.y + u * rise, P.z + Math.sin(p.a + u * 2) * p.r); p.s.scale.setScalar(size * (0.6 + u * (opts.grow || 0.6))); p.s.material.opacity = Math.sin(u * Math.PI) * (opts.op || 0.9); } });
+}
+function flames(k, P, s = 1) {
+  const f = glowSprite(0xff8a20, 0.9 * s, 0.95), c = glowSprite(0xffe070, 0.45 * s, 1); f.position.copy(P); c.position.copy(P); k.group.add(f, c);
+  const ph = Math.random() * 6; k.anims.push((t) => { const q = 0.85 + Math.sin(t * 13 + ph) * 0.1 + Math.sin(t * 7.1 + ph) * 0.08; f.scale.set(0.8 * s * q, 1.2 * s * q, 1); c.scale.setScalar(0.45 * s * q); });
+  particles(k, P.clone().add(new THREE.Vector3(0, 0.2 * s, 0)), 0xff9a30, 5, { spread: 0.1 * s, rise: 1.2 * s, life: 0.9, size: 0.18 * s, grow: -0.5 });
+}
+function part(name, scaleTo, axis = 'max') { const m = A.hfModel(name); if (!m) return null; const sz = A.hfSize(name); m.scale.setScalar(scaleTo / (axis === 'y' ? sz.y : Math.max(sz.x, sz.y, sz.z))); return m; }
+function hfAnimate(k, key, L, S, fp) {
+  const at = (x, y, z) => new THREE.Vector3(x * S.x, y * S.y, z * S.z);
+  const g = geos();
+  if (key === 'townhall') {
+    // saat akrep/yelkovan
+    const clock = new THREE.Group(); clock.position.copy(at(0.0, 0.62, 0.135)); k.group.add(clock);
+    const r = S.y * 0.045;
+    const hand = (len, w, col) => { const h = new THREE.Group(); const m = new THREE.Mesh(g.box, new THREE.MeshStandardMaterial({ color: col, metalness: 0.6, roughness: 0.3 })); m.scale.set(w, len, w * 0.6); m.position.y = len / 2; h.add(m); clock.add(h); return h; };
+    const hh = hand(r * 0.55, r * 0.14, 0x2a1a08), mh = hand(r * 0.85, r * 0.09, 0x2a1a08);
+    const cap = new THREE.Mesh(g.sphere, mats().gold); cap.scale.setScalar(r * 0.12); clock.add(cap);
+    k.anims.push((t) => { mh.rotation.z = -t * 0.9; hh.rotation.z = -t * 0.075; });
+    const dome = glowSprite(0xffd860, S.y * 0.35, 0.35); dome.position.copy(at(0, 0.82, -0.03)); k.group.add(dome);
+    k.anims.push((t) => { dome.material.opacity = 0.2 + Math.max(0, Math.sin(t * 0.8)) * 0.35; });
+    particles(k, at(0, 0.78, -0.03), 0xfff0a0, 10, { spread: S.x * 0.12, rise: S.y * 0.25, life: 3, size: S.y * 0.025 });
+    for (const sx of [-0.36, 0.36]) flames(k, at(sx * 0.6, 0.13, 0.42), S.y * 0.05);
+  }
+  if (key === 'barracks') {
+    for (const [x, z, ry] of [[0.08, 0.28, Math.PI / 2], [0.22, 0.28, -Math.PI / 2]]) {
+      const u = createSoldierRef && createSoldierRef(ry > 0 ? 'infantry' : 'spearman', 'blue'); if (!u) break;
+      u.scale.setScalar(Math.min(0.75, S.y * 0.22 / 1.85)); u.position.copy(at(x, 0.06, z)); u.rotation.y = ry; k.group.add(u);
+      const ph = Math.random() * 3; k.anims.push((t, dt) => animRef(u, 'attack', t + ph, dt));
+    }
+    const fl = glowSprite(0xff9030, S.y * 0.12, 0.8); fl.position.copy(at(-0.08, 0.32, 0.28)); k.group.add(fl);
+  }
+  if (key === 'archery') {
+    // nöbet kulesi ışığı ve dönen fener
+    const beam = glowSprite(0xffe090, S.y * 0.18, 0.7); beam.position.copy(at(0, 0.7, 0.2)); k.group.add(beam);
+    k.anims.push((t) => { beam.position.x = Math.sin(t * 0.9) * S.x * 0.35; beam.position.z = Math.cos(t * 0.9) * S.z * 0.35; beam.material.opacity = 0.5 + Math.sin(t * 5) * 0.15; });
+  }
+  if (key === 'hospital') {
+    const em = glowSprite(0x60ff90, S.y * 0.28, 0.6); em.position.copy(at(-0.26, 0.6, 0.3)); k.group.add(em);
+    k.anims.push((t) => { em.material.opacity = 0.35 + Math.sin(t * 2) * 0.25; em.scale.setScalar(S.y * (0.24 + Math.sin(t * 2) * 0.04)); });
+    particles(k, at(0.2, 0.15, 0.25), 0x70ff9a, 10, { spread: S.x * 0.15, rise: S.y * 0.6, life: 3, size: S.y * 0.06 });
+    const bell = new THREE.Group(); bell.position.copy(at(-0.22, 0.86, 0.05)); k.group.add(bell);
+    const bm = new THREE.Mesh(new THREE.ConeGeometry(1, 1.2, 12, 1, true), new THREE.MeshStandardMaterial({ color: 0xd8a830, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide })); bm.scale.setScalar(S.y * 0.035); bm.position.y = -S.y * 0.04; bell.add(bm);
+    k.anims.push((t) => { bell.rotation.x = Math.sin(t * 2.4) * 0.5 * Math.max(0, Math.sin(t * 0.4)); });
+  }
+  if (key === 'potion') {
+    particles(k, at(-0.38, 0.2, 0.18), 0x60ff60, 12, { spread: S.x * 0.06, rise: S.y * 0.25, life: 1.4, size: S.y * 0.05 });
+    particles(k, at(0.12, 0.9, -0.08), 0x7aff8a, 8, { spread: S.x * 0.05, rise: S.y * 0.5, life: 3, size: S.y * 0.14, grow: 1.4, add: false, op: 0.55 });
+    const c = glowSprite(0x50ff70, S.y * 0.25, 0.6); c.position.copy(at(-0.38, 0.2, 0.18)); k.group.add(c);
+    const sh = glowSprite(0xff70ff, S.y * 0.2, 0.5); sh.position.copy(at(0.22, 0.28, 0.32)); k.group.add(sh);
+    k.anims.push((t) => { c.material.opacity = 0.45 + Math.sin(t * 6) * 0.15; sh.material.opacity = 0.3 + Math.sin(t * 1.7) * 0.2; });
+  }
+  if (key === 'heroes') {
+    for (const sx of [-0.3, 0.3]) flames(k, at(sx, 0.18, 0.4), S.y * 0.07);
+    particles(k, at(0, 0.6, 0.3), 0xffe070, 12, { spread: S.x * 0.35, rise: S.y * 0.5, life: 3.5, size: S.y * 0.03 });
+    const halo = glowSprite(0xffd060, S.y * 0.45, 0.3); halo.position.copy(at(0, 0.9, 0)); k.group.add(halo);
+    k.anims.push((t) => { halo.material.opacity = 0.2 + Math.sin(t * 1.5) * 0.15; });
+  }
+  if (key === 'summon') {
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(S.x * 0.16, 32), new THREE.MeshBasicMaterial({ map: swirl(), color: new THREE.Color(1.4, 0.8, 2.2), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    disc.position.copy(at(0, 0.21, 0.4)); k.group.add(disc);
+    const orb = glowSprite(0xffd060, S.y * 0.18, 0.8); orb.position.copy(at(0, 0.95, 0)); k.group.add(orb);
+    k.anims.push((t) => { disc.rotation.z = -t * 2.2; disc.material.opacity = 0.75 + Math.sin(t * 3) * 0.2; orb.material.opacity = 0.55 + Math.sin(t * 2.5) * 0.3; });
+    for (let i = 0; i < 3; i++) {
+      const cr = part('p_crystal', S.y * 0.14); if (!cr) break; k.group.add(cr);
+      k.anims.push((t) => { const a = t * 0.7 + (i / 3) * TAU; cr.position.set(Math.cos(a) * S.x * 0.55, S.y * (0.55 + Math.sin(t * 1.6 + i) * 0.08), Math.sin(a) * S.z * 0.55); cr.rotation.y = t * 1.5; });
+    }
+    particles(k, at(0, 0.2, 0.42), 0xd090ff, 14, { spread: S.x * 0.12, rise: S.y * 0.5, life: 2.2, size: S.y * 0.035 });
+  }
+  if (key === 'farm') {
+    const sails = part('p_sails', S.y * 0.68, 'max');
+    if (sails) { const hub = new THREE.Group(); hub.position.copy(at(HUB.farm[0], HUB.farm[1], HUB.farm[2])); hub.rotation.y = HUB.farm[3] || 0; hub.add(sails); k.group.add(hub); k.anims.push((t) => { sails.rotation.z = -t * 1.1; }); }
+  }
+  if (key === 'lumber') {
+    const wheel = part('p_wheel', S.y * 0.55);
+    if (wheel) { const w = new THREE.Group(); w.position.copy(at(HUB.wheel[0], HUB.wheel[1], HUB.wheel[2])); w.rotation.y = Math.PI / 2; w.add(wheel); k.group.add(w); k.anims.push((t) => { wheel.rotation.z = t * 0.9; }); }
+    const saw = part('p_saw', S.y * 0.28);
+    if (saw) { const sw = new THREE.Group(); sw.position.copy(at(HUB.saw[0], HUB.saw[1], HUB.saw[2])); sw.rotation.y = Math.PI / 2; sw.add(saw); k.group.add(sw); k.anims.push((t) => { saw.rotation.z = -t * 10; }); particles(k, at(HUB.saw[0], HUB.saw[1] - 0.06, HUB.saw[2] + 0.04), 0xe8c070, 8, { spread: S.x * 0.04, rise: S.y * 0.15, life: 0.8, size: S.y * 0.02, add: false }); }
+    particles(k, at(HUB.wheel[0], 0.08, HUB.wheel[2]), 0xc8f0ff, 10, { spread: S.x * 0.05, rise: S.y * 0.12, life: 0.7, size: S.y * 0.03 });
+  }
+  if (key === 'quarry') {
+    const cart = part('p_cart', S.y * 0.2);
+    if (cart) { k.group.add(cart); k.anims.push((t) => { const u = (Math.sin(t * 0.5) + 1) / 2; cart.position.copy(at(-0.18, 0.06, 0.45 - u * 0.4)); cart.rotation.y = Math.PI / 2; }); }
+    const rope = new THREE.Mesh(g.cyl8, mats().iron), blk = new THREE.Mesh(boxUV(1, 0.8, 1, 1), mats().stone); blk.castShadow = true; k.group.add(rope, blk);
+    const bs = S.y * 0.09; blk.scale.setScalar(bs);
+    const top = at(0.2, 0.72, 0.05);
+    k.anims.push((t) => { const y = top.y - S.y * (0.15 + (Math.sin(t * 0.9) + 1) * 0.15); blk.position.set(top.x, y, top.z); rope.position.set(top.x, (top.y + y) / 2, top.z); rope.scale.set(S.y * 0.006, top.y - y, S.y * 0.006); blk.rotation.y = Math.sin(t * 0.6) * 0.4; });
+  }
+  if (key === 'warehouse') {
+    const rope = new THREE.Mesh(g.cyl8, mats().timber), crt = new THREE.Mesh(boxUV(1, 1, 1, 1), mats().plank); crt.castShadow = true; k.group.add(rope, crt);
+    crt.scale.setScalar(S.y * 0.08); const top = at(0, 0.66, 0.44);
+    k.anims.push((t) => { const y = top.y - S.y * (0.1 + (Math.sin(t * 0.7) + 1) * 0.12); crt.position.set(top.x, y, top.z); rope.position.set(top.x, (top.y + y) / 2, top.z); rope.scale.set(S.y * 0.005, top.y - y, S.y * 0.005); });
+  }
+  if (key === 'academy') {
+    const arm = part('p_armillary', S.y * 0.25, 'y');
+    if (arm) { arm.position.copy(at(-0.42, 0.02, 0.42)); k.group.add(arm); const inner = arm.children[0]; k.anims.push((t) => { arm.rotation.y = t * 0.8; }); }
+    const star = glowSprite(0xa0d0ff, S.y * 0.12, 0.8); k.group.add(star);
+    k.anims.push((t) => { const u = (t * 0.5) % 1; star.position.copy(at(-0.15 + u * 0.3, 0.88 + u * 0.4, -0.1)); star.material.opacity = Math.sin(u * Math.PI) * 0.9; });
+    particles(k, at(0.2, 0.3, 0.4), 0xfff0b0, 8, { spread: S.x * 0.2, rise: S.y * 0.4, life: 3, size: S.y * 0.025 });
+  }
+}
+// parça konumları (normalize) — yeni modeller için
+const HUB = { farm: [0.22, 0.86, 0.19, 0], wheel: [-0.5, 0.3, -0.2], saw: [0.05, 0.34, 0.27] };
+let createSoldierRef = null, animRef = null;
+export function setUnitFactory(cs, an) { createSoldierRef = cs; animRef = an; }
 
 const BUILDERS = { academy, townhall, barracks, archery, hospital, potion, heroes, summon, farm, lumber, quarry, warehouse };
 export function createBuilding(key, level) {

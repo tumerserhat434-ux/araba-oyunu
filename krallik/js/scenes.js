@@ -575,3 +575,35 @@ export function getPortrait(id) {
   });
   return portraitCache[id];
 }
+
+// =====================================================================
+//  BİNA PORTRELERİ (panel başlığı için)
+// =====================================================================
+const bPortraits = {};
+export function getBuildingPortrait(key, level) {
+  const id = key + ':' + level;
+  if (bPortraits[id]) return bPortraits[id];
+  bPortraits[id] = new Promise((resolve) => {
+    setTimeout(() => {
+      const R = portraitRenderer();
+      R.renderer.setSize(220, 220, false);
+      R.camera.aspect = 1; R.camera.updateProjectionMatrix();
+      const bg = new THREE.Color(0x4a8ad0);
+      R.scene.background = bg;
+      const m = BLD.createBuilding(key, Math.max(1, level));
+      m.userData.update?.(1.0, 0.016);
+      R.scene.add(m);
+      m.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3());
+      const d = Math.max(sz.x, sz.y * 1.1, sz.z) * 1.65;
+      R.camera.position.set(c.x + d * 0.62, c.y + d * 0.42, c.z + d * 0.72);
+      R.camera.lookAt(c.x, c.y - sz.y * 0.05, c.z);
+      R.renderer.render(R.scene, R.camera);
+      const url = R.canvas.toDataURL('image/jpeg', 0.88);
+      R.scene.remove(m);
+      R.renderer.setSize(240, 320, false); R.camera.aspect = 240 / 320; R.camera.updateProjectionMatrix();
+      resolve(url);
+    }, 0);
+  });
+  return bPortraits[id];
+}

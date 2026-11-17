@@ -20,6 +20,8 @@ export const CHAR_LIST = ['Knight', 'Barbarian', 'Rogue', 'Rogue_Hooded', 'Mage'
 // Higgsfield ile özel tasarlanan binalar (assets/hf/<anahtar>.glb)
 export const HF_LIST = ['townhall', 'barracks', 'archery', 'hospital', 'potion', 'heroes', 'summon', 'farm', 'lumber', 'quarry', 'warehouse', 'academy'];
 const hf = new Map(), hfSizes = new Map();
+export const PART_LIST = ['p_sails', 'p_wheel', 'p_saw', 'p_fountain', 'p_crystal', 'p_armillary', 'p_cart'];
+const CENTERED = new Set(['p_sails', 'p_wheel', 'p_saw', 'p_crystal']);
 export const hasHF = (k) => hf.has(k);
 export function hfModel(k) { const m = hf.get(k); return m ? m.clone(true) : null; }
 export const hfSize = (k) => hfSizes.get(k);
@@ -56,8 +58,17 @@ export async function loadAll(onProgress = () => {}) {
     hfSizes.set(k, new THREE.Box3().setFromObject(pivot).getSize(new THREE.Vector3()));
     hf.set(k, pivot); tick();
   }).catch(() => tick()));
+  const pjobs = PART_LIST.map((k) => loader.loadAsync('assets/hf/' + k + '.glb').then((g) => {
+    const root = g.scene; prep(root);
+    root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.6; o.material.metalness = 0; } });
+    const pivot = new THREE.Group(); pivot.add(root); root.rotation.y = -Math.PI / 2; root.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(root), c = b.getCenter(new THREE.Vector3());
+    root.position.set(-c.x, CENTERED.has(k) ? -c.y : -b.min.y, -c.z); pivot.updateMatrixWorld(true);
+    hfSizes.set(k, new THREE.Box3().setFromObject(pivot).getSize(new THREE.Vector3()));
+    hf.set(k, pivot);
+  }).catch(() => {}));
   await Promise.all(jobs); ready.models = models.size > 0;
-  await Promise.all(hjobs);
+  await Promise.all(hjobs); await Promise.all(pjobs);
   await Promise.all(cjobs); ready.chars = chars.size > 0;
 }
 // Statik model kopyası (geometri ve malzemeler paylaşılır)
