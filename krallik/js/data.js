@@ -22,6 +22,9 @@ export const BUILDINGS = {
   lumber: { name: 'Kereste Atölyesi', icon: '🪵', desc: 'Odun üretir.', base: { food: 90, wood: 40, stone: 0 }, time: 5, reqTH: 1, prod: 'wood', rate: 800 },
   quarry: { name: 'Taş Ocağı', icon: '🪨', desc: 'Taş üretir.', base: { food: 90, wood: 90, stone: 0 }, time: 6, reqTH: 2, prod: 'stone', rate: 500 },
   academy: { name: 'Akademi', icon: '📚', desc: 'Araştırma yapılır. Araştırmalar üretimi, eğitimi, savaş gücünü ve hastaneyi kalıcı olarak güçlendirir.', base: { food: 300, wood: 300, stone: 200 }, time: 12, reqTH: 3 },
+  forge: { name: 'Demirhane', icon: '⚒️', img: 'b_forge', desc: 'Silah ve zırh döver. Her seviye tüm birliklerin savunmasını artırır ve tank üretimini hızlandırır.', base: { food: 160, wood: 220, stone: 260 }, time: 11, reqTH: 2 },
+  rally: { name: 'Toplanma Kampı', icon: '⛺', img: 'b_rally', desc: 'Ordular seferden önce burada toplanır. Her seviye saldırı gücünü ve ganimet taşıma kapasitesini artırır.', base: { food: 260, wood: 240, stone: 120 }, time: 11, reqTH: 2 },
+  tankyard: { name: 'Tank Atölyesi', icon: '⚙️', img: 'b_tankyard', desc: 'Demir tanklar burada üretilir. Seviye arttıkça bir seferde daha çok tank üretilir ve üretim hızlanır.', base: { food: 400, wood: 480, stone: 520 }, time: 16, reqTH: 3, reqB: { forge: 1 } },
   warehouse: { name: 'Ambar', icon: '📦', desc: 'Kaynak depolama sınırını artırır ve yağmada kaynaklarının bir kısmını korur.', base: { food: 120, wood: 150, stone: 80 }, time: 8, reqTH: 2 },
 };
 export const MAX_LEVEL = 10;
@@ -44,6 +47,9 @@ export const PLOTS = [
   { id: 'lumber2', key: 'lumber', x: 28, z: 12 },
   { id: 'quarry1', key: 'quarry', x: -26, z: -22 },
   { id: 'quarry2', key: 'quarry', x: 26, z: -22 },
+  { id: 'tankyard', key: 'tankyard', x: -14, z: 28 },
+  { id: 'rally', key: 'rally', x: -12, z: -30 },
+  { id: 'forge', key: 'forge', x: 12, z: -30 },
 ];
 
 export function upgradeCost(key, toLevel) {
@@ -61,12 +67,14 @@ export const TROOPS = {
   spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 30, wood: 30, stone: 0 }, time: 1.2, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
   archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 25, wood: 35, stone: 0 }, time: 1.4, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
   cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 60, wood: 30, stone: 20 }, time: 2.2, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
+  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
 export const COUNTER = {
-  infantry: { infantry: 1, spearman: 1.05, archer: 1, cavalry: 1.05 },
-  spearman: { infantry: 0.95, spearman: 1, archer: 1, cavalry: 1.5 },
-  archer: { infantry: 1.3, spearman: 1.3, archer: 1, cavalry: 0.75 },
-  cavalry: { infantry: 1.05, spearman: 0.7, archer: 1.5, cavalry: 1 },
+  infantry: { infantry: 1, spearman: 1.05, archer: 1, cavalry: 1.05, tank: 0.8 },
+  spearman: { infantry: 0.95, spearman: 1, archer: 1, cavalry: 1.5, tank: 0.9 },
+  archer: { infantry: 1.3, spearman: 1.3, archer: 1, cavalry: 0.75, tank: 0.55 },
+  cavalry: { infantry: 1.05, spearman: 0.7, archer: 1.5, cavalry: 1, tank: 0.75 },
+  tank: { infantry: 1.35, spearman: 1.35, archer: 1.5, cavalry: 1.2, tank: 1 },
 };
 
 // Kahramanlar — tamamen özgün karakterler
@@ -155,8 +163,12 @@ export const QUESTS = [
   { id: 'q6', text: 'Belediye Binası\'nı Sv.3 yap', t: ['bld', 'townhall', 3], reward: { gold: 80, stone: 1500 } },
   { id: 'q7', text: 'Akademi inşa et', t: ['bld', 'academy', 1], reward: { food: 2500, wood: 2500 } },
   { id: 'q8', text: 'Bir araştırma tamamla', t: ['stat', 'researched', 1], reward: { gold: 60 } },
+  { id: 'qf1', text: 'Demirhane inşa et', t: ['bld', 'forge', 1], reward: { wood: 2000, stone: 2000 } },
+  { id: 'qr1', text: 'Toplanma Kampı inşa et', t: ['bld', 'rally', 1], reward: { food: 2500, gold: 50 } },
   { id: 'q9', text: 'Toplam 10 kahraman çağır', t: ['stat', 'summons', 10], reward: { gold: 100 } },
   { id: 'q10', text: 'Kışla\'yı Sv.3 yap (süvari açılır)', t: ['bld', 'barracks', 3], reward: { food: 3000, stone: 1500 } },
+  { id: 'qt1', text: 'Tank Atölyesi inşa et', t: ['bld', 'tankyard', 1], reward: { stone: 4000, gold: 80 } },
+  { id: 'qt2', text: '5 Demir Tank üret', t: ['stat', 'tanks', 5], reward: { gold: 120, stone: 3000 } },
   { id: 'q11', text: '5 savaş kazan', t: ['stat', 'wins', 5], reward: { gold: 120 } },
   { id: 'q12', text: 'Belediye Binası\'nı Sv.5 yap', t: ['bld', 'townhall', 5], reward: { gold: 150, food: 5000, wood: 5000 } },
   { id: 'q13', text: '4★ veya daha iyi bir kahraman edin', t: ['hero', 4], reward: { gold: 150 } },

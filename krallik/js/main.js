@@ -3,7 +3,7 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BLD from './buildings.js';
-import { createSoldier, animateUnit, createCitizen } from './units.js';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
 import * as ASSETS from './assets.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
@@ -171,7 +171,7 @@ function buildNature() {
     city.add(instancify(BLD.createTree(v), ms));
   }
   // şehir içi birkaç ağaç
-  const inner = [[-8, 26], [6, 30], [-22, -10], [22, -12], [-6, -26], [9, -27], [-21, 24], [-34, 2], [34, 3]];
+  const inner = [[6, 30], [-22, -10], [22, -12], [-34, 2], [34, 3]];
   for (const [x, z] of inner) { const t = BLD.createTree(Math.floor(Math.random() * 3)); t.position.set(x, 0, z); t.rotation.y = rand(0, 6); city.add(t); }
   const rs = [];
   for (let i = 0; i < 30; i++) { const a = Math.random() * 6.28, r = rand(45, 76); const x = Math.cos(a) * r, z = Math.sin(a) * r; if (avoid(x, z)) continue; const rk = BLD.createRock(rand(0.6, 1.8)); rk.position.set(x, 0, z); rk.rotation.y = rand(0, 6); city.add(rk); rs.push(rk); }
@@ -516,10 +516,11 @@ function updateLabels(force) {
     let html = '';
     if (b.busyUntil > t) html += `<div class="tm">🔨 ${G.fmtTime(b.busyUntil - t)}</div>`;
     else if (b.level === 0) {
-      const req = def.reqTH;
-      html += G.thLevel() >= req ? `<div class="build">＋ ${def.name}</div>` : `<div class="lock">🔒 ${def.name}</div>`;
+      const req = def.reqTH, reqOk = !def.reqB || Object.entries(def.reqB).every(([rk, rl]) => G.maxLevelOf(rk) >= rl);
+      html += G.thLevel() >= req && reqOk ? `<div class="build">＋ ${def.name}</div>` : `<div class="lock">🔒 ${def.name}</div>`;
     } else {
       if (id === 'barracks' && G.S.training) html += `<div class="tm">${TROOPS[G.S.training.type].icon} ${G.fmtTime(G.S.training.end - t)}</div>`;
+      if (p.key === 'tankyard' && G.S.tankTraining) html += `<div class="tm">${TROOPS.tank.icon} ${G.fmtTime(G.S.tankTraining.end - t)}</div>`;
       if (p.key === 'academy' && G.S.research.cur) html += `<div class="tm">🔬 ${G.fmtTime(G.S.research.cur.end - t)}</div>`;
       if (p.key === 'hospital' && G.S.healing) html += `<div class="tm heal">💚 ${G.fmtTime(G.S.healing.end - t)}</div>`;
       if (p.key === 'potion' && G.S.potions > 0) html += `<div class="bub" style="animation:none;font-size:16px">🧪${G.S.potions}</div>`;
@@ -600,6 +601,9 @@ function renderSheet() {
     if (key === 'heroes') body += `<div class="stats">${stat('Kahraman sayısı', Object.keys(G.S.heroes).length + ' / ' + HEROES.length)}${stat('Kahraman seviye sınırı', G.heroMaxLevel())}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="heroes">🛡️ Kahramanları göster</button>`;
     if (key === 'summon') body += `<div class="stats">${stat('5★ şansı', '%0,6')}${stat('5★ garanti', `${G.S.pity5} / ${SUMMON.pity5}`)}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="summon">🔮 Çağırma ekranını aç</button>`;
     if (key === 'barracks') body += barracksUI();
+    if (key === 'tankyard') body += tankyardUI();
+    if (key === 'forge') body += `<div class="stats">${stat('Birlik savunması', '+' + Math.round(G.forgeDefBonus() * 100) + '%', L < MAX_LEVEL ? '+' + Math.round((L + 1) * 2.5) + '%' : '')}${stat('Tank üretim hızı', '+' + L * 8 + '%', L < MAX_LEVEL ? '+' + (L + 1) * 8 + '%' : '')}</div>`;
+    if (key === 'rally') body += `<div class="stats">${stat('Saldırı gücü', '+' + L * 3 + '%', L < MAX_LEVEL ? '+' + (L + 1) * 3 + '%' : '')}${stat('Ganimet kapasitesi', '+' + L * 8 + '%', L < MAX_LEVEL ? '+' + (L + 1) * 8 + '%' : '')}${stat('Hazır ordu', G.fmt(G.totalTroops(G.S.troops)))}${stat('Tanklar', G.fmt(G.S.troops.tank || 0))}</div><button class="btn red" style="width:100%;margin-bottom:10px" data-go="world">⚔ Sefere çık</button>`;
     if (key === 'academy') body += academyUI();
     if (key === 'hospital') body += hospitalUI();
     if (key === 'potion') {
@@ -614,6 +618,8 @@ function renderSheet() {
   if (!PORTRAIT_CACHE[pkey]) getBuildingPortrait(key, Math.max(1, L)).then((u) => { PORTRAIT_CACHE[pkey] = u; const el = $('shPortrait'); if (el && sheetId === id) el.innerHTML = `<img src="${u}">`; });
   const sl = $('qtySlider');
   if (sl) sl.oninput = () => { trainQty = +sl.value; renderSheetSoon(); };
+  const tsl = $('tankSlider');
+  if (tsl) tsl.oninput = () => { tankQty = +tsl.value; renderSheetSoon(); };
 }
 let soon = 0;
 function renderSheetSoon() { clearTimeout(soon); soon = setTimeout(renderSheet, 30); }
@@ -628,7 +634,9 @@ function barracksUI() {
   const max = G.trainBatchMax();
   trainQty = clamp(trainQty, 1, max);
   let cards = '';
+  if (TROOPS[trainSel].building) trainSel = 'infantry';
   for (const k in TROOPS) {
+    if (TROOPS[k].building) continue;
     const d = TROOPS[k], un = G.troopUnlocked(k);
     cards += `<div class="troop ${k === trainSel ? 'sel' : ''} ${un ? '' : 'locked'}" data-troop="${k}"><span class="ti">${d.icon}</span>${d.short}<small>${un ? G.fmt(G.S.troops[k]) : '🔒 Kışla ' + d.reqBarracks}</small></div>`;
   }
@@ -639,6 +647,24 @@ function barracksUI() {
     <input id="qtySlider" class="slider" type="range" min="1" max="${max}" value="${trainQty}">
     <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
     <button class="btn red" style="width:100%;margin-bottom:10px" data-act="train" ${G.troopUnlocked(trainSel) && G.canAfford(cost) ? '' : 'disabled'}>⚔ Eğit</button>`;
+}
+let tankQty = 2;
+function tankyardUI() {
+  const t = Date.now() / 1000, d = TROOPS.tank;
+  let s = `<div class="stats"><div class="stat"><small>Tanklarım</small><b>${G.fmt(G.S.troops.tank || 0)}</b> <small style="display:inline;color:#ffaa8a">🤕 ${G.S.wounded.tank || 0}</small></div><div class="stat"><small>Parti / Hız</small><b>${G.tankBatchMax()} • x${G.tankSpeed().toFixed(2)}</b></div></div>`;
+  if (G.S.tankTraining) {
+    const tr = G.S.tankTraining, pct = (t - tr.start) / (tr.end - tr.start) * 100;
+    return s + `<p class="desc"><b>${d.icon} ${tr.n} ${d.name}</b> üretiliyor…</p>
+      <div class="progress green"><span style="width:${pct}%"></span><em>${G.fmtTime(tr.end - t)}</em></div>
+      <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedtank">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(tr.end - t)}</button>`;
+  }
+  const max = G.tankBatchMax(); tankQty = clamp(tankQty, 1, max);
+  const cost = G.trainCost('tank', tankQty), time = d.time * tankQty / G.tankSpeed();
+  return s + `<div class="tankcard"><img src="assets/ui/b_tank.webp" alt=""><div><b>${d.name}</b><br>${d.desc}<br><small>⚔ ${d.atk} &nbsp; 🛡 ${d.def} &nbsp; ❤ ${d.hp} &nbsp; 🎒 ${d.load}</small></div></div>
+    <div class="qty"><span>Miktar</span><span>${tankQty} / ${max}</span></div>
+    <input id="tankSlider" class="slider" type="range" min="1" max="${max}" value="${tankQty}">
+    <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
+    <button class="btn red" style="width:100%;margin-bottom:10px" data-act="traintank" ${G.canAfford(cost) ? '' : 'disabled'}>⚙️ Tank üret</button>`;
 }
 function academyUI() {
   const t = Date.now() / 1000, cur = G.S.research.cur;
@@ -694,6 +720,8 @@ $('sheet').addEventListener('click', (e) => {
   if (act === 'collect') doCollect(id);
   if (act === 'train') { const r = G.startTraining(trainSel, trainQty); if (!r.ok) toast(r.why, true); else { toast('⚔ Eğitim başladı'); sfx('train'); tutEvent('train'); } }
   if (act === 'speedtrain') { if (!G.speedTraining()) needGold(); }
+  if (act === 'traintank') { const r = G.startTankTraining(tankQty); if (!r.ok) toast(r.why, true); else { toast('⚙️ Tank üretimi başladı'); sfx('build'); } }
+  if (act === 'speedtank') { if (!G.speedTankTraining()) needGold(); }
   if (act === 'heal') { const r = G.startHealing(); if (!r.ok) toast(r.why, true); else { toast('💚 İyileştirme başladı'); sfx('heal'); } }
   if (act === 'potion') { const r = G.usePotion(); if (!r.ok) toast(r.why, true); else toast(`🧪 ${r.healed || ''} asker iyileşti`); }
   renderSheet(); updateTop(); updateLabels(true);
@@ -716,7 +744,7 @@ const ICON_MAP = { '🗺️': 'nav_world', '⚔️': 'nav_heroes', '🛡️': 'n
 const resImg = (r, sz = 18) => `<img src="${UI('res_' + r)}" width="${sz}" height="${sz}" alt="">`;
 const pill = (r, v) => `<span class="w-pill">${resImg(r)}+${G.fmt(v)}</span>`;
 function tabsHtml(tabs, active) { return `<aside class="w-side">${tabs.map((t) => `<button class="w-tab ${t.id === active ? 'on' : ''}" data-wtab="${t.id}"><img src="${UI(t.icon)}" alt=""><span>${t.label}</span>${t.dot ? '<em class="dot"></em>' : ''}</button>`).join('')}</aside>`; }
-export function closeModal() { $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; setNav('city'); }
+export function closeModal() { lastModalKey = ''; $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; setNav('city'); }
 $('modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') closeModal(); });
 function setNav(go) { document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.go === go)); }
 document.querySelectorAll('nav button, #rside .rbtn').forEach((b) => b.addEventListener('click', () => navigate(b.dataset.go)));
@@ -743,7 +771,16 @@ function head(title, icon, tabs, active) {
   PENDING_SIDE = tabs ? tabsHtml(tabs, active) : '';
   return `<div class="w-head"><div class="w-medal"><img src="${UI(ic)}" alt=""></div><div class="w-plaque"><i class="laurel l"></i><span>${title}</span><i class="laurel r"></i></div></div><button class="w-x" data-m="close">✕</button><!--/head-->`;
 }
+let lastModalKey = '';
 function renderModal() {
+  const key = modalKind + ':' + questTab + ':' + heroTab + ':' + shopTab + ':' + profTab;
+  const keep = key === lastModalKey && $('modal').classList.contains('open');
+  const sc = $('modalBox').querySelector('.w-main'), y = keep && sc ? sc.scrollTop : 0;
+  lastModalKey = key;
+  renderModalInner();
+  const sc2 = $('modalBox').querySelector('.w-main'); if (sc2 && y) sc2.scrollTop = y;
+}
+function renderModalInner() {
   const k = modalKind;
   if (k === 'world') return openModal(worldUI());
   if (k === 'heroes') { openModal(heroesUI()); return; }
@@ -976,6 +1013,7 @@ $('modalBox').addEventListener('click', (e) => {
   if (gq) { const v = gq.dataset.goq; const q = QUESTS.find((x) => x.id === v); closeModal();
     if (q && q.t[0] === 'bld') { const p = PLOTS.find((x) => x.key === q.t[1]); if (p) { openBuilding(p.id); focusOn(p.x, p.z); } return; }
     if (v.includes('trained') || (q && q.t[1] === 'trained')) { openBuilding('barracks'); focusOn(-17, 2); return; }
+    if (q && q.t[1] === 'tanks') { openBuilding('tankyard'); focusOn(-14, 28); return; }
     if (v.includes('wins') || (q && q.t[1] === 'wins')) return navigate('world');
     if (v.includes('summons') || (q && q.t[1] === 'summons')) return navigate('summon');
     if (v.includes('heals')) { openBuilding('hospital'); return; }
@@ -1107,7 +1145,7 @@ async function boot() {
   G.load();
   setLoad(4, 'Modeller yükleniyor…'); await frame();
   await ASSETS.loadAll((f) => setLoad(4 + f * 40, `Modeller yükleniyor… %${Math.round(f * 100)}`));
-  BLD.setUnitFactory(createSoldier, animateUnit);
+  BLD.setUnitFactory(createSoldier, animateUnit, createTank);
   setLoad(46, 'Arazi hazırlanıyor…'); await frame();
   city.environment = makeEnv(0x1a2a5a, 0x2a3a6a, 0x0a1010, false);
   city.environmentIntensity = 0.55;
@@ -1140,4 +1178,4 @@ async function boot() {
   requestAnimationFrame(loop);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
-window.__ds = { G, cam, navigate, holders, openBuilding, get grass() { return grassField; } };
+window.__ds = { G, cam, navigate, holders, openBuilding, createTank, closeModal, get grass() { return grassField; } };

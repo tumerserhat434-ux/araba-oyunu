@@ -9,7 +9,7 @@
 ## 0. Hızlı özet
 
 - **Depo:** `tumerserhat434-ux/araba-oyunu` (GitHub)
-- **Çalışılan dal:** `claude/forest-parkour-mobile-game-9oxplw`. Tüm işler bu dalda, `main` dalına hiç aktarılmadı.
+- **Çalışılan dal:** `claude/selam-naber-ilicoo` (güncel). Önceki dal `claude/forest-parkour-mobile-game-9oxplw` bunun içine alındı. `main` dalına hiç aktarılmadı.
 - **Oyunlar** (tarayıcıda çalışır, kurulum gerekmez):
   1. **Orman Kaçışı** (`orman-kacisi/`): Subway Surfers tarzı, yağmur ormanında gece geçen 3D sonsuz koşu. İlk çarpışmada ayı kovalar. **Tamamlandı, şu an dokunulmuyor.**
   2. **Demir Sancak** (`krallik/`): Rise of Kingdoms tarzı krallık kurma ve strateji oyunu. **Aktif geliştirilen proje.**
@@ -136,6 +136,9 @@ cd araba-oyunu && python3 -m http.server 8000
   | quarry | Taş Ocağı | 2 arsa |
   | warehouse | Ambar | Depo sınırı + yağma koruması |
   | academy | Akademi | Belediye Binası Sv.3 gerekir |
+  | forge | Demirhane | BB Sv.2. Tüm birlik savunması +%2,5/sv, tank üretim hızı +%8/sv. Arsa (12,-30) |
+  | rally | Toplanma Kampı | BB Sv.2. Saldırı gücü +%3/sv, ganimet taşıma +%8/sv. Arsa (-12,-30) |
+  | tankyard | Tank Atölyesi | BB Sv.3 + Demirhane Sv.1 (`reqB`). Tank üretir. Arsa (-14,28) |
 
 - **Seviyeler:**
   - En yüksek seviye 10.
@@ -156,7 +159,9 @@ cd araba-oyunu && python3 -m http.server 8000
   - Mızrakçı (spearman)
   - Okçu (archer)
   - Şövalye Süvari (cavalry, Kışla Sv.3 gerekir)
+  - **Demir Tank (tank)**: Tank Atölyesi'nde ayrı kuyrukta üretilir (`S.tankTraining`, `startTankTraining`). Parti `2 + atölyeSv×2`, hız `(1+atölye×0.1)×(1+demirhane×0.08)`. atk 70 / def 60 / hp 180 / yük 40. Güçlü düşmanlar (güç > 9000) az sayıda tank getirir.
 - **Karşılık tablosu (`COUNTER`):**
+  - Tank; piyade/mızrakçıya ×1.35, okçuya ×1.5, süvariye ×1.2. Okçular tanka ×0.55, süvari ×0.75.
   - Okçu, piyade ve mızrakçıya karşı ×1.3.
   - Süvari, okçuya karşı ×1.5.
   - Mızrakçı, süvariye karşı ×1.5.
@@ -312,6 +317,15 @@ cd araba-oyunu && python3 -m http.server 8000
 
 ---
 
+### 5.6 Tank ve yeni binalar (bu oturum)
+- Higgsfield: 4 görsel (`gpt_image_2_6`) + 4 Tripo H3.1 3D → `assets/hf/tankyard.glb`, `rally.glb`, `forge.glb`, `u_tank.glb` (parça listesinde). ~37 kredi.
+- Konsept görsellerinden kesilen simgeler: `assets/ui/b_tank.webp`, `b_tankyard.webp`, `b_rally.webp`, `b_forge.webp`.
+- `units.js → createTank(team)`: Higgsfield modeli, mavi/kırmızı ton; `animateTank` (sarsıntı, geri tepme, yok olma).
+- Savaş sahnesinde tanklar ön safta, topla atış yapar (gülle + patlama). Görselde 1 tank ≈ 8 asker ağırlığında, en fazla 8 tank.
+- Şehirde: Tank Atölyesi önünde park etmiş tank + baca dumanı; Demirhane ocak ateşi; Toplanma Kampı kamp ateşi ve iki nöbetçi.
+- Pencere kaydırma düzeltmesi: `.modal-box.win` yükseklik sınırlı, `.w-main` kendi içinde kayar (iPhone dahil).
+- Yeni görevler: qf1 (Demirhane), qr1 (Toplanma Kampı), qt1 (Tank Atölyesi), qt2 (5 tank üret, sayaç `tanks`).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
@@ -371,7 +385,7 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Bakiye geçmişi:**
   - Başta 113 kredi vardı, ~111'i 12 bina için harcandı.
   - Kullanıcı yükleme yaptı: plus plan, 1000 kredi.
-  - Son bilinen bakiye ~**613 kredi**. Son iki adımda (gece atmosferi, döngü) kredi kullanılmadı.
+  - Son bilinen bakiye ~**576 kredi** (tank + 3 bina için ~37 kredi harcandı).
 - **Yaklaşık maliyetler:**
 
   | İş | Model | Kredi |

@@ -123,25 +123,27 @@ export function openBattle(opts) {
   const units = [];
   const MAXU = 24;
   for (const team of ['blue', 'red']) {
-    const s = sides[team], tot = G.totalTroops(s.troops) || 1;
+    const s = sides[team], tot = G.totalTroops(s.troops) || 1, W = (t) => (t === 'tank' ? 8 : 1);
+    const wtot = Object.entries(s.troops).reduce((a, [t, n]) => a + n * W(t), 0) || 1;
     const N = clamp(Math.round(Math.sqrt(tot) * 1.6), 4, MAXU);
     const counts = {}; let used = 0;
-    for (const t in s.troops) { counts[t] = s.troops[t] > 0 ? Math.max(1, Math.round(N * s.troops[t] / tot)) : 0; used += counts[t]; }
-    const slots = { infantry: [], spearman: [], archer: [], cavalry: [] };
+    for (const t in s.troops) { counts[t] = s.troops[t] > 0 ? Math.min(t === 'tank' ? Math.min(8, s.troops[t]) : 99, Math.max(1, Math.round(N * s.troops[t] * W(t) / wtot))) : 0; used += counts[t]; }
     let row = 0;
-    for (const t of ['infantry', 'spearman', 'cavalry', 'archer']) {
+    for (const t of ['infantry', 'spearman', 'cavalry', 'tank', 'archer']) {
       for (let i = 0; i < counts[t]; i++) {
         let x, z;
         const col = i % 6, r = Math.floor(i / 6);
-        if (t === 'archer') { x = s.sign * (15 + r * 1.6); z = (col - 2.5) * 2.0; }
-        else if (t === 'cavalry') { const side = i % 2 ? 1 : -1; x = s.sign * (11 + Math.floor(i / 2) % 2 * 2.5); z = side * (8 + Math.floor(i / 4) * 2.6); }
-        else { x = s.sign * (9 + (row + r) * 1.6); z = (col - 2.5) * 1.9; }
+        const push = counts.tank ? 3.2 : 0;
+        if (t === 'archer') { x = s.sign * (15 + push + r * 1.6); z = (col - 2.5) * 2.0; }
+        else if (t === 'tank') { x = s.sign * (8 + Math.floor(i / 4) * 3.2); const nr = Math.min(4, counts.tank - Math.floor(i / 4) * 4); z = ((i % 4) - (nr - 1) / 2) * 3.6; }
+        else if (t === 'cavalry') { const side = i % 2 ? 1 : -1; x = s.sign * (11 + push + Math.floor(i / 2) % 2 * 2.5); z = side * (8 + Math.floor(i / 4) * 2.6); }
+        else { x = s.sign * (9 + push + (row + r) * 1.6); z = (col - 2.5) * 1.9; }
         const o = createSoldier(t, team);
-        const ring = new THREE.Mesh(teamRingGeo, team === 'blue' ? teamRingBlue : teamRingRed); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.scale.setScalar(t === 'cavalry' ? 1.5 : 1); o.add(ring);
+        const ring = new THREE.Mesh(teamRingGeo, team === 'blue' ? teamRingBlue : teamRingRed); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.scale.setScalar(t === 'tank' ? 2.6 : t === 'cavalry' ? 1.5 : 1); o.add(ring);
         o.position.set(x + rand(-0.3, 0.3), 0, z + rand(-0.3, 0.3));
         o.rotation.y = -s.sign * Math.PI / 2;
         scene.add(o);
-        units.push({ obj: o, team, type: t, alive: true, state: 'idle', phase: rand(0, 5), target: null, cd: rand(0.3, 1.5), ranged: t === 'archer' });
+        units.push({ obj: o, team, type: t, alive: true, state: 'idle', phase: rand(0, 5), target: null, cd: rand(0.3, 1.5), ranged: t === 'archer' || t === 'tank' });
       }
       if (t === 'infantry' && counts[t]) row += Math.ceil(counts[t] / 6);
     }
@@ -158,6 +160,17 @@ export function openBattle(opts) {
     const to = toObj.position.clone(); to.y = 1.1;
     arrows.push({ m, from: from.clone(), to, t: 0, d: 0.7 + from.distanceTo(to) * 0.02 });
   };
+  // top gülleleri ve patlamalar
+  const balls = [], booms = [];
+  const ballGeo = new THREE.SphereGeometry(0.22, 10, 8), ballMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1e, metalness: 0.6, roughness: 0.4 });
+  const cannon = (from, toObj) => {
+    const m = new THREE.Mesh(ballGeo, ballMat); scene.add(m);
+    const to = toObj.position.clone(); to.y = 0.5;
+    balls.push({ m, from: from.clone(), to, t: 0, d: 0.55 + from.distanceTo(to) * 0.025 });
+    const fl = sprite(0xffc060, 2.2, 1); fl.position.copy(from); scene.add(fl); booms.push({ s: fl, life: 0.18, max: 0.18, sc: 2.2 });
+    if (Math.random() < 0.6) C.sfx('clash');
+  };
+  const boom = (p) => { for (const [c, sc, l] of [[0xff9a30, 4.5, 0.45], [0xffe090, 2.2, 0.3], [0x3a3030, 5, 0.9]]) { const s = sprite(c, sc, 1); if (c === 0x3a3030) s.material.blending = THREE.NormalBlending; s.position.set(p.x, 0.9, p.z); scene.add(s); booms.push({ s, life: l, max: l, sc }); } };
   // toz/kıvılcım
   const sparks = [];
   for (let i = 0; i < 24; i++) { const s = sprite(0xffd890, 0.5, 0); scene.add(s); sparks.push({ s, life: 0 }); }
@@ -234,7 +247,13 @@ export function openBattle(opts) {
           const tp = u.target.obj.position, me = u.obj.position;
           const dx = tp.x - me.x, dz = tp.z - me.z, d = Math.hypot(dx, dz);
           u.obj.rotation.y = Math.atan2(dx, dz);
-          if (u.ranged) {
+          if (u.type === 'tank') {
+            if (d > 16) { me.x += dx / d * 2.4 * dt; me.z += dz / d * 2.4 * dt; u.state = 'walk'; }
+            else {
+              u.state = 'attack'; u.cd -= dt;
+              if (u.cd <= 0) { u.cd = rand(1.6, 2.4); u.obj.userData.recoil = 1; cannon(new THREE.Vector3(me.x + dx / d * 1.4, 1.3, me.z + dz / d * 1.4), u.target.obj); }
+            }
+          } else if (u.ranged) {
             u.state = 'attack'; u.cd -= dt;
             if (u.cd <= 0 && d < 40) { u.cd = rand(1.0, 1.6); shoot(new THREE.Vector3(me.x, 1.5, me.z), u.target.obj); }
           } else if (d > (u.type === 'cavalry' ? 2.2 : 1.4)) {
@@ -270,6 +289,16 @@ export function openBattle(opts) {
       const pos = a.from.clone().lerp(a.to, a.t); pos.y += Math.sin(a.t * Math.PI) * (2 + a.from.distanceTo(a.to) * 0.12);
       const nxt = a.from.clone().lerp(a.to, Math.min(1, a.t + 0.02)); nxt.y += Math.sin(Math.min(1, a.t + 0.02) * Math.PI) * (2 + a.from.distanceTo(a.to) * 0.12);
       a.m.position.copy(pos); a.m.lookAt(nxt);
+    }
+    for (let i = balls.length - 1; i >= 0; i--) {
+      const b = balls[i]; b.t += dt / b.d;
+      if (b.t >= 1) { scene.remove(b.m); balls.splice(i, 1); boom(b.to); continue; }
+      b.m.position.copy(b.from).lerp(b.to, b.t); b.m.position.y += Math.sin(b.t * Math.PI) * (1.5 + b.from.distanceTo(b.to) * 0.08);
+    }
+    for (let i = booms.length - 1; i >= 0; i--) {
+      const f = booms[i]; f.life -= dt;
+      if (f.life <= 0) { scene.remove(f.s); booms.splice(i, 1); continue; }
+      const k = 1 - f.life / f.max; f.s.material.opacity = (1 - k) * 0.95; f.s.scale.setScalar(f.sc * (0.6 + k * 0.9)); f.s.position.y += dt * 0.8;
     }
     for (const f of sparks) { if (f.life > 0) { f.life -= dt; f.s.material.opacity = Math.max(0, f.life * 4); f.s.scale.setScalar(0.4 + (0.25 - f.life) * 4); } }
     if (T > 11.2) finish();

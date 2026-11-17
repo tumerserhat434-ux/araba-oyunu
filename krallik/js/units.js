@@ -654,7 +654,37 @@ function attachHero3d(obj, def) {
   A.loadHero3d(def.id).then((ok) => { if (ok) swap(); });
 }
 const PANTS = { blue: '#2a3448', red: '#3a2a24' };
+// ---- Demir Tank (Higgsfield modeli) ----
+const tankMats = new Map();
+export function createTank(team = 'blue', len = 2.7) {
+  const m = A.hfModel('u_tank'); if (!m) return null;
+  const sz = A.hfSize('u_tank'), k = len / Math.max(sz.x, sz.z);
+  m.scale.setScalar(k);
+  m.traverse((o) => {
+    if (!o.isMesh) return;
+    o.castShadow = true;
+    const key = o.material.uuid + team; if (!tankMats.has(key)) { const mt = o.material.clone(); mt.color = team === 'red' ? new THREE.Color(1.15, 0.58, 0.52) : new THREE.Color(0.78, 0.9, 1.25); tankMats.set(key, mt); } o.material = tankMats.get(key);
+  });
+  const obj = new THREE.Group(), inner = new THREE.Group(); m.rotation.y = Math.PI / 2; inner.add(m); obj.add(inner);
+  obj.userData = { tank: true, inner, h: sz.y * k, len, recoil: 0 };
+  return obj;
+}
+function animateTank(obj, state, t, dt) {
+  const ud = obj.userData, I = ud.inner; dt = Math.min(dt || 0.016, 0.1);
+  if (state === 'die') {
+    ud.dieT = (ud.dieT || 0) + dt; const e = Math.min(1, ud.dieT / 1.2);
+    I.rotation.z = e * 0.28; I.rotation.x = -e * 0.12; I.position.y = -e * ud.h * 0.25;
+    if (!ud.dark) { ud.dark = true; I.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.multiplyScalar(0.35); } }); }
+    return;
+  }
+  ud.recoil = Math.max(0, ud.recoil - dt * 3);
+  const moving = state === 'walk' || state === 'run';
+  I.position.y = moving ? Math.abs(Math.sin(t * 14)) * 0.035 : state === 'cheer' ? Math.abs(Math.sin(t * 5)) * 0.25 : I.position.y * 0.85;
+  I.rotation.x = moving ? Math.sin(t * 7) * 0.015 - 0.02 : -ud.recoil * 0.12;
+  I.position.z = -ud.recoil * 0.35;
+}
 export function createSoldier(type, team = 'blue') {
+  if (type === 'tank') { const tk = createTank(team); if (tk) return tk; type = 'cavalry'; }
   { const cfg = (KKCFG[team] || KKCFG.blue)[type]; if (cfg) { const o = kkUnit(cfg[0], cfg[1], cfg[2], { mounted: type === 'cavalry', team, coat: ['#5a3a22', '#3a2416', '#7a5a3a', '#2a2420'][Math.floor(Math.random() * 4)] }); if (o) return o; } }
   const col = teamColor(team), skin = SKINS[Math.floor(Math.random() * SKINS.length)];
   const hair = ['#2a1a10', '#4a2a14', '#1a1410', '#6a4020', '#8a6a40'][Math.floor(Math.random() * 5)];
@@ -821,6 +851,7 @@ function animateHorse(hs, state, t, dt, ud) {
 }
 export function animateUnit(obj, state, t, dt) {
   const ud = obj.userData;
+  if (ud.tank) return animateTank(obj, state, t, dt);
   if (ud.h3) {
     const H = ud.h3; dt = Math.min(dt || 0.016, 0.1); H.t += dt;
     H.mixer.update(dt * (state === 'cheer' ? 1.6 : 1));

@@ -28,8 +28,8 @@ function freshState() {
     name: 'Krallığım',
     res: { food: 6000, wood: 6000, stone: 3000, gold: 1200 },
     buildings,
-    troops: { infantry: 120, spearman: 60, archer: 80, cavalry: 0 },
-    wounded: { infantry: 0, spearman: 0, archer: 0, cavalry: 0 },
+    troops: { infantry: 120, spearman: 60, archer: 80, cavalry: 0, tank: 0 },
+    wounded: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0 },
     training: null, // { type, n, start, end }
     healing: null,  // { counts, start, end }
     potions: 2, potionAt: t,
@@ -53,6 +53,9 @@ export function load() {
   S.daily ||= { day: '', c: {}, claimed: {}, chest: false };
   S.login ||= { last: '', streak: 0 };
   S.research ||= { levels: {}, cur: null };
+  for (const t in TROOPS) { S.troops[t] ??= 0; S.wounded[t] ??= 0; }
+  for (const e of S.enemies) e.troops.tank ??= 0;
+  S.tankTraining ??= null;
   dailyReset();
   catchUp();
   save();
@@ -153,6 +156,7 @@ export function canUpgrade(id) {
   if (to > MAX_LEVEL) return { ok: false, why: 'En yüksek seviye' };
   if (key !== 'townhall' && to > thLevel()) return { ok: false, why: `Belediye Binası Sv.${to} gerekli` };
   if (key !== 'townhall' && b.level === 0 && BUILDINGS[key].reqTH > thLevel()) return { ok: false, why: `Belediye Binası Sv.${BUILDINGS[key].reqTH} gerekli` };
+  if (b.level === 0 && BUILDINGS[key].reqB) for (const rk in BUILDINGS[key].reqB) if (maxLevelOf(rk) < BUILDINGS[key].reqB[rk]) return { ok: false, why: `${BUILDINGS[rk].name} Sv.${BUILDINGS[key].reqB[rk]} gerekli` };
   if (busyBuilders() >= builders()) return { ok: false, why: 'Tüm inşaatçılar meşgul' };
   const cost = upgradeCost(key, to);
   if (!canAfford(cost)) return { ok: false, why: 'Yetersiz kaynak', cost };
@@ -203,10 +207,39 @@ export const hospitalCap = () => Math.round(maxLevelOf('hospital') * 180 * (1 + 
 export const potionCap = () => (maxLevelOf('potion') ? 3 + maxLevelOf('potion') * 2 : 0);
 export const potionInterval = () => 150 / Math.max(1, maxLevelOf('potion'));
 export const totalWounded = () => totalTroops(S.wounded);
-export function troopUnlocked(type) { const r = TROOPS[type].reqBarracks || 1; return barracksLevel() >= r; }
+export function troopUnlocked(type) { if (TROOPS[type].building) return maxLevelOf(TROOPS[type].building) >= 1; const r = TROOPS[type].reqBarracks || 1; return barracksLevel() >= r; }
+// Tank Atölyesi / Demirhane / Toplanma Kampı
+export const tankyardLevel = () => maxLevelOf('tankyard');
+export const forgeLevel = () => maxLevelOf('forge');
+export const rallyLevel = () => maxLevelOf('rally');
+export const tankBatchMax = () => 2 + tankyardLevel() * 2;
+export const tankSpeed = () => (1 + tankyardLevel() * 0.1) * (1 + forgeLevel() * 0.08);
+export const forgeDefBonus = () => forgeLevel() * 0.025;
+export const rallyAtkBonus = () => rallyLevel() * 0.03;
+export const rallyLoadBonus = () => rallyLevel() * 0.08;
+export function startTankTraining(n) {
+  if (S.tankTraining) return { ok: false, why: 'Atölye zaten üretimde' };
+  if (!troopUnlocked('tank')) return { ok: false, why: 'Önce Tank Atölyesi inşa et' };
+  n = Math.max(1, Math.min(n, tankBatchMax()));
+  const cost = trainCost('tank', n);
+  if (!canAfford(cost)) return { ok: false, why: 'Yetersiz kaynak' };
+  pay(cost);
+  const dur = TROOPS.tank.time * n / tankSpeed();
+  S.tankTraining = { type: 'tank', n, start: now(), end: now() + dur };
+  count('trained', n); count('tanks', n);
+  save(); emit('training');
+  return { ok: true };
+}
+export function speedTankTraining() {
+  if (!S.tankTraining) return false;
+  const g = gemCostForTime(S.tankTraining.end - now());
+  if (S.res.gold < g) return false;
+  S.res.gold -= g; S.tankTraining.end = now(); tick(); save(); return true;
+}
 export function trainCost(type, n) { const c = TROOPS[type].cost, o = {}; for (const r in c) o[r] = c[r] * n; return o; }
 export function startTraining(type, n) {
   if (S.training) return { ok: false, why: 'Kışla zaten eğitimde' };
+  if (TROOPS[type].building) return { ok: false, why: 'Bu birlik başka binada üretilir' };
   if (!troopUnlocked(type)) return { ok: false, why: `Kışla Sv.${TROOPS[type].reqBarracks} gerekli` };
   n = Math.min(n, trainBatchMax());
   const cost = trainCost(type, n);
@@ -339,6 +372,7 @@ function regenEnemy(e, power) {
   const n = Math.max(30, Math.round(power / per));
   const mix = [rand(0.2, 0.5), rand(0.1, 0.3), rand(0.15, 0.35), rand(0, 0.25)], sum = mix.reduce((a, b) => a + b, 0);
   ['infantry', 'spearman', 'archer', 'cavalry'].forEach((t, k) => { e.troops[t] = Math.round(n * mix[k] / sum); });
+  e.troops.tank = power > 9000 ? Math.round(n * rand(0.005, 0.03)) : 0;
   e.tower = Math.max(0, Math.round(power / 4000));
   e.th = Math.min(10, 1 + Math.floor(power / 3500));
   e.res = { food: Math.round(power * rand(1.5, 3)), wood: Math.round(power * rand(1.5, 3)), stone: Math.round(power * rand(0.6, 1.4)), gold: randi(5, 25) + Math.round(power / 2500) };
@@ -411,12 +445,12 @@ export function attackEnemy(enemyId, sent, heroId) {
   for (const t in sent) { sent[t] = Math.min(sent[t], S.troops[t]); }
   if (!totalTroops(sent)) return null;
   for (const t in sent) S.troops[t] -= sent[t];
-  const res = simulateBattle({ troops: sent, hero: heroOf(heroId), atkMul: 1 + rb('blade'), defMul: 1 + rb('armor') }, { troops: e.troops, hero: null, tower: e.tower * 120 });
+  const res = simulateBattle({ troops: sent, hero: heroOf(heroId), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: null, tower: e.tower * 120 });
   const split = applyLosses(res.aLoss);
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {};
   if (res.win) {
-    let cap = Object.entries(res.A).reduce((s, [t, n]) => s + n * TROOPS[t].load, 0) * (1 + rb('logis'));
+    let cap = Object.entries(res.A).reduce((s, [t, n]) => s + n * TROOPS[t].load, 0) * (1 + rb('logis')) * (1 + rallyLoadBonus());
     for (const r of ['food', 'wood', 'stone']) { const take = Math.min(Math.floor(e.res[r] * 0.6), Math.floor(cap / 3)); loot[r] = take; e.res[r] -= take; }
     loot.gold = e.res.gold; e.res.gold = 0;
     addRes(loot);
@@ -440,7 +474,7 @@ export function resolveRaid() {
   const name = KINGDOM_NAMES[randi(0, KINGDOM_NAMES.length - 1)];
   const attacker = makeEnemy(name, LORD_NAMES[randi(0, LORD_NAMES.length - 1)], strength, 0);
   const home = { ...S.troops };
-  const res = simulateBattle({ troops: attacker.troops, hero: null }, { troops: home, hero: heroOf(S.commander), tower: towerPower(), atkMul: 1 + rb('blade'), defMul: 1 + rb('armor') });
+  const res = simulateBattle({ troops: attacker.troops, hero: null }, { troops: home, hero: heroOf(S.commander), tower: towerPower(), atkMul: 1 + rb('blade'), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) });
   const defWin = !res.win;
   const split = applyLosses(res.dLoss);
   for (const t in S.troops) S.troops[t] = res.D[t];
@@ -472,6 +506,10 @@ export function tick() {
   if (S.training && S.training.end <= t) {
     S.troops[S.training.type] += S.training.n;
     emit('trained', S.training); S.training = null;
+  }
+  if (S.tankTraining && S.tankTraining.end <= t) {
+    S.troops.tank += S.tankTraining.n;
+    emit('trained', S.tankTraining); S.tankTraining = null;
   }
   if (S.healing && S.healing.end <= t) {
     for (const k in S.healing.counts) S.troops[k] += S.healing.counts[k];

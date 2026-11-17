@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as A from './assets.js';
 
-export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8 };
+export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8, tankyard: 9, rally: 9, forge: 7 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
@@ -849,6 +849,9 @@ const KKMAP = {
   quarry: { m: () => KB('mine') },
   warehouse: { m: () => KB('market') },
   academy: { m: () => KB('home_B'), fill: 0.5 },
+  tankyard: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15] },
+  rally: { m: () => KB('barracks') },
+  forge: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15], glow: 0xff8a30 },
 };
 const PROP_S = 4.2;
 const HF_SMOKE = { potion: [0.18, 0.9, -0.1], farm: [-0.15, 0.75, -0.05], lumber: [-0.3, 0.85, -0.15], hospital: [-0.25, 0.8, -0.2] };
@@ -1047,11 +1050,35 @@ function hfAnimate(k, key, L, S, fp) {
     k.anims.push((t) => { const u = (t * 0.5) % 1; star.position.copy(at(-0.15 + u * 0.3, 0.88 + u * 0.4, -0.1)); star.material.opacity = Math.sin(u * Math.PI) * 0.9; });
     particles(k, at(0.2, 0.3, 0.4), 0xfff0b0, 8, { spread: S.x * 0.2, rise: S.y * 0.4, life: 3, size: S.y * 0.025 });
   }
+  if (key === 'tankyard') {
+    const tk = createTankRef && createTankRef('blue', S.x * 0.42);
+    if (tk) { tk.position.copy(at(0.34, 0, 0.6)); tk.rotation.y = -0.5; k.group.add(tk); k.anims.push((t) => { tk.userData.inner.position.y = Math.abs(Math.sin(t * 20)) * 0.012; }); particles(k, at(0.26, 0.3, 0.52), 0x9a9a9a, 5, { spread: S.x * 0.02, rise: S.y * 0.5, life: 2.5, size: S.y * 0.08, grow: 1.6, add: false, op: 0.45 }); }
+    for (const x of [-0.36, -0.22]) particles(k, at(x, 0.98, -0.18), 0xb0b0b8, 6, { spread: S.x * 0.03, rise: S.y * 0.6, life: 3.2, size: S.y * 0.1, grow: 1.8, add: false, op: 0.5 });
+    const sp = glowSprite(0xffb050, S.y * 0.12, 0.7); sp.position.copy(at(0.05, 0.25, 0.48)); k.group.add(sp);
+    k.anims.push((t) => { sp.material.opacity = Math.random() < 0.08 ? 1 : 0.15 + Math.sin(t * 9) * 0.1; });
+  }
+  if (key === 'forge') {
+    flames(k, at(0.02, 0.22, 0.42), S.y * 0.12);
+    const fg = glowSprite(0xff7a20, S.y * 0.45, 0.55); fg.position.copy(at(0.02, 0.25, 0.45)); k.group.add(fg);
+    k.anims.push((t) => { fg.material.opacity = 0.4 + Math.sin(t * 7) * 0.1 + Math.sin(t * 17) * 0.05; });
+    particles(k, at(0.0, 0.18, 0.5), 0xffd060, 8, { spread: S.x * 0.08, rise: S.y * 0.25, life: 0.8, size: S.y * 0.02 });
+    particles(k, at(0.28, 1.0, -0.2), 0x8a8a90, 6, { spread: S.x * 0.03, rise: S.y * 0.6, life: 3, size: S.y * 0.12, grow: 1.6, add: false, op: 0.5 });
+  }
+  if (key === 'rally') {
+    flames(k, at(0, 0.06, 0.12), S.y * 0.22);
+    const cf = glowSprite(0xff9a40, S.y * 0.6, 0.45); cf.position.copy(at(0, 0.12, 0.12)); k.group.add(cf);
+    k.anims.push((t) => { cf.material.opacity = 0.35 + Math.sin(t * 8) * 0.08; });
+    for (const [x, z, ry, ty] of [[-0.2, 0.25, 0.6, 'infantry'], [0.2, 0.26, -0.6, 'spearman']]) {
+      const u = createSoldierRef && createSoldierRef(ty, 'blue'); if (!u) break;
+      u.scale.setScalar(Math.min(0.7, S.y * 0.3 / 1.85)); u.position.copy(at(x, 0.03, z)); u.rotation.y = Math.PI + ry; k.group.add(u);
+      const ph = Math.random() * 3; k.anims.push((t, dt) => animRef(u, 'idle', t + ph, dt));
+    }
+  }
 }
 // parça konumları (normalize) — yeni modeller için
 const HUB = { farm: [0.22, 0.86, 0.19, 0], wheel: [-0.5, 0.3, -0.2], saw: [0.05, 0.34, 0.27] };
-let createSoldierRef = null, animRef = null;
-export function setUnitFactory(cs, an) { createSoldierRef = cs; animRef = an; }
+let createSoldierRef = null, animRef = null, createTankRef = null;
+export function setUnitFactory(cs, an, ct) { createSoldierRef = cs; animRef = an; createTankRef = ct; }
 
 const BUILDERS = { academy, townhall, barracks, archery, hospital, potion, heroes, summon, farm, lumber, quarry, warehouse };
 export function createBuilding(key, level) {
