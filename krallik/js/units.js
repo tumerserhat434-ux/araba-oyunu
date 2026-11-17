@@ -646,12 +646,119 @@ function attachHero3d(obj, def) {
     // KayKit gövdesini (ve atı) gizle, yeni modeli ekle
     obj.children.forEach((c) => { if (!c.isSprite && !(c.isMesh && c.geometry && c.geometry.type === 'PlaneGeometry')) c.visible = false; });
     obj.add(h.scene);
-    const mixer = new THREE.AnimationMixer(h.inner);
-    const act = h.clips[0] && mixer.clipAction(h.clips[0]); if (act) { act.play(); mixer.update(Math.random() * 2); }
-    ud.h3 = { mixer, root: h.scene, inner: h.inner, t: 0, still: !act };
+    // Hazır iskelet animasyonu bu modellerde gövdeyi bozuyor: model temiz duruşunda kalır,
+    // nefes/bakış hareketleri kemiklere küçük açılarla koddan verilir.
+    const bones = {};
+    h.inner.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+    const B = {}, rest = new Map();
+    for (const [k, n] of [['spine', 'Spine01'], ['chest', 'Spine02'], ['neck', 'neck'], ['head', 'Head'], ['lArm', 'LeftArm'], ['rArm', 'RightArm'], ['hips', 'Hips']]) if (bones[n]) { B[k] = bones[n]; rest.set(bones[n], bones[n].rotation.clone()); }
+    ud.h3 = { root: h.scene, inner: h.inner, t: Math.random() * 10, B, rest, id: def.id };
     ud.mounted = false;
   };
   A.loadHero3d(def.id).then((ok) => { if (ok) swap(); });
+}
+// ---------------------------------------------------------------------
+//  Kahraman özel hareketleri ve efektleri
+// ---------------------------------------------------------------------
+export const HERO_MOVES = {
+  tugrul: ['charge', 0xffd060], elara: ['shot', 0xc8ffd8], baran: ['slam', 0xffc840], kaan: ['charge', 0x6ab0ff], lara: ['shot', 0xffa050],
+  oguz: ['slam', 0xb8b8c8], aybike: ['slash', 0xff6a5a], emre: ['roar', 0x6aa8ff], defne: ['shot', 0x9aff6a], burak: ['charge', 0xd8a060],
+  mert: ['slam', 0xd8d070], ali: ['slash', 0xf0f0ff], zeynep: ['shot', 0xa0ff80], cem: ['spin', 0xe0b070], hasan: ['slam', 0xc0b0a0],
+  kerem: ['roar', 0xffd040], selin: ['shot', 0x9ad8ff], bora: ['thunder', 0x60e8ff], nilufer: ['dawn', 0xffb060], doruk: ['steam', 0xff8a30],
+  tolga: ['slam', 0x8ae070], ece: ['poison', 0x7aff4a], arda: ['steam', 0xffc060],
+};
+let fxTex = null;
+function fxGlow() {
+  if (fxTex) return fxTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  fxTex = new THREE.CanvasTexture(c); return fxTex;
+}
+let boltTex = null;
+function fxBolt() {
+  if (boltTex) return boltTex;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+  g.strokeStyle = '#fff'; g.lineWidth = 5; g.shadowColor = '#9ff'; g.shadowBlur = 12; g.beginPath(); let x = 32; g.moveTo(x, 0);
+  for (let y = 16; y <= 256; y += 16) { x = 32 + (Math.random() - 0.5) * 40; g.lineTo(x, y); } g.stroke();
+  boltTex = new THREE.CanvasTexture(c); return boltTex;
+}
+let rayTex = null;
+function fxRays() {
+  if (rayTex) return rayTex;
+  const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+  g.translate(128, 128); for (let i = 0; i < 16; i++) { g.rotate(Math.PI / 8); const gr = g.createLinearGradient(0, 0, 0, 128); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-6, 0); g.lineTo(6, 0); g.lineTo(18, 128); g.lineTo(-18, 128); g.fill(); }
+  rayTex = new THREE.CanvasTexture(c); return rayTex;
+}
+function fxSprite(color, size, add = true, map = fxGlow()) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, color, transparent: true, depthWrite: false, blending: add ? THREE.AdditiveBlending : THREE.NormalBlending, opacity: 0 })); s.scale.setScalar(size); return s; }
+function fxRing(color) { const m = new THREE.Mesh(new THREE.RingGeometry(0.75, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); return m; }
+export function playHeroMove(obj) {
+  const ud = obj.userData; if (!ud.h3) return false;
+  const [type, color] = HERO_MOVES[ud.h3.id] || ['roar', 0xffd060];
+  stopMove(obj);
+  ud.move = { type, color: new THREE.Color(color), t: 0, dur: { charge: 1.15, slash: 1.0, shot: 1.15, slam: 1.35, spin: 1.05, roar: 1.3, thunder: 1.4, dawn: 1.5, poison: 1.2, steam: 1.4 }[type], fx: [], fired: {} };
+  return true;
+}
+function stopMove(obj) { const m = obj.userData.move; if (!m) return; for (const f of m.fx) { obj.remove(f.o); f.o.material?.dispose?.(); f.o.geometry?.type === 'RingGeometry' && f.o.geometry.dispose(); } obj.userData.move = null; }
+// efekt: o = nesne, life = ömür, step(k, f) her karede (k: 0..1)
+function addFx(obj, m, o, life, step) { obj.add(o); m.fx.push({ o, life, t: 0, step }); }
+const ease = (x) => x * x * (3 - 2 * x);
+function stepMove(obj, ud, H, dt) {
+  const m = ud.move, u = Math.min(1, m.t / m.dur), R = H.root, c = m.color, once = (k) => (m.fired[k] ? false : (m.fired[k] = true));
+  m.t += dt;
+  R.position.set(0, 0, 0); R.rotation.set(0, 0, 0); R.scale.setScalar(1);
+  const bell = Math.sin(Math.PI * u);
+  if (m.type === 'charge') {
+    R.position.z = bell * 0.9; R.rotation.x = bell * 0.16;
+    if (u < 0.55 && Math.random() < 0.6) { const d = fxSprite(0xc8b090, 0.4, false); d.position.set((Math.random() - 0.5) * 0.6, 0.1, R.position.z - 0.2); addFx(obj, m, d, 0.6, (k, f) => { f.o.material.opacity = (1 - k) * 0.5; f.o.scale.setScalar(0.4 + k * 0.6); f.o.position.y += 0.004; }); }
+    if (once('glow')) { const g = fxSprite(c, 2.6); g.position.set(0, 1.1, 0.4); addFx(obj, m, g, 0.9, (k, f) => { f.o.material.opacity = Math.sin(Math.PI * k) * 0.6; f.o.position.z = 0.4 + R.position.z; }); }
+  } else if (m.type === 'slash') {
+    R.rotation.y = u < 0.3 ? -0.55 * ease(u / 0.3) : -0.55 + 1.35 * ease(Math.min(1, (u - 0.3) / 0.25)) * (1 - Math.max(0, (u - 0.6) / 0.4));
+    R.position.z = u > 0.3 ? Math.sin(Math.PI * Math.min(1, (u - 0.3) / 0.7)) * 0.35 : 0;
+    if (u > 0.32 && once('arc')) { const ring = fxRing(c); ring.position.set(0, 1.05, 0.35); ring.rotation.z = 0.25; addFx(obj, m, ring, 0.45, (k, f) => { f.o.material.opacity = (1 - k) * 0.9; f.o.scale.setScalar(0.5 + k * 0.9); }); for (let i = 0; i < 8; i++) { const sp = fxSprite(c, 0.18); const a = Math.random() * 6.28; sp.position.set(Math.cos(a) * 0.6, 1.05 + Math.sin(a) * 0.3, 0.6); addFx(obj, m, sp, 0.5, (k, f) => { f.o.material.opacity = 1 - k; f.o.position.y += 0.01; }); } }
+  } else if (m.type === 'shot' || m.type === 'poison') {
+    R.rotation.x = u < 0.35 ? -0.1 * ease(u / 0.35) : -0.1 * (1 - ease(Math.min(1, (u - 0.35) / 0.3)));
+    if (u > 0.35 && once('fire')) {
+      const fl = fxSprite(c, 1.2); fl.position.set(0.15, 1.3, 0.35); addFx(obj, m, fl, 0.3, (k, f) => { f.o.material.opacity = 1 - k; f.o.scale.setScalar(1.2 + k); });
+      const ar = fxSprite(c, 0.5); addFx(obj, m, ar, 0.55, (k, f) => { f.o.position.set(0.15 + k * 1.6, 1.3 + k * 0.9, 0.35 + k * 3.5); f.o.material.opacity = 1 - k * 0.6; });
+      for (let i = 0; i < 6; i++) { const tr = fxSprite(c, 0.28); const d = i * 0.05; addFx(obj, m, tr, 0.55 + d, (k, f) => { const kk = Math.max(0, k - d * 1.5); f.o.position.set(0.15 + kk * 1.6, 1.3 + kk * 0.9, 0.35 + kk * 3.5); f.o.material.opacity = (1 - k) * 0.6; }); }
+    }
+    if (m.type === 'poison' && Math.random() < 0.5) { const b = fxSprite(c, 0.16); b.position.set((Math.random() - 0.5) * 0.9, 0.3 + Math.random() * 0.5, (Math.random() - 0.5) * 0.6); addFx(obj, m, b, 1, (k, f) => { f.o.position.y += 0.012; f.o.material.opacity = Math.sin(Math.PI * k) * 0.9; }); }
+  } else if (m.type === 'slam' || m.type === 'steam') {
+    const up = Math.min(1, u / 0.55);
+    R.position.y = u >= 0.55 ? 0 : up < 0.7 ? Math.sin(Math.PI / 2 * up / 0.7) * 0.55 : 0.55 * (1 - (up - 0.7) / 0.3);
+    if (u >= 0.55) { const s2 = Math.max(0, 1 - (u - 0.55) / 0.2); R.scale.set(1 + s2 * 0.06, 1 - s2 * 0.08, 1 + s2 * 0.06); }
+    if (u >= 0.55 && once('boom')) {
+      for (let i = 0; i < 2; i++) { const ring = fxRing(c); ring.position.y = 0.04; addFx(obj, m, ring, 0.6 + i * 0.2, (k, f) => { f.o.material.opacity = (1 - k) * 0.9; f.o.scale.setScalar(0.3 + k * (2.2 + i)); }); }
+      for (let i = 0; i < 10; i++) { const d = fxSprite(m.type === 'steam' ? 0xd0d0d8 : 0xc8b090, 0.5, false); const a = (i / 10) * 6.28; addFx(obj, m, d, 0.8, (k, f) => { f.o.position.set(Math.cos(a) * (0.3 + k * 1.2), 0.15 + k * 0.3, Math.sin(a) * (0.3 + k * 1.2)); f.o.material.opacity = (1 - k) * 0.55; f.o.scale.setScalar(0.4 + k * 0.6); }); }
+      const fl = fxSprite(c, 2.2); fl.position.y = 0.3; addFx(obj, m, fl, 0.35, (k, f) => { f.o.material.opacity = 1 - k; });
+    }
+    if (m.type === 'steam' && Math.random() < 0.55) { const p = fxSprite(0xe0e0e8, 0.35, false); p.position.set(-0.2 + Math.random() * 0.4, 1.5 + R.position.y, -0.25); addFx(obj, m, p, 1.1, (k, f) => { f.o.position.y += 0.012; f.o.material.opacity = Math.sin(Math.PI * k) * 0.5; f.o.scale.setScalar(0.35 + k * 0.7); }); if (Math.random() < 0.4) { const sp = fxSprite(c, 0.12); sp.position.set((Math.random() - 0.5) * 0.8, 0.9, 0.3); addFx(obj, m, sp, 0.5, (k, f) => { f.o.position.y += 0.02; f.o.material.opacity = 1 - k; }); } }
+  } else if (m.type === 'spin') {
+    R.rotation.y = ease(u) * Math.PI * 2; R.position.y = bell * 0.2;
+    if (Math.random() < 0.7) { const a = Math.random() * 6.28, sp = fxSprite(c, 0.22); addFx(obj, m, sp, 0.6, (k, f) => { const aa = a + k * 4; f.o.position.set(Math.cos(aa) * 0.8, 0.4 + k * 1.2, Math.sin(aa) * 0.8); f.o.material.opacity = 1 - k; }); }
+  } else if (m.type === 'roar') {
+    R.scale.setScalar(1 + bell * 0.06); R.rotation.x = -bell * 0.08;
+    if (once('aura')) { const g = fxSprite(c, 3.2); g.position.y = 1.1; addFx(obj, m, g, 1.2, (k, f) => { f.o.material.opacity = Math.sin(Math.PI * k) * 0.55; f.o.scale.setScalar(2.6 + k * 1.2); }); }
+    if (m.t > 0.15 * (Object.keys(m.fired).length) && Object.keys(m.fired).length < 4 && once('r' + Object.keys(m.fired).length)) { const ring = fxRing(c); addFx(obj, m, ring, 0.9, (k, f) => { f.o.position.y = 0.1 + k * 1.8; f.o.scale.setScalar(0.9 - k * 0.3); f.o.material.opacity = (1 - k) * 0.8; }); }
+  } else if (m.type === 'thunder') {
+    R.position.y = bell * 0.18;
+    if (Math.random() < 0.25 && u < 0.8) { const bl = fxSprite(c, 1, true, fxBolt()); bl.scale.set(0.5, 2.6, 1); bl.position.set((Math.random() - 0.5) * 1.6, 1.3, (Math.random() - 0.5) * 0.8); addFx(obj, m, bl, 0.18, (k, f) => { f.o.material.opacity = Math.random() < 0.5 ? 1 : 0.3; }); }
+    if (once('flash')) { const g = fxSprite(c, 3.4); g.position.y = 1.1; addFx(obj, m, g, 1.3, (k, f) => { f.o.material.opacity = (0.3 + Math.random() * 0.4) * (1 - k); }); }
+  } else if (m.type === 'dawn') {
+    R.position.y = bell * 0.15;
+    if (once('rays')) { const r = fxSprite(c, 3.6, true, fxRays()); r.position.set(0, 1.2, -0.3); addFx(obj, m, r, 1.5, (k, f) => { f.o.material.opacity = Math.sin(Math.PI * k) * 0.7; f.o.material.rotation = k * 1.2; f.o.scale.setScalar(2.4 + k * 1.6); }); }
+    if (Math.random() < 0.45) { const sp = fxSprite(0xfff0a0, 0.15); sp.position.set((Math.random() - 0.5) * 1.2, 0.2, (Math.random() - 0.5) * 0.8); addFx(obj, m, sp, 1, (k, f) => { f.o.position.y += 0.015; f.o.material.opacity = Math.sin(Math.PI * k); }); }
+  }
+  for (let i = m.fx.length - 1; i >= 0; i--) { const f = m.fx[i]; f.t += dt; const k = f.t / f.life; if (k >= 1) { obj.remove(f.o); m.fx.splice(i, 1); continue; } f.step(k, f); }
+  if (u >= 1 && !m.fx.length) { R.position.set(0, 0, 0); R.rotation.set(0, 0, 0); R.scale.setScalar(1); ud.move = null; }
+}
+function heroIdle(H) {
+  const t = H.t, B = H.B, r = (b) => H.rest.get(b);
+  if (B.chest) B.chest.rotation.x = r(B.chest).x + Math.sin(t * 1.7) * 0.022;
+  if (B.spine) B.spine.rotation.z = r(B.spine).z + Math.sin(t * 0.6) * 0.02;
+  if (B.head) { B.head.rotation.y = r(B.head).y + Math.sin(t * 0.45) * 0.14; B.head.rotation.x = r(B.head).x + Math.sin(t * 0.9 + 1) * 0.035; }
+  if (B.lArm) B.lArm.rotation.x = r(B.lArm).x + Math.sin(t * 1.7) * 0.03;
+  if (B.rArm) B.rArm.rotation.x = r(B.rArm).x - Math.sin(t * 1.7) * 0.03;
 }
 const PANTS = { blue: '#2a3448', red: '#3a2a24' };
 // ---- Demir Tank (Higgsfield modeli) ----
@@ -854,10 +961,10 @@ export function animateUnit(obj, state, t, dt) {
   if (ud.tank) return animateTank(obj, state, t, dt);
   if (ud.h3) {
     const H = ud.h3; dt = Math.min(dt || 0.016, 0.1); H.t += dt;
-    H.mixer.update(dt * (state === 'cheer' ? 1.6 : 1));
-    if (state === 'cheer') { const b = Math.abs(Math.sin(H.t * 4)); H.root.position.y = b * 0.12; H.root.rotation.z = Math.sin(H.t * 4) * 0.05; }
-    else if (H.still) { H.root.position.y = Math.sin(H.t * 1.8) * 0.02; H.root.rotation.z = Math.sin(H.t * 0.9) * 0.015; }
-    else { H.root.position.y *= 0.85; H.root.rotation.z *= 0.85; }
+    heroIdle(H);
+    if (state === 'cheer' && !ud.moved) { ud.moved = true; playHeroMove(obj); }
+    if (ud.move) stepMove(obj, ud, H, dt);
+    else { H.root.position.y = Math.sin(H.t * 1.7) * 0.008; }
     if (ud.fx) ud.fx(t);
     return;
   }

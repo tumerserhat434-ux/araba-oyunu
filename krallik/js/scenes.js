@@ -4,10 +4,10 @@
 import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import * as A from './assets.js';
-import { createSoldier, createHero, animateUnit } from './units.js';
+import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js';
 import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL } from './data.js';
 import * as G from './state.js';
-import { setTheme } from './audio.js';
+import { setTheme, playVoice } from './audio.js';
 
 let C = null; // main.js bağlamı
 let active = null; // { scene, camera, update(dt,t), close() }
@@ -501,7 +501,7 @@ export function openSummon() {
     const h = HERO_BY_ID[r.id];
     if (S.heroSlot) S.scene.remove(S.heroSlot);
     const m = createHero(h); m.position.set(0, S.heroBase, -0.45); m.rotation.y = 0;
-    S.scene.add(m); S.heroSlot = m; S.heroState = 'cheer'; S.heroT = 0;
+    S.scene.add(m); S.heroSlot = m; S.heroState = 'cheer'; S.heroT = 0; S.wantMove = r.id;
     S.aura.material.color.set(RARITY[r.rarity].color); S.aura.material.opacity = 0.35;
     C.sfx(r.rarity >= 4 ? 'reveal5' : 'reveal');
     const RC = RARITY[r.rarity].color, roleTxt = { infantry: '🗡️ Piyade', archer: '🏹 Okçu', cavalry: '🐎 Süvari', tank: '⚙️ Tank' }[h.role];
@@ -550,8 +550,9 @@ export function openSummon() {
     if (S.flash.material.opacity > 0) { S.flash.material.opacity = Math.max(0, S.flash.material.opacity - dt * 1.5); S.flash.scale.setScalar(14 + (1 - S.flash.material.opacity) * 6); }
     if (S.heroSlot) {
       S.heroT += dt;
-      S.heroSlot.rotation.y = Math.sin(S.heroT * 0.5) * 0.5;
-      animateUnit(S.heroSlot, S.heroT < 2 ? 'cheer' : 'idle', t, dt);
+      S.heroSlot.rotation.y = Math.sin(S.heroT * 0.5) * 0.25;
+      if (S.wantMove && S.heroSlot.userData.h3) { playHeroMove(S.heroSlot); playVoice(S.wantMove); S.wantMove = null; }
+      animateUnit(S.heroSlot, 'idle', t, dt);
       S.aura.material.opacity = 0.25 + Math.sin(t * 3) * 0.08;
       S.face.intensity = Math.min(28, S.face.intensity + dt * 60);
     } else { S.aura.material.opacity = Math.max(0, S.aura.material.opacity - dt); S.face.intensity = Math.max(0, S.face.intensity - dt * 140); }
@@ -603,14 +604,14 @@ export function openHeroViewer(id) {
   const H = hallCtx;
   const list = HEROES.filter((h) => G.S.heroes[h.id]).concat(HEROES.filter((h) => !G.S.heroes[h.id]));
   let cur = list.findIndex((h) => h.id === id); if (cur < 0) cur = 0;
-  let rot = 0, vel = 0, dragX = null, anim = 'idle', animT = 0;
+  let rot = 0, vel = 0, dragX = null, anim = 'idle', animT = 0, want = false, downX = 0, downT = 0;
   const setHero = () => {
     const h = list[cur];
     if (H.model) H.scene.remove(H.model);
     H.model = createHero(h); H.model.position.y = 0.3; H.scene.add(H.model);
     H.aura.material.color.set(RARITY[h.rarity].color).multiplyScalar(1.4);
     H.aura.material.opacity = h.rarity >= 4 ? 0.7 : 0.25;
-    anim = 'cheer'; animT = 0;
+    want = true; animT = 0;
     renderUI();
   };
   const renderUI = () => {
@@ -621,7 +622,7 @@ export function openHeroViewer(id) {
     const roleTxt = { infantry: '🗡️ Piyade komutanı', archer: '🏹 Okçu komutanı', cavalry: '🐎 Süvari komutanı', tank: '⚙️ Tank komutanı' }[h.role];
     ov().innerHTML = `<div class="ov-top"><button class="x" id="hPrev" style="margin:0">◀</button>
       <div style="text-align:center"><div class="rs" style="color:${RARITY[h.rarity].color};font-size:18px;text-shadow:0 0 12px currentColor">${stars(h.rarity)}</div>
-      <div class="ov-title" style="color:${RARITY[h.rarity].color};font-size:19px">${h.name}</div><div style="font-weight:800;font-size:12px;color:#e8d6b0;text-shadow:0 1px 3px #000">${h.title} • ${roleTxt}</div></div>
+      <div class="ov-title" style="color:${RARITY[h.rarity].color};font-size:19px">${h.name}</div><div style="font-weight:800;font-size:12px;color:#e8d6b0;text-shadow:0 1px 3px #000">${h.title} • ${roleTxt}</div><div style="font-size:11px;font-weight:800;color:#ffe7a0;opacity:.85;margin-top:2px">👆 Kahramana dokun: özel hareket</div></div>
       <div class="row"><button class="x" id="hNext" style="margin:0">▶</button><button class="x" id="hClose" style="margin:0">✕</button></div></div>
       <div class="ov-bottom"><div class="modal-box" style="max-width:none;padding:12px;animation:none">
         <div class="stats" style="grid-template-columns:repeat(3,1fr)">
@@ -642,21 +643,24 @@ export function openHeroViewer(id) {
     $('hClose').onclick = close;
     $('hPrev').onclick = () => { cur = (cur - 1 + list.length) % list.length; setHero(); };
     $('hNext').onclick = () => { cur = (cur + 1) % list.length; setHero(); };
-    if ($('hLvl')) $('hLvl').onclick = () => { const r = G.levelUpHero(h.id); if (!r.ok) C.toast(r.why, true); else { C.toast('⬆ Seviye atladı!'); C.sfx('reveal'); anim = 'cheer'; animT = 0; } renderUI(); };
-    if ($('hLvl10')) $('hLvl10').onclick = () => { let n = 0; while (n < 10 && G.levelUpHero(h.id).ok) n++; if (!n) C.toast('Yetersiz kaynak', true); else { C.toast(`⬆ ${n} seviye atladı!`); C.sfx('reveal'); anim = 'cheer'; animT = 0; } renderUI(); };
+    if ($('hLvl')) $('hLvl').onclick = () => { const r = G.levelUpHero(h.id); if (!r.ok) C.toast(r.why, true); else { C.toast('⬆ Seviye atladı!'); C.sfx('reveal'); want = true; } renderUI(); };
+    if ($('hLvl10')) $('hLvl10').onclick = () => { let n = 0; while (n < 10 && G.levelUpHero(h.id).ok) n++; if (!n) C.toast('Yetersiz kaynak', true); else { C.toast(`⬆ ${n} seviye atladı!`); C.sfx('reveal'); want = true; } renderUI(); };
     if ($('hCmd')) $('hCmd').onclick = () => { G.setCommander(h.id); C.toast('👑 Yeni komutan: ' + h.name); renderUI(); };
     if ($('hGo')) $('hGo').onclick = () => { close(); openSummon(); };
   };
   const cv = C.renderer.domElement;
-  const pd = (e) => { dragX = e.clientX; };
+  const pd = (e) => { dragX = e.clientX; downX = e.clientX; downT = performance.now(); };
   const pm = (e) => { if (dragX !== null) { vel = (e.clientX - dragX) * 0.01; rot += vel; dragX = e.clientX; } };
-  const pu = () => { dragX = null; };
+  const pu = (e) => { if (dragX !== null && Math.abs((e.clientX ?? downX) - downX) < 8 && performance.now() - downT < 400) want = true; dragX = null; };
   cv.addEventListener('pointerdown', pd); addEventListener('pointermove', pm); addEventListener('pointerup', pu);
   setHero();
   const update = (dt, t) => {
-    if (dragX === null) { rot += vel; vel *= Math.exp(-4 * dt); rot += dt * 0.15; }
+    if (dragX === null) { rot += vel; vel *= Math.exp(-4 * dt); if (Math.abs(vel) < 0.002) rot += (Math.sin(t * 0.35) * 0.22 - rot) * Math.min(1, dt * 1.5); }
     animT += dt;
-    if (H.model) { H.model.rotation.y = rot; animateUnit(H.model, animT < 2.2 ? anim : 'idle', t, dt); }
+    if (H.model) {
+      if (want && H.model.userData.h3) { want = false; playHeroMove(H.model); playVoice(list[cur].id); }
+      H.model.rotation.y = rot; animateUnit(H.model, 'idle', t, dt);
+    }
     H.aura.material.opacity *= 1; H.aura.scale.setScalar(4 + Math.sin(t * 2) * 0.3);
     const mounted = H.model && H.model.userData.mounted;
     const ty = mounted ? 1.6 : 1.05;

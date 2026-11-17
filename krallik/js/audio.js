@@ -208,3 +208,20 @@ function pluckSfx(midi, t, vol = 0.3) {
   const src = ctx.createBufferSource(); src.buffer = pluckBuffer(NOTE(midi), 0.6);
   const g = ctx.createGain(); g.gain.value = vol; src.connect(g).connect(sfxBus); src.start(t); src.stop(t + 1.9);
 }
+
+// ---- Kahraman sesleri (assets/voices/<id>.mp3) ----
+let voiceSrc = null;
+const voicePending = new Map();
+export async function playVoice(id) {
+  if (!ctx) initAudio(); if (!ctx || !sfxOn) return;
+  const key = 'v_' + id;
+  if (!buf[key]) {
+    if (!voicePending.has(key)) voicePending.set(key, (async () => { try { const r = await fetch('assets/voices/' + id + '.mp3'); if (!r.ok) return; const a = await r.arrayBuffer(); buf[key] = await new Promise((res, rej) => ctx.decodeAudioData(a, res, rej)); } catch (e) { /* yok */ } })());
+    await voicePending.get(key);
+    if (!buf[key]) return;
+  }
+  try { voiceSrc?.stop(); } catch (e) {}
+  const s = ctx.createBufferSource(); s.buffer = buf[key];
+  const g = ctx.createGain(); g.gain.value = 1.25; s.connect(g).connect(sfxBus); s.start(); voiceSrc = s;
+  if (musicBus && musicOn) { const t = ctx.currentTime; musicBus.gain.setTargetAtTime(0.18, t, 0.08); musicBus.gain.setTargetAtTime(0.55, t + buf[key].duration, 0.4); }
+}

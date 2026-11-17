@@ -11,7 +11,7 @@ import * as G from './state.js';
 import { getAvatar } from './scenes.js';
 import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
 import { createGrass } from './grass.js';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState } from './audio.js';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js';
 import { initTutorial, tutEvent } from './tut.js';
 import { icon } from './icons.js';
 import { paintCity } from './terrain.js';
@@ -1054,7 +1054,7 @@ $('modalBox').addEventListener('click', (e) => {
     G.S.res.gold -= p.gold; G.gainRes(p.res); G.save(); toast('📦 Kaynaklar eklendi'); sfx('coin'); updateTop(); return;
   }
   const cp = e.target.closest('[data-cmdpick]');
-  if (cp && modalKind === 'attack') { const id = cp.dataset.cmdpick, i = atk.heroes.indexOf(id); if (i >= 0) atk.heroes.splice(i, 1); else if (atk.heroes.length < G.MAX_COMMANDERS) atk.heroes.push(id); else toast('En fazla 5 komutan', true); sfx('click'); return renderModal(); }
+  if (cp && modalKind === 'attack') { const id = cp.dataset.cmdpick, i = atk.heroes.indexOf(id); if (i >= 0) atk.heroes.splice(i, 1); else if (atk.heroes.length < G.MAX_COMMANDERS) { atk.heroes.push(id); playVoice(id); } else toast('En fazla 5 komutan', true); sfx('click'); return renderModal(); }
   const tq = e.target.closest('[data-tq]');
   if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
   const ta = e.target.closest('[data-tall]');

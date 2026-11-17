@@ -341,6 +341,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - Çağırma tanıtım ekranı sadeleştirildi: üstte çerçeveli isim levhası, altta rol/yetenek kutusu; ışıklar ve parıltı azaltıldı.
 - Bu adımda ~130 kredi (8 görsel, 8 Tripo, 9 rigging denemesi).
 
+### 5.9 Kahraman hareketleri ve sesleri
+- Meshy iskelet animasyonu (Idle) bu modellerde pelerin/eteği bozuyordu → **oynatılmıyor**. Model temiz duruşunda (bind pose) kalır.
+- `units.js → heroIdle`: Spine02/Spine01/Head/kollar kemiklerine küçük açılarla nefes ve bakış.
+- `units.js → HERO_MOVES` + `playHeroMove(obj)`: her kahramana özel hareket ve efekt (charge, slash, shot, slam, spin, roar, thunder, dawn, poison, steam), renkleri kahramana göre.
+- Sesler: `assets/voices/<id>.mp3` (23 adet, İngilizce, Higgsfield `seed_audio`, farklı preset sesler, ~0,3 kredi/adet). `audio.js → playVoice(id)` (müziği kısar).
+- Tetikleme: kahraman görüntüleyici açılınca ve kahramana dokununca; çağırmada kahraman çıkınca; Sefer Kampı'nda komutan seçince (sadece ses).
+- Görüntüleyici artık kahramanı sürekli döndürmüyor; önden hafif salınım yapıyor (sürükleyerek çevrilebilir).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
