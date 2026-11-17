@@ -1,0 +1,12 @@
+{
+  "name": "Demir Sancak",
+  "short_name": "Demir Sancak",
+  "description": "Krallığını kur, ordunu eğit, kahraman çağır ve fethet",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#1a1208",
+  "theme_color": "#1a1208",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

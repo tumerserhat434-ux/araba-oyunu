@@ -1,3 +1,29 @@
+# 🎮 Oyunlar
+
+Bu depoda iki tarayıcı oyunu var. Ana sayfa (`index.html`) oyun seçme menüsüdür.
+
+| Oyun | Klasör | Tür |
+|---|---|---|
+| ⚜ **Demir Sancak** | `krallik/` | Krallık kurma ve strateji |
+| 🌿 **Orman Kaçışı** | `orman-kacisi/` | Sonsuz koşu |
+
+---
+
+# ⚜ Demir Sancak
+
+Krallığını kur, binaları yükselt, ordu eğit, kahraman çağır ve komşu krallıklara saldır.
+
+- **Binalar:** Belediye Binası, Kışla, Okçu Kulesi, Hastane, İksir Deposu, Karakter Deposu, Çağırma Atölyesi, Çiftlik, Kereste Atölyesi, Taş Ocağı, Ambar ve surlar
+- **Askerler:** Kılıç Piyadesi, Mızrakçı, Okçu, Şövalye Süvari (taş-kağıt-makas dengesi)
+- **Hastane ve iksir:** savaşta yaralananlar hastaneye gelir, iyileştirilir; iksirler anında iyileştirir
+- **Kahramanlar:** 15 özgün kahraman, 2★ ile 5★ arası. Çağırma Atölyesi'nde altınla 1x veya 10x çağırma. 5★ şansı %0,6, 150 çağırmada garanti
+- **Savaş:** dünya haritasından krallıklara saldır, 3D savaş sahnesini izle; düşmanlar da zaman zaman şehrine saldırır
+- **Altın mağazası:** demo, gerçek ödeme alınmaz
+
+> Not: Diğer krallıklar şimdilik bilgisayar tarafından yönetiliyor. Gerçek çevrimiçi oyuncularla oynamak için bir sunucu/veritabanı (ör. Firebase) bağlanması gerekir.
+
+---
+
 # 🌿 Orman Kaçışı
 
 Yağmur ormanında, gece geçen 3D sonsuz koşu oyunu. Telefonda ve bilgisayarda tarayıcıdan oynanır, kurulum gerekmez.
@@ -47,13 +73,12 @@ python3 -m http.server 8000
 
 1. GitHub'da depo sayfasında **Settings → Pages** bölümüne gir.
 2. **Source** olarak "Deploy from a branch" seç, oyunun bulunduğu dalı ve `/ (root)` klasörünü seçip kaydet.
-3. Bir iki dakika sonra oyun `https://<kullanıcı-adı>.github.io/araba-oyunu/` adresinde açılır.
+3. Bir iki dakika sonra oyun menüsü `https://<kullanıcı-adı>.github.io/araba-oyunu/` adresinde açılır.
 4. Telefonda bu adresi açıp **Ana ekrana ekle** dersen uygulama gibi tam ekran çalışır.
 
 ## Dosyalar
 
-- `index.html`: sayfa ve arayüz
-- `style.css`: menü ve HUD tasarımı
-- `game.js`: oyun motoru (grafik, fizik, engeller, ayı, ses)
+- `orman-kacisi/`: oyunun dosyaları (`game.js` oyun motoru)
+- `krallik/`: Demir Sancak (`js/` içinde oyun mantığı, 3D modeller, sahneler)
 - `lib/`: Three.js r170 (MIT lisansı)
 - `eski-araba/`: depodaki eski araba oyunu denemesi
