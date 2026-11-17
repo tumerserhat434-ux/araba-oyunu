@@ -30,7 +30,7 @@ function open(obj, theme = 'city') {
   setTheme(theme);
   if (active) active.dispose?.();
   active = obj;
-  ['top', 'side', 'nav', 'labels'].forEach((id) => $(id).classList.add('hidden'));
+  ['top', 'side', 'nav', 'labels', 'rside', 'bottomHud'].forEach((id) => $(id).classList.add('hidden'));
   ov().classList.remove('hidden');
   addEventListener('resize', onResize);
   onResize();
@@ -40,7 +40,7 @@ function close() {
   active.dispose?.();
   active = null;
   ov().classList.add('hidden'); ov().innerHTML = '';
-  ['top', 'side', 'nav', 'labels'].forEach((id) => $(id).classList.remove('hidden'));
+  ['top', 'side', 'nav', 'labels', 'rside', 'bottomHud'].forEach((id) => $(id).classList.remove('hidden'));
   removeEventListener('resize', onResize);
   setTheme('city');
   C.onSceneClosed();

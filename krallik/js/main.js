@@ -11,6 +11,10 @@ import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, sceneA
 import { createGrass } from './grass.js';
 import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState } from './audio.js';
 import { initTutorial, tutEvent } from './tut.js';
+import { icon } from './icons.js';
+import { paintCity } from './terrain.js';
+import { createLife, createVillager, animVillager } from './life.js';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -76,16 +80,20 @@ function speckle(ctx, w, h, n, cols, r0, r1, alpha = 1) {
   }
   ctx.globalAlpha = 1;
 }
-let waterNormal, grassField = null;
+let waterNormal, grassField = null, life = null;
+const GARDENS = [];
+const FOUNTAIN = [-3.8, 8.4];
+const STALLS = [[-9.6, 0.4, '#c8302a', Math.PI / 2], [9.6, 0.9, '#2a6ad0', -Math.PI / 2]];
 // çim yerleşimi: yollar, meydan, arsalar ve surlardan kaçın
 const ROAD_LINES = PLOTS.filter((q) => q.id !== 'townhall').map((q) => [[0, 0], [q.x * 0.55, q.z * 0.2 + (q.z > 0 ? 4 : -4)], [q.x, q.z]]).concat([[[0, 0], [0, 50]]]);
 function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz; const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l)) : 0; return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
 function grassAvoid(x, z) {
   const r = Math.hypot(x, z);
-  if (r < 10.8) return true;
+  if (r < 10.9) return true;
+  for (const [gx, gz] of GARDENS) if (Math.abs(x - gx) < 2.2 && Math.abs(z - gz) < 2.2) return true;
   if (Math.abs(r - 40) < 2.2) return true;
-  for (const p of PLOTS) { const f = (BLD.FOOTPRINT[p.key] || 7) / 2 + 0.4; if (Math.abs(x - p.x) < f && Math.abs(z - p.z) < f) return true; }
-  for (const L of ROAD_LINES) for (let i = 0; i < L.length - 1; i++) if (segDist(x, z, L[i][0], L[i][1], L[i + 1][0], L[i + 1][1]) < 1.6) return true;
+  for (const p of PLOTS) { const f = (BLD.FOOTPRINT[p.key] || 7) / 2 + 0.6; if (Math.abs(x - p.x) < f && Math.abs(z - p.z) < f) return true; }
+  for (const L of ROAD_LINES) for (let i = 0; i < L.length - 1; i++) if (segDist(x, z, L[i][0], L[i][1], L[i + 1][0], L[i + 1][1]) < 1.75) return true;
   return false;
 }
 function buildTerrain() {
@@ -103,7 +111,6 @@ function buildTerrain() {
   geo.rotateX(-Math.PI / 2);
   const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95 }));
   ground.receiveShadow = true; city.add(ground);
-  grassField = createGrass(city, { radius: 72, avoid: grassAvoid, mobile: isMobile, density: isMobile ? 1.6 : 2.0, outerDensity: isMobile ? 0.7 : 0.9 });
   const sand = new THREE.Mesh(new THREE.RingGeometry(70, 95, 96).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd8c08a, roughness: 1 }));
   sand.position.y = -0.25; sand.receiveShadow = true; city.add(sand);
   // su
@@ -114,26 +121,11 @@ function buildTerrain() {
   waterNormal.repeat.set(40, 40);
   const water = new THREE.Mesh(new THREE.PlaneGeometry(900, 900).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x2c7aa0, roughness: 0.12, metalness: 0.15, normalMap: waterNormal, normalScale: new THREE.Vector2(0.5, 0.5) }));
   water.position.y = -0.6; city.add(water);
-  // yollar
-  const SZ = 110, PX = 1024;
-  const roads = canvasTex(PX, PX, (ctx) => {
-    const m = (v) => (v / SZ + 0.5) * PX;
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    const stroke = (pts, w, col, blur) => { ctx.strokeStyle = col; ctx.lineWidth = w / SZ * PX; ctx.filter = blur ? `blur(${blur}px)` : 'none'; ctx.beginPath(); pts.forEach(([x, z], i) => (i ? ctx.lineTo(m(x), m(z)) : ctx.moveTo(m(x), m(z)))); ctx.stroke(); };
-    const lines = PLOTS.filter((q) => q.id !== 'townhall').map((q) => [[0, 0], [q.x * 0.55, q.z * 0.2 + (q.z > 0 ? 4 : -4)], [q.x, q.z]]);
-    lines.push([[0, 0], [0, 50]]);
-    for (const l of lines) stroke(l, 3.4, 'rgba(110,88,58,.45)', 5);
-    for (const l of lines) stroke(l, 2.3, 'rgba(146,118,82,.92)', 1.5);
-    // meydan
-    ctx.filter = 'blur(3px)'; ctx.fillStyle = 'rgba(160,150,135,1)'; ctx.beginPath(); ctx.arc(m(0), m(0), 10 / SZ * PX, 0, 7); ctx.fill();
-    ctx.filter = 'none';
-    for (let i = 0; i < 1400; i++) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 9.6; const gv = rand(120, 175); ctx.fillStyle = `rgba(${gv + 6},${gv},${gv - 12},.9)`; const x = m(Math.cos(a) * r), y = m(Math.sin(a) * r); ctx.fillRect(x, y, rand(4, 8), rand(4, 8)); }
-    // toprak lekeleri
-    ctx.globalCompositeOperation = 'source-atop';
-    for (let i = 0; i < 3000; i++) { ctx.fillStyle = `rgba(${rand(60, 120)},${rand(50, 90)},${rand(30, 60)},.35)`; ctx.fillRect(Math.random() * PX, Math.random() * PX, 2, 2); }
-  }, false);
-  const rp = new THREE.Mesh(new THREE.PlaneGeometry(SZ, SZ).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: roads, transparent: true, roughness: 0.95, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-  rp.position.y = 0.03; rp.receiveShadow = true; rp.renderOrder = 1; city.add(rp);
+  // şehir zemini: taş yollar, meydan, bina zeminleri, bahçeler
+  const city0 = paintCity({ roads: ROAD_LINES, pads: PLOTS.map((p) => ({ x: p.x, z: p.z, s: (BLD.FOOTPRINT[p.key] || 7) + 0.4 })), mobile: isMobile });
+  city.add(city0.mesh);
+  GARDENS.push(...city0.gardens);
+  grassField = createGrass(city, { radius: 72, avoid: grassAvoid, mobile: isMobile, density: isMobile ? 1.3 : 1.7, outerDensity: isMobile ? 0.8 : 1.0 });
   // uzak dağlar
   const mm = new THREE.MeshStandardMaterial({ color: 0x6a7a6a, flatShading: true, roughness: 1 });
   const snow = new THREE.MeshStandardMaterial({ color: 0xf4f8ff, flatShading: true, roughness: 0.8 });
@@ -251,6 +243,11 @@ function refreshPlot(id) {
   h.inited = true;
   h.hit.scale.y = Math.max(0.4, h.height / 6); h.hit.position.y = Math.max(0.4, h.height / 6) * 3;
   if (key === 'archery') placeArchers(id);
+  if (h.workers) { h.workers.forEach((v) => h.group.remove(v)); h.workers = null; }
+  if (st === 'busy') {
+    h.workers = [];
+    for (let i = 0; i < 2; i++) { const v = createVillager({ work: true, hat: i ? 'cap' : 'straw', carry: 'tool' }); const a = i * Math.PI + 0.6; v.position.set(Math.cos(a) * fp * 0.38, 0, Math.sin(a) * fp * 0.38 + fp * 0.1); v.rotation.y = Math.atan2(-v.position.x, -v.position.z); h.group.add(v); h.workers.push(v); }
+  }
 }
 // Yükseltme "pop" animasyonu ve parıltılar
 const pops = [];
@@ -305,7 +302,23 @@ function placeArchers(id) {
   }
 }
 // Devriye askerleri
+function makeLamp(spots) {
+  const proto = new THREE.Group();
+  const iron = new THREE.MeshStandardMaterial({ color: 0x2a2a30, metalness: 0.8, roughness: 0.4 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x3a2a10, emissive: 0xffb050, emissiveIntensity: 1.3 });
+  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, 2.6, 6), iron); post.position.y = 1.3; proto.add(post);
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.05, 0.05), iron); arm.position.set(0.22, 2.5, 0); proto.add(arm);
+  const lan = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.22), glass); lan.position.set(0.42, 2.3, 0); proto.add(lan);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.18, 4), iron); cap.position.set(0.42, 2.52, 0); cap.rotation.y = Math.PI / 4; proto.add(cap);
+  return instancify(proto, spots.map(([x, z]) => new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.atan2(-x, -z) + Math.PI / 2, 0)), new THREE.Vector3(1, 1, 1))));
+}
+function makeBush(spots) {
+  const proto = BLD.createTree(3);
+  return instancify(proto, spots.map(([x, z]) => { const s = rand(0.5, 0.75); return new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rand(0, 6), 0)), new THREE.Vector3(s, s, s)); }));
+}
 function buildPatrols() {
+  life = createLife(city, { roads: ROAD_LINES, mobile: isMobile, makeLamp, makeBush, fountainAt: FOUNTAIN, stalls: STALLS });
+  for (const sx of [-1, 1]) { const g = createSoldier('spearman', 'blue'); g.position.set(sx * 1.9, 0, 7.0); city.add(g); ambient.push({ obj: g, state: 'idle', phase: rand(0, 5) }); }
   const loops = [
     [[-6, 30], [6, 30], [6, 34], [-6, 34]],
     [[-30, 24], [-10, 24], [-10, 28], [-30, 28]],
@@ -343,7 +356,7 @@ function updateAmbient(t, dt) {
 // ---------------------------------------------------------------------
 //  Kamera kontrolü
 // ---------------------------------------------------------------------
-const cam = { tx: 0, tz: 4, dist: innerHeight > innerWidth ? 120 : 80, distT: innerHeight > innerWidth ? 105 : 72, yaw: 0.55, pitch: 0.92, vx: 0, vz: 0 };
+const cam = { tx: 0, tz: 4, dist: innerHeight > innerWidth ? 110 : 80, distT: innerHeight > innerWidth ? 84 : 64, yaw: 0.55, pitch: 0.92, vx: 0, vz: 0 };
 function applyCam() {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   camera.position.set(cam.tx + Math.sin(cam.yaw) * cp * cam.dist, sp * cam.dist, cam.tz + Math.cos(cam.yaw) * cp * cam.dist);
@@ -434,7 +447,7 @@ function updateLabels(force) {
       if (p.key === 'hospital' && G.S.healing) html += `<div class="tm heal">💚 ${G.fmtTime(G.S.healing.end - t)}</div>`;
       if (p.key === 'potion' && G.S.potions > 0) html += `<div class="bub" style="animation:none;font-size:16px">🧪${G.S.potions}</div>`;
       const pend = G.pending(id);
-      if (def.prod && pend > b.level * 5) html += `<div class="bub">${RES[def.prod].icon}</div>`;
+      if (def.prod && pend > b.level * 5) html += `<div class="bub">${icon(def.prod, 28)}</div>`;
       if (p.key === 'summon' && G.freePullAvailable()) html += `<div class="bub" style="font-size:11px;width:auto;padding:0 9px;border-radius:12px;color:#6a3a00;font-weight:900">🎁 ÜCRETSİZ</div>`;
       html += `<div class="nm">${def.name}<em>${b.level}</em></div>`;
     }
@@ -455,10 +468,15 @@ function floaty(text, x, y, color = '#fff') {
 }
 const costHtml = (cost) => Object.entries(cost).filter(([, v]) => v > 0).map(([r, v]) => `<span class="${G.S.res[r] >= v ? '' : 'no'}">${RES[r].icon} ${G.fmt(v)}</span>`).join('');
 const stars = (n) => '★'.repeat(n);
+let avatarFor = null;
 function updateTop() {
   for (const r of ['food', 'wood', 'stone', 'gold']) $('r_' + r).textContent = G.fmt(G.S.res[r]);
   $('power').textContent = G.fmt(G.cityPower());
   $('kname').textContent = G.S.name;
+  $('thLvl').textContent = G.thLevel();
+  $('logDot').classList.toggle('hidden', !G.loginPending());
+  $('evDot').classList.toggle('hidden', !G.claimableCount());
+  if (avatarFor !== G.S.commander) { avatarFor = G.S.commander; getPortrait(G.S.commander).then((u) => { $('avatarImg').src = u; }); }
   $('troopCount').textContent = G.fmt(G.totalTroops());
   $('builderCount').textContent = `${G.busyBuilders()}/${G.builders()}`;
   $('freeDot').classList.toggle('hidden', !G.freePullAvailable());
@@ -609,7 +627,7 @@ export function openModal(html) { $('modalBox').innerHTML = html; $('modal').cla
 export function closeModal() { $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; setNav('city'); }
 $('modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') closeModal(); });
 function setNav(go) { document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.go === go)); }
-document.querySelectorAll('nav button').forEach((b) => b.addEventListener('click', () => navigate(b.dataset.go)));
+document.querySelectorAll('nav button, #rside .rbtn').forEach((b) => b.addEventListener('click', () => navigate(b.dataset.go)));
 $('goldBtn').onclick = () => navigate('shop');
 $('profileBtn').onclick = () => navigate('profile');
 $('chipTroops').onclick = () => navigate('army');
@@ -620,6 +638,8 @@ export function navigate(go) {
   closeSheet();
   setNav(go);
   if (go === 'city') { closeModal(); return; }
+  if (go === 'events') { questTab = 'daily'; go = 'quests'; }
+  if (go === 'offers') go = 'shop';
   if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); tutEvent('summonOpen'); return; }
   if (go === 'world') tutEvent('worldOpen');
   sfx('open');
@@ -636,6 +656,8 @@ function renderModal() {
   if (k === 'profile') return openModal(profileUI());
   if (k === 'army') return openModal(armyUI());
   if (k === 'quests') return openModal(questsUI());
+  if (k === 'ranking') return openModal(rankingUI());
+  if (k === 'login') return openModal(loginUI());
   if (k === 'attack') return openModal(attackUI());
 }
 function worldUI() {
@@ -724,14 +746,50 @@ function loginUI() {
 function updateQuestUI() {
   const n = G.claimableCount();
   $('questDot').classList.toggle('hidden', !n);
-  const q = G.activeQuests()[0], el = $('qtrack');
-  if (!q) { el.innerHTML = ''; return; }
+  const q = G.activeQuests()[0];
+  if (!q) { $('qText').textContent = 'Tüm görevler tamamlandı!'; $('qProg').style.width = '100%'; return; }
   const [x, y] = G.questProgress(q), ok = x >= y;
-  const html = `<b>📋 GÖREV ${ok ? '— ÖDÜLÜ AL!' : ''}</b>${q.text}<div class="qb"><span style="width:${x / y * 100}%"></span></div>`;
-  if (el._h !== html) { el.innerHTML = html; el._h = html; }
-  el.classList.toggle('done', ok);
+  const txt = `${q.text} (${G.fmt(x)}/${G.fmt(y)})`;
+  if ($('qText').textContent !== txt) $('qText').textContent = txt;
+  $('qProg').style.width = (x / y * 100) + '%';
+  $('qbar').classList.toggle('done', ok);
+  $('qBtn').textContent = ok ? 'Al' : 'Git';
 }
-$('qtrack').onclick = () => navigate('quests');
+$('qbar').onclick = () => {
+  const q = G.activeQuests()[0];
+  if (q && G.questDone(q)) { const r = G.claimQuest(q.id); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('built'); updateTop(); updateQuestUI(); } return; }
+  if (q && q.t[0] === 'bld') { const p = PLOTS.find((x) => x.key === q.t[1]); if (p) { openBuilding(p.id); focusOn(p.x, p.z); return; } }
+  if (q && q.t[1] === 'trained') { openBuilding('barracks'); focusOn(-17, 2); return; }
+  if (q && (q.t[1] === 'wins')) return navigate('world');
+  if (q && q.t[1] === 'summons') return navigate('summon');
+  navigate('quests');
+};
+// Krallık haberleri (canlı akış)
+const NEWS = [];
+export function pushNews(html) { NEWS.push(html); }
+function randomNews() {
+  const lord = LORD_NAMES[Math.floor(Math.random() * LORD_NAMES.length)], kd = KINGDOM_NAMES[Math.floor(Math.random() * KINGDOM_NAMES.length)];
+  const h = HEROES[Math.floor(Math.random() * 7)];
+  const opts = [
+    `<u>${lord}</u> (${kd}) <em>${'★'.repeat(h.rarity)} ${h.name}</em> çağırdı!`,
+    `<u>${lord}</u> Belediye Binası'nı <em>Sv.${2 + Math.floor(Math.random() * 8)}</em> yaptı`,
+    `<u>${kd}</u> ordusu <em>${KINGDOM_NAMES[Math.floor(Math.random() * KINGDOM_NAMES.length)]}</em> krallığını yağmaladı!`,
+    `<u>${lord}</u> <em>${G.fmt(1000 + Math.random() * 20000)}</em> asker eğitti`,
+    `Gezgin tüccar meydana geldi: <em>Mağaza'da özel teklifler!</em>`,
+  ];
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+setInterval(() => {
+  if (!$('newsTxt')) return;
+  const html = NEWS.length ? NEWS.shift() : randomNews();
+  const sp = document.createElement('span'); sp.innerHTML = html;
+  const tr = $('newsTxt').parentElement; tr.innerHTML = ''; sp.id = 'newsTxt'; tr.appendChild(sp);
+}, 5200);
+function rankingUI() {
+  const me = { name: G.S.name, lord: 'Sen', power: G.cityPower(), me: true };
+  const list = G.S.enemies.map((e) => ({ name: e.name, lord: e.lord, power: Math.round(e.power * 1.6 + e.th * 2500) })).concat([me]).sort((a, b) => b.power - a.power);
+  return head('Krallık Sıralaması', '🏆') + '<div>' + list.map((r, i) => `<div class="rankrow ${r.me ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="rn">${r.name}<br><small style="color:#c8b48a">${r.lord}</small></span><span class="rp">⚔ ${G.fmt(r.power)}</span></div>`).join('') + '</div><p class="demo">Sıralama, bilgisayar yönetimli krallıklarla birlikte gösterilir.</p>';
+}
 function armyUI() {
   let rows = '';
   for (const t in TROOPS) rows += `<div class="stat"><small>${TROOPS[t].icon} ${TROOPS[t].name}</small><b>${G.fmt(G.S.troops[t])}</b> <small style="display:inline;color:#ffaa8a">🤕 ${G.S.wounded[t]}</small></div>`;
@@ -844,7 +902,7 @@ G.onChange((ev, data) => {
   if (ev === 'building') refreshPlot(data);
   if (ev === 'trained') toast(`⚔ ${data.n} ${TROOPS[data.type].name} hazır!`);
   if (ev === 'healed') toast(`💚 ${G.totalTroops(data.counts)} asker iyileşti`);
-  if (ev === 'battle') $('repDot').classList.remove('hidden');
+  if (ev === 'battle') { $('repDot').classList.remove('hidden'); if (data.win && data.kind === 'attack') pushNews(`<u>${G.S.name}</u> <em>${data.enemy}</em> krallığını fethetti!`); }
   if (ev === 'quests') { updateQuestUI(); }
   if (ev === 'researched') { toast(`🔬 ${RESEARCH[data].name} Sv.${G.S.research.levels[data]} tamamlandı!`); sfx('built'); }
 });
@@ -870,6 +928,8 @@ function loop(now) {
   for (const id in holders) { const c = holders[id].content; if (c && c.userData.update) c.userData.update(tAcc, dt); }
   if (wallGroup) wallGroup.children.forEach((c) => c.userData.update && c.userData.update(tAcc, dt));
   updateAmbient(tAcc, dt);
+  if (life) life.update(tAcc, dt);
+  for (const id in holders) { const w = holders[id].workers; if (w) w.forEach((v, i) => animVillager(v, 'work', tAcc + i * 0.4)); }
   waterNormal.offset.set(tAcc * 0.01, tAcc * 0.006);
   renderer.render(city, camera);
   updateLabels();
@@ -925,7 +985,8 @@ async function boot() {
   setLoad(95, 'Son dokunuşlar…'); await frame();
   renderer.compile(city, camera);
   setLoad(100);
-  ['top', 'side', 'nav'].forEach((id) => $(id).classList.remove('hidden'));
+  document.querySelectorAll('[data-ico]').forEach((el) => { el.innerHTML = icon(el.dataset.ico, +(el.dataset.s || 22)); });
+  ['top', 'side', 'nav', 'rside', 'bottomHud'].forEach((id) => $(id).classList.remove('hidden'));
   updateTop();
   $('loading').style.opacity = 0; setTimeout(() => $('loading').remove(), 500);
   if (G.S.reports.length && G.S.reports[0].t > (G.S.reportsSeen || 0)) $('repDot').classList.remove('hidden');
@@ -937,4 +998,4 @@ async function boot() {
   requestAnimationFrame(loop);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
-window.__ds = { G, cam, navigate, holders };
+window.__ds = { G, cam, navigate, holders, get grass() { return grassField; } };

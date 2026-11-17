@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nunito:wght@700;800;900&family=Lilita+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script type="importmap">
 { "imports": { "three": "../lib/three.module.min.js", "three/addons/": "../lib/jsm/" } }
@@ -34,33 +34,44 @@
 <!-- Üst çubuk -->
 <header id="top" class="hidden">
   <div class="profile" id="profileBtn">
-    <div class="avatar">⚜</div>
-    <div class="pinfo"><b id="kname">Krallığım</b><small>⚔ <span id="power">0</span></small></div>
+    <div class="avatar"><img id="avatarImg" alt=""><span class="lvl" id="thLvl">1</span></div>
+    <div class="pinfo"><b id="kname">Krallığım</b><div class="pow"><i data-ico="power"></i><span id="power">0</span></div></div>
   </div>
   <div class="resbar">
-    <div class="res" data-r="food"><i>🌾</i><span id="r_food">0</span></div>
-    <div class="res" data-r="wood"><i>🪵</i><span id="r_wood">0</span></div>
-    <div class="res" data-r="stone"><i>🪨</i><span id="r_stone">0</span></div>
-    <div class="res gold" id="goldBtn"><i>🪙</i><span id="r_gold">0</span><b>+</b></div>
+    <div class="res" data-r="food"><i data-ico="food"></i><span id="r_food">0</span></div>
+    <div class="res" data-r="wood"><i data-ico="wood"></i><span id="r_wood">0</span></div>
+    <div class="res" data-r="stone"><i data-ico="stone"></i><span id="r_stone">0</span></div>
+    <div class="res gold" id="goldBtn"><i data-ico="gold"></i><span id="r_gold">0</span><b data-ico="plus"></b></div>
   </div>
 </header>
 
 <div id="side" class="hidden">
-  <div class="chip" id="chipTroops" title="Askerler">🛡️ <span id="troopCount">0</span></div>
-  <div class="chip" id="chipBuilders" title="İnşaatçılar">🔨 <span id="builderCount">0/2</span></div>
+  <div class="chip" id="chipTroops"><i data-ico="troops"></i><span id="troopCount">0</span></div>
+  <div class="chip" id="chipBuilders"><i data-ico="builder"></i><span id="builderCount">0/2</span></div>
   <div class="chip warn hidden" id="chipRaid">⚠️ <span id="raidTxt"></span></div>
-  <div class="qtrack" id="qtrack"></div>
+</div>
+
+<div id="rside" class="hidden">
+  <button class="rbtn" data-go="events"><i data-ico="events" data-s="44"></i><span>Etkinlikler</span><em class="dot hidden" id="evDot"></em></button>
+  <button class="rbtn" data-go="offers"><i data-ico="offers" data-s="44"></i><span>Teklifler</span><em class="dot" id="offDot"></em></button>
+  <button class="rbtn" data-go="login"><i data-ico="rank" data-s="44"></i><span>Ödüller</span><em class="dot hidden" id="logDot"></em></button>
+  <button class="rbtn" data-go="ranking"><i data-ico="power" data-s="44"></i><span>Sıralama</span></button>
+  <button class="rbtn glow" data-go="summon"><i data-ico="summon" data-s="48"></i><span>Çağır</span><em id="freeDot" class="dot hidden"></em></button>
+</div>
+
+<div id="bottomHud" class="hidden">
+  <div class="qbar" id="qbar"><i data-ico="quest" data-s="34"></i><div class="qtxt"><span id="qText">Görev</span><div class="qprog"><span id="qProg"></span></div></div><b id="qBtn">Git</b></div>
+  <div class="news" id="news"><i data-ico="news" data-s="18"></i><div class="ntrack"><span id="newsTxt"></span></div></div>
 </div>
 
 <!-- Alt menü -->
 <nav id="nav" class="hidden">
-  <button data-go="city" class="on"><i>🏰</i><span>Şehir</span></button>
-  <button data-go="world"><i>🗺️</i><span>Dünya</span></button>
-  <button data-go="quests"><i>📋</i><span>Görev</span><em id="questDot" class="dot hidden"></em></button>
-  <button data-go="heroes"><i>🛡️</i><span>Kahraman</span></button>
-  <button data-go="summon"><i>🔮</i><span>Çağır</span><em id="freeDot" class="dot hidden"></em></button>
-  <button data-go="shop"><i>🪙</i><span>Mağaza</span></button>
-  <button data-go="reports"><i>📜</i><span>Rapor</span><em id="repDot" class="dot hidden"></em></button>
+  <button data-go="city" class="on"><i data-ico="city" data-s="30"></i><span>Şehir</span></button>
+  <button data-go="world"><i data-ico="world" data-s="30"></i><span>Dünya</span></button>
+  <button data-go="quests"><i data-ico="quest" data-s="30"></i><span>Görev</span><em id="questDot" class="dot hidden"></em></button>
+  <button data-go="heroes"><i data-ico="heroes" data-s="30"></i><span>Kahraman</span></button>
+  <button data-go="shop"><i data-ico="shop" data-s="30"></i><span>Mağaza</span></button>
+  <button data-go="reports"><i data-ico="reports" data-s="30"></i><span>Rapor</span><em id="repDot" class="dot hidden"></em></button>
 </nav>
 
 <!-- Alt panel (bina vb.) -->

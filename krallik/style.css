@@ -216,3 +216,80 @@ nav button.on i { transform: translateY(-3px) scale(1.12); }
 .rsch .rt { flex: 1; font-size: 12.5px; }
 .rsch .rt b { font-size: 13.5px; }
 .rsch .btn { padding: 7px 10px; font-size: 12px; }
+
+/* ================= YENİ ARAYÜZ ================= */
+.ico { display: block; filter: drop-shadow(0 2px 1px rgba(0,0,0,.45)); }
+[data-ico] { display: inline-flex; align-items: center; justify-content: center; font-style: normal; }
+header { background: linear-gradient(180deg, rgba(14,10,30,.78), rgba(14,10,30,0)); padding-bottom: 14px; align-items: flex-start; }
+.profile { padding: 0; border: 0; background: none; gap: 0; align-items: center; }
+.avatar { width: 58px; height: 58px; border-radius: 12px; overflow: visible; position: relative; border: 3px solid #f3c24a; background: #1a1008;
+  box-shadow: 0 0 0 2px #5a3a0a, 0 4px 10px rgba(0,0,0,.6); }
+.avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 9px; display: block; }
+.avatar .lvl { position: absolute; left: -6px; bottom: -6px; min-width: 22px; height: 22px; border-radius: 11px; background: linear-gradient(180deg, #5a9aff, #1a4ab0); border: 2px solid #f3c24a;
+  font: 900 12px 'Nunito', sans-serif; display: grid; place-items: center; color: #fff; padding: 0 4px; }
+.pinfo { margin-left: 8px; background: linear-gradient(90deg, rgba(20,30,70,.92), rgba(20,30,70,.7)); border: 1px solid rgba(140,170,255,.35); border-radius: 0 10px 10px 0; padding: 3px 10px 4px 8px; }
+.pinfo b { font-size: 12px; text-shadow: 0 1px 2px #000; }
+.pow { display: flex; align-items: center; gap: 3px; font-family: 'Lilita One', sans-serif; font-size: 16px; color: #fff; text-shadow: 0 2px 0 #000; }
+.pow .ico { width: 18px; height: 18px; }
+.resbar { gap: 4px; margin-top: 2px; }
+.res { background: linear-gradient(180deg, rgba(20,30,70,.92), rgba(12,18,44,.92)); border: 1px solid rgba(140,170,255,.3); border-radius: 16px; padding: 2px 8px 2px 3px; gap: 3px;
+  font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 13.5px; text-shadow: 0 1.5px 0 #000; }
+.res .ico { width: 22px; height: 22px; }
+.res.gold { color: #ffe070; border-color: #c89020; }
+.res.gold b { background: none; width: 20px; height: 20px; margin-left: 2px; }
+.res.gold b .ico { width: 20px; height: 20px; }
+.chip { display: flex; align-items: center; gap: 4px; background: linear-gradient(180deg, rgba(20,30,70,.9), rgba(12,18,44,.9)); border: 1px solid rgba(140,170,255,.3);
+  font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 14px; padding: 2px 9px 2px 3px; text-shadow: 0 1.5px 0 #000; }
+.chip .ico { width: 22px; height: 22px; }
+#side { top: calc(max(8px, env(safe-area-inset-top)) + 70px); }
+#rside { position: fixed; right: 6px; top: calc(max(8px, env(safe-area-inset-top)) + 70px); z-index: 19; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+.rbtn { position: relative; background: none; border: 0; padding: 0; display: flex; flex-direction: column; align-items: center; color: #fff; width: 64px; }
+.rbtn span { font-family: 'Lilita One', sans-serif; font-size: 11.5px; margin-top: -4px; letter-spacing: .2px;
+  text-shadow: -1.5px -1.5px 0 #1a1030, 1.5px -1.5px 0 #1a1030, -1.5px 1.5px 0 #1a1030, 1.5px 1.5px 0 #1a1030, 0 2px 3px #000; }
+.rbtn .ico { transition: transform .15s; }
+.rbtn:active .ico { transform: scale(.9); }
+.rbtn .dot { top: 0; right: 10px; }
+.rbtn:has(.dot:not(.hidden)) .ico { animation: wiggle 2.4s ease-in-out infinite; }
+.rbtn.glow .ico { filter: drop-shadow(0 0 8px #c08aff) drop-shadow(0 2px 1px rgba(0,0,0,.5)); animation: float 2s ease-in-out infinite; }
+@keyframes wiggle { 0%, 70%, 100% { transform: rotate(0); } 75% { transform: rotate(-12deg) scale(1.08); } 80% { transform: rotate(10deg) scale(1.08); } 85% { transform: rotate(-6deg); } 90% { transform: rotate(4deg); } }
+#bottomHud { position: fixed; left: 0; right: 0; bottom: calc(max(6px, env(safe-area-inset-bottom)) + 58px); z-index: 19; display: flex; flex-direction: column; gap: 4px; padding: 0 8px; pointer-events: none; }
+#bottomHud > * { pointer-events: auto; }
+.qbar { display: flex; align-items: center; gap: 8px; background: linear-gradient(90deg, rgba(20,30,70,.94), rgba(20,30,70,.6)); border: 1px solid rgba(140,170,255,.35); border-radius: 22px; padding: 3px 4px 3px 4px; max-width: 360px; cursor: pointer; }
+.qbar .qtxt { flex: 1; font-weight: 900; font-size: 12.5px; text-shadow: 0 1px 2px #000; min-width: 0; }
+.qbar .qtxt span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qprog { height: 5px; border-radius: 3px; background: #00000077; margin-top: 3px; overflow: hidden; }
+.qprog span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3fb35c, #9aff8a); transition: width .4s; }
+.qbar b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 13px; background: linear-gradient(180deg, #5bc46e, #2d8a41); border-radius: 14px; padding: 5px 12px; box-shadow: 0 2px 0 #1d5a2a; }
+.qbar.done { border-color: #ffd96a; box-shadow: 0 0 14px #ffc84a99; }
+.qbar.done b { background: linear-gradient(180deg, #ffd96a, #e09a1a); color: #3a2000; box-shadow: 0 2px 0 #8a5400; animation: pulse 1s infinite; }
+.news { display: flex; align-items: center; gap: 6px; background: rgba(10,10,30,.62); border-radius: 10px; padding: 3px 8px; font-size: 11.5px; font-weight: 800; overflow: hidden; height: 24px; }
+.ntrack { flex: 1; overflow: hidden; white-space: nowrap; position: relative; height: 18px; }
+.ntrack span { position: absolute; left: 0; top: 0; white-space: nowrap; animation: newsin .5s ease-out; }
+.ntrack span em { font-style: normal; color: #ffd96a; }
+.ntrack span u { text-decoration: none; color: #9ad0ff; }
+@keyframes newsin { from { transform: translateY(100%); opacity: 0; } }
+nav { background: linear-gradient(180deg, #2a3a78, #141c40); border-top: 2px solid #8aa8ff; padding-top: 4px; }
+nav button { color: #c8d4ff; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 11.5px; text-shadow: 0 1.5px 0 #000; }
+nav button.on { color: #ffe070; }
+nav button .ico { transition: transform .15s; }
+nav button.on .ico { transform: translateY(-4px) scale(1.12); }
+.dot { border-color: #141c40; }
+/* bina etiketleri */
+.lbl .nm { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 13px; background: rgba(14,16,40,.55); border: 0; border-radius: 10px; padding: 1px 9px 1px 3px;
+  display: flex; align-items: center; gap: 4px; text-shadow: -1px -1px 0 #0a0a20, 1px -1px 0 #0a0a20, -1px 1px 0 #0a0a20, 1px 1px 0 #0a0a20; }
+.lbl .nm em { order: -1; margin: 0; min-width: 18px; height: 18px; border-radius: 9px; display: grid; place-items: center; font-size: 11px; color: #fff;
+  background: linear-gradient(180deg, #5a9aff, #1a4ab0); border: 1.5px solid #f3c24a; text-shadow: none; padding: 0 3px; }
+.lbl .tm { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 12px; border-radius: 10px; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.lbl .build { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 12px; background: linear-gradient(180deg, #4ab05a, #1e6a2a); border-radius: 10px; }
+.lbl .lock { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 12px; }
+.lbl .bub { width: 40px; height: 40px; background: radial-gradient(circle at 35% 30%, #ffffff, #dfe8ff 60%, #a8b8e8); border: 2.5px solid #fff; box-shadow: 0 0 12px rgba(255,255,255,.7), 0 3px 8px rgba(0,0,0,.5); }
+.lbl .bub .ico { width: 28px; height: 28px; }
+.rankrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #00000033; margin-bottom: 5px; font-weight: 800; font-size: 13px; }
+.rankrow.me { background: linear-gradient(90deg, #3a5ad0aa, #3a5ad033); border: 1px solid #8aa8ff; }
+.rankrow .rk { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: 'Lilita One', sans-serif; background: #00000055; }
+.rankrow:nth-child(2) .rk { background: linear-gradient(180deg, #ffe070, #c08010); color: #3a2000; }
+.rankrow:nth-child(3) .rk { background: linear-gradient(180deg, #e8eef8, #8a96b0); color: #1a2030; }
+.rankrow:nth-child(4) .rk { background: linear-gradient(180deg, #e8a060, #9a5a20); }
+.rankrow .rn { flex: 1; }
+.rankrow .rp { font-family: 'Lilita One', sans-serif; color: #ffe070; }
+@media (max-width: 380px) { .res { font-size: 12px; padding-right: 6px; } .res .ico { width: 19px; height: 19px; } }

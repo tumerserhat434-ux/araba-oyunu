@@ -695,7 +695,20 @@ function farm(L) {
   for (let i = 0; i < 2; i++) k.add(cylUV(0.4, 0.4, 0.7, 12, 1), 'hay', 1.0 + i * 0.9, 0.4, -2.2, Math.PI / 2, 0.3, 0);
   // korkuluk
   k.add(g.cyl8, 'timber', 2.4, 0.9, -1.2, 0, 0, 0, 0.05, 1.8, 0.05); k.add(g.cyl8, 'timber', 2.4, 1.4, -1.2, 0, 0, Math.PI / 2, 0.04, 1.0, 0.04); k.add(g.sphere, 'hay', 2.4, 1.85, -1.2, 0, 0, 0, 0.16, 0.18, 0.16); k.add(g.cone8, 'thatch', 2.4, 2.1, -1.2, 0, 0, 0, 0.3, 0.25, 0.3); k.add(g.box, 'red', 2.4, 1.35, -1.2, 0, 0, 0, 0.4, 0.5, 0.2);
-  const grp = k.build(4.5);
+  // yel değirmeni gövdesi
+  k.add(new THREE.CylinderGeometry(0.5, 0.75, 3.4, 10), t === 1 ? 'plank' : 'plaster', 2.75, 1.7, -2.75);
+  k.add(new THREE.ConeGeometry(0.75, 0.9, 10), t === 1 ? 'thatch' : 'roofRed', 2.75, 3.85, -2.75);
+  k.add(geos().box, 'timber', 2.75, 0.6, -2.24, 0, 0, 0, 0.4, 0.9, 0.05);
+  const grp = k.build(5.2);
+  const mill = new THREE.Group(); mill.position.set(2.75, 3.3, -2.15); grp.add(mill);
+  const bladeM = mats().plank, clothM = mats().cloth;
+  for (let i = 0; i < 4; i++) {
+    const arm = new THREE.Group(); arm.rotation.z = (i / 4) * TAU; mill.add(arm);
+    const pole = new THREE.Mesh(geos().box, bladeM); pole.scale.set(0.07, 2.1, 0.05); pole.position.y = 1.05; arm.add(pole);
+    const sail = new THREE.Mesh(geos().box, clothM); sail.scale.set(0.42, 1.5, 0.02); sail.position.set(0.24, 1.25, 0.02); arm.add(sail);
+    pole.castShadow = sail.castShadow = true;
+  }
+  const hub = new THREE.Mesh(geos().sphere, mats().timber); hub.scale.setScalar(0.14); mill.add(hub);
   // sallanan buğday
   const wheatGeo = new THREE.ConeGeometry(0.09, 0.9, 4); wheatGeo.translate(0, 0.45, 0);
   const n = 7 * 5 * 3, im = new THREE.InstancedMesh(wheatGeo, mats().wheat, n); im.castShadow = true;
@@ -707,7 +720,7 @@ function farm(L) {
   const q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), s = new THREE.Vector3();
   let acc = 1;
   grp.userData.update = (tt, dt) => {
-    old(tt, dt); acc += dt; if (acc < 0.1) return; acc = 0;
+    old(tt, dt); mill.rotation.z = -tt * 1.1; acc += dt; if (acc < 0.1) return; acc = 0;
     base.forEach(([x, y, z, k2], i) => { e.set(Math.sin(tt * 1.8 + x * 0.8) * 0.12, 0, Math.sin(tt * 1.3 + z) * 0.08); q.setFromEuler(e); m4.compose(v.set(x, 0, z), q, s.set(k2, k2 * (0.6 + L * 0.04), k2)); im.setMatrixAt(i, m4); });
     im.instanceMatrix.needsUpdate = true;
   };
@@ -737,8 +750,10 @@ function lumber(L) {
   for (let i = 0; i < 8; i++) { const sp = new THREE.Mesh(g.box, wm); sp.scale.set(0.06, 2.0, 0.08); sp.rotation.x = (i / 8) * Math.PI; wheel.add(sp); const pd = new THREE.Mesh(g.box, wm); const a = (i / 8) * TAU; pd.position.set(0, Math.cos(a) * 1.0, Math.sin(a) * 1.0); pd.rotation.x = a; pd.scale.set(0.5, 0.06, 0.3); wheel.add(pd); }
   wheel.traverse((m) => { m.castShadow = true; });
   grp.add(wheel);
+  const saw = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.02, 20), mats().iron); saw.rotation.x = Math.PI / 2; saw.position.set(-1.1, 1.0, -1.6); saw.castShadow = true; grp.add(saw);
+  const plankM = new THREE.Mesh(boxUV(1.8, 0.12, 0.35, 1), mats().plank); plankM.castShadow = true; grp.add(plankM);
   const old = grp.userData.update;
-  grp.userData.update = (tt, dt) => { old(tt, dt); wheel.rotation.x = tt * 0.8; };
+  grp.userData.update = (tt, dt) => { old(tt, dt); wheel.rotation.x = tt * 0.8; saw.rotation.y = tt * 12; const u = (tt * 0.25) % 1; plankM.position.set(-2.4 + u * 2.6, 0.88, -1.6); };
   return grp;
 }
 
@@ -753,14 +768,17 @@ function quarry(L) {
   // vinç
   k.add(g.cyl8, 'timber', -0.6, 1.8, 0.2, 0, 0, 0, 0.12, 3.6, 0.12);
   k.add(g.cyl8, 'timber', 0.4, 3.4, 0.2, 0, 0, -1.2, 0.08, 2.6, 0.08);
-  k.add(g.cyl8, 'iron', 1.5, 2.4, 0.2, 0, 0, 0, 0.015, 1.8, 0.015);
-  k.add(boxUV(0.6, 0.45, 0.6, 1), 'stone', 1.5, 1.3, 0.2);
   for (const s of [-1, 1]) k.add(g.cyl8, 'timber', -0.6 + s * 0.5, 0.6, 0.2 + s * 0.4, s * 0.4, 0, s * 0.3, 0.06, 1.4, 0.06);
   // el arabası
   k.add(boxUV(1.0, 0.35, 0.6, 1), 'plank', -1.6, 0.55, 0.8); for (const s of [-1, 1]) k.add(g.cyl12, 'timber', -1.6, 0.3, 0.8 + s * 0.35, Math.PI / 2, 0, 0, 0.3, 0.06, 0.3);
   k.add(g.ico, 'rock', -1.6, 0.8, 0.8, 0, 0, 0, 0.3, 0.2, 0.25);
   if (t >= 2) { k.add(boxUV(1.6, 1.6, 1.4, 2), 'plank', -2.2, 0.8, -1.2); k.add(gableRoof(1.6, 1.4, 0.8, 0.2), 'roofRed', -2.2, 1.6, -1.2); }
-  return k.build(4.2);
+  const grp = k.build(4.2);
+  const blk = new THREE.Mesh(boxUV(0.55, 0.42, 0.55, 1), mats().stone); blk.castShadow = true; grp.add(blk);
+  const rope = new THREE.Mesh(geos().cyl8, mats().iron); rope.scale.set(0.012, 1, 0.012); grp.add(rope);
+  const old = grp.userData.update;
+  grp.userData.update = (tt, dt) => { old(tt, dt); const y = 1.6 + Math.sin(tt * 0.9) * 0.9; blk.position.set(1.5, y, 0.2); rope.position.set(1.5, (y + 3.3) / 2, 0.2); rope.scale.y = 3.3 - y; blk.rotation.y = Math.sin(tt * 0.5) * 0.3; };
+  return grp;
 }
 
 function warehouse(L) {
