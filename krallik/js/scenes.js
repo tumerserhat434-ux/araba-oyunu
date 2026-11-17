@@ -6,6 +6,7 @@ import * as BLD from './buildings.js';
 import { createSoldier, createHero, animateUnit } from './units.js';
 import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost } from './data.js';
 import * as G from './state.js';
+import { setTheme } from './audio.js';
 
 let C = null; // main.js bağlamı
 let active = null; // { scene, camera, update(dt,t), close() }
@@ -25,7 +26,8 @@ export function renderActive(dt, t) {
   C.renderer.render(active.scene, active.camera);
   return true;
 }
-function open(obj) {
+function open(obj, theme = 'city') {
+  setTheme(theme);
   if (active) active.dispose?.();
   active = obj;
   ['top', 'side', 'nav', 'labels'].forEach((id) => $(id).classList.add('hidden'));
@@ -40,6 +42,7 @@ function close() {
   ov().classList.add('hidden'); ov().innerHTML = '';
   ['top', 'side', 'nav', 'labels'].forEach((id) => $(id).classList.remove('hidden'));
   removeEventListener('resize', onResize);
+  setTheme('city');
   C.onSceneClosed();
 }
 function onResize() { if (active) { active.camera.aspect = innerWidth / innerHeight; active.camera.updateProjectionMatrix(); } }
@@ -266,7 +269,7 @@ export function openBattle(opts) {
     for (const f of sparks) { if (f.life > 0) { f.life -= dt; f.s.material.opacity = Math.max(0, f.life * 4); f.s.scale.setScalar(0.4 + (0.25 - f.life) * 4); } }
     if (T > 11.2) finish();
   };
-  open({ scene, camera, update, dispose: () => disposeScene(scene) });
+  open({ scene, camera, update, dispose: () => disposeScene(scene) }, 'battle');
 }
 
 // =====================================================================
@@ -363,6 +366,7 @@ export function openSummon() {
     $('sSkip').onclick = () => { queue = []; showGrid(); };
     C.sfx('summon');
     C.updateTop();
+    setTimeout(() => C.event?.('summoned'), 300);
   };
   const showHero = (r) => {
     const h = HERO_BY_ID[r.id];
@@ -422,7 +426,7 @@ export function openSummon() {
     S.camera.position.set(Math.sin(t * 0.15) * 0.6, S.heroSlot ? 1.7 + (mounted ? 0.5 : 0) : 2.6, (S.heroSlot ? (mounted ? 6.5 : 4.6) : 8.5) * k);
     S.camera.lookAt(0, S.heroSlot ? ty - (k > 1 ? 0.25 : 0) : 1.9, 0);
   };
-  open({ scene: S.scene, camera: S.camera, update });
+  open({ scene: S.scene, camera: S.camera, update }, 'summon');
 }
 
 // =====================================================================

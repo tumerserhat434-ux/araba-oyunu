@@ -7,6 +7,9 @@ import { createSoldier, animateUnit } from './units.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime, prodPerHour, prodCap, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, sceneActive, renderActive } from './scenes.js';
+import { createGrass } from './grass.js';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState } from './audio.js';
+import { initTutorial, tutEvent } from './tut.js';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -72,10 +75,21 @@ function speckle(ctx, w, h, n, cols, r0, r1, alpha = 1) {
   }
   ctx.globalAlpha = 1;
 }
-let waterNormal;
+let waterNormal, grassField = null;
+// çim yerleşimi: yollar, meydan, arsalar ve surlardan kaçın
+const ROAD_LINES = PLOTS.filter((q) => q.id !== 'townhall').map((q) => [[0, 0], [q.x * 0.55, q.z * 0.2 + (q.z > 0 ? 4 : -4)], [q.x, q.z]]).concat([[[0, 0], [0, 50]]]);
+function segDist(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az, l = dx * dx + dz * dz; const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / l)) : 0; return Math.hypot(px - ax - dx * t, pz - az - dz * t); }
+function grassAvoid(x, z) {
+  const r = Math.hypot(x, z);
+  if (r < 10.8) return true;
+  if (Math.abs(r - 40) < 2.2) return true;
+  for (const p of PLOTS) { const f = (BLD.FOOTPRINT[p.key] || 7) / 2 + 0.4; if (Math.abs(x - p.x) < f && Math.abs(z - p.z) < f) return true; }
+  for (const L of ROAD_LINES) for (let i = 0; i < L.length - 1; i++) if (segDist(x, z, L[i][0], L[i][1], L[i + 1][0], L[i + 1][1]) < 1.6) return true;
+  return false;
+}
 function buildTerrain() {
   const grass = canvasTex(512, 512, (ctx, w, h) => {
-    ctx.fillStyle = '#5e8f3a'; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#4c7a2c'; ctx.fillRect(0, 0, w, h);
     speckle(ctx, w, h, 900, ['#4f7f30', '#6ea044', '#7aac4a', '#557f2e', '#8ab656'], 6, 22, 0.35);
     speckle(ctx, w, h, 5000, ['#3f6a24', '#86b852', '#a0c860', '#4a7a2a'], 0.6, 2, 0.8);
     speckle(ctx, w, h, 60, ['#e8e070', '#f0f0f0', '#d070c0'], 1, 2, 0.9);
@@ -88,6 +102,7 @@ function buildTerrain() {
   geo.rotateX(-Math.PI / 2);
   const ground = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: grass, roughness: 0.95 }));
   ground.receiveShadow = true; city.add(ground);
+  grassField = createGrass(city, { radius: 72, avoid: grassAvoid, mobile: isMobile, density: isMobile ? 1.6 : 2.0, outerDensity: isMobile ? 0.7 : 0.9 });
   const sand = new THREE.Mesh(new THREE.RingGeometry(70, 95, 96).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xd8c08a, roughness: 1 }));
   sand.position.y = -0.25; sand.receiveShadow = true; city.add(sand);
   // su
@@ -227,11 +242,51 @@ function refreshPlot(id) {
   if (st === 'busy') c = BLD.createConstructionSite(fp);
   else if (st === 'empty') c = BLD.createPlot(fp);
   else c = BLD.createBuilding(key, G.lvl(id));
+  const wasBusy = h.prevState === 'busy';
+  h.prevState = st;
   h.content = c; h.group.add(c);
   h.height = c.userData.height || (st === 'empty' ? 1.5 : 6);
+  if (h.inited && (st === 'busy' || wasBusy)) { pops.push({ c, base: c.scale.x, t: 0, big: wasBusy }); burst(h.plot.x, h.height * 0.5, h.plot.z, wasBusy ? 0xffd860 : 0xc8a878, wasBusy ? 26 : 14, wasBusy); }
+  h.inited = true;
   h.hit.scale.y = Math.max(0.4, h.height / 6); h.hit.position.y = Math.max(0.4, h.height / 6) * 3;
   if (key === 'archery') placeArchers(id);
 }
+// Yükseltme "pop" animasyonu ve parıltılar
+const pops = [];
+const sparks = [];
+let sparkTex = null;
+function burst(x, y, z, color, n, gold) {
+  if (!sparkTex) { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); sparkTex = new THREE.CanvasTexture(c); }
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: sparkTex, color, blending: gold ? THREE.AdditiveBlending : THREE.NormalBlending, transparent: true, depthWrite: false }));
+    const a = Math.random() * 6.28, sp = rand(2, gold ? 7 : 4);
+    s.position.set(x, gold ? y : 0.5, z); city.add(s);
+    sparks.push({ s, vx: Math.cos(a) * sp, vz: Math.sin(a) * sp, vy: gold ? rand(4, 10) : rand(0.5, 2), life: 0, max: rand(0.8, 1.4), size: gold ? rand(0.5, 1.0) : rand(1.5, 2.6) });
+  }
+}
+function updatePops(dt) {
+  for (let i = pops.length - 1; i >= 0; i--) {
+    const p = pops[i]; p.t += dt;
+    const k = Math.min(1, p.t / 0.8), e = 1 - Math.pow(1 - k, 3) * Math.cos(k * (p.big ? 9 : 6));
+    p.c.scale.set(p.base * (0.55 + 0.45 * e), p.base * (0.3 + 0.7 * e), p.base * (0.55 + 0.45 * e));
+    if (k >= 1) { p.c.scale.setScalar(p.base); pops.splice(i, 1); }
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const q = sparks[i]; q.life += dt;
+    q.vy -= 9 * dt; q.s.position.x += q.vx * dt; q.s.position.y = Math.max(0.2, q.s.position.y + q.vy * dt); q.s.position.z += q.vz * dt;
+    q.vx *= 0.97; q.vz *= 0.97;
+    const u = q.life / q.max; q.s.material.opacity = 1 - u; q.s.scale.setScalar(q.size * (0.6 + u));
+    if (u >= 1) { city.remove(q.s); q.s.material.dispose(); sparks.splice(i, 1); }
+  }
+}
+export function focusPlot(id) { const h = holders[id]; if (h) focusOn(h.plot.x, h.plot.z); }
+export function plotScreen(id) {
+  const h = holders[id]; if (!h) return null;
+  _v.set(h.plot.x, h.height + 1.2, h.plot.z).project(camera);
+  if (_v.z > 1) return null;
+  return { x: (_v.x + 1) / 2 * innerWidth, y: (1 - _v.y) / 2 * innerHeight - 30 };
+}
+
 // Kulelerdeki okçular
 const ambient = []; // { obj, state, path, t, speed }
 function placeArchers(id) {
@@ -287,7 +342,7 @@ function updateAmbient(t, dt) {
 // ---------------------------------------------------------------------
 //  Kamera kontrolü
 // ---------------------------------------------------------------------
-const cam = { tx: 0, tz: 4, dist: innerHeight > innerWidth ? 120 : 80, yaw: 0.55, pitch: 0.92, vx: 0, vz: 0 };
+const cam = { tx: 0, tz: 4, dist: innerHeight > innerWidth ? 120 : 80, distT: innerHeight > innerWidth ? 105 : 72, yaw: 0.55, pitch: 0.92, vx: 0, vz: 0 };
 function applyCam() {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   camera.position.set(cam.tx + Math.sin(cam.yaw) * cp * cam.dist, sp * cam.dist, cam.tz + Math.cos(cam.yaw) * cp * cam.dist);
@@ -300,7 +355,7 @@ canvas.addEventListener('pointerdown', (e) => {
   canvas.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) { drag = { x: e.clientX, y: e.clientY }; moved = 0; cam.vx = cam.vz = 0; }
-  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); dist0 = cam.dist; moved = 99; }
+  if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch0 = Math.hypot(a.x - b.x, a.y - b.y); dist0 = cam.distT; moved = 99; }
 });
 canvas.addEventListener('pointermove', (e) => {
   if (!pointers.has(e.pointerId)) return;
@@ -309,13 +364,13 @@ canvas.addEventListener('pointermove', (e) => {
   if (pointers.size === 2) {
     const [a, b] = [...pointers.values()];
     const d = Math.hypot(a.x - b.x, a.y - b.y);
-    cam.dist = clamp(dist0 * pinch0 / Math.max(1, d), 28, 170);
+    cam.distT = clamp(dist0 * pinch0 / Math.max(1, d), 28, 170);
     return;
   }
   if (!drag) return;
   const dx = e.clientX - prev.x, dy = e.clientY - prev.y;
   moved += Math.abs(dx) + Math.abs(dy);
-  const k = cam.dist / innerHeight * 1.25;
+  const k = cam.dist / innerHeight * 1.05;
   const cs = Math.cos(cam.yaw), sn = Math.sin(cam.yaw);
   const mx = (-dx * cs - dy * sn / Math.sin(cam.pitch) * 0.9) * k, mz = (dx * sn - dy * cs / Math.sin(cam.pitch) * 0.9) * k;
   cam.tx = clamp(cam.tx + mx, -60, 60); cam.tz = clamp(cam.tz + mz, -60, 65);
@@ -332,7 +387,7 @@ const endPtr = (e) => {
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', (e) => { if (!sceneActive()) cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 28, 170); }, { passive: true });
+canvas.addEventListener('wheel', (e) => { if (!sceneActive()) cam.distT = clamp(cam.distT * (1 + Math.sign(e.deltaY) * 0.12), 28, 170); }, { passive: true });
 document.addEventListener('touchmove', (e) => { if (!e.target.closest('.sheet, .modal-box, .res10')) e.preventDefault(); }, { passive: false });
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -364,8 +419,7 @@ function updateLabels(force) {
     _v.set(p.x, h.height + 1.2, p.z).project(camera);
     if (_v.z > 1) { h.el.style.display = 'none'; continue; }
     h.el.style.display = '';
-    h.el.style.left = ((_v.x + 1) / 2 * innerWidth).toFixed(1) + 'px';
-    h.el.style.top = ((1 - _v.y) / 2 * innerHeight).toFixed(1) + 'px';
+    h.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px, ${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px, 0) translate(-50%, -100%)`;
     if (!refreshText) continue;
     const def = BUILDINGS[p.key];
     let html = '';
@@ -379,7 +433,7 @@ function updateLabels(force) {
       if (p.key === 'potion' && G.S.potions > 0) html += `<div class="bub" style="animation:none;font-size:16px">🧪${G.S.potions}</div>`;
       const pend = G.pending(id);
       if (def.prod && pend > b.level * 5) html += `<div class="bub">${RES[def.prod].icon}</div>`;
-      if (p.key === 'summon' && G.freePullAvailable()) html += `<div class="bub" style="font-size:12px;width:auto;padding:0 8px;border-radius:12px">ÜCRETSİZ</div>`;
+      if (p.key === 'summon' && G.freePullAvailable()) html += `<div class="bub" style="font-size:11px;width:auto;padding:0 9px;border-radius:12px;color:#6a3a00;font-weight:900">🎁 ÜCRETSİZ</div>`;
       html += `<div class="nm">${def.name}<em>${b.level}</em></div>`;
     }
     if (h.el._html !== html) { h.el.innerHTML = html; h.el._html = html; }
@@ -415,7 +469,7 @@ function updateTop() {
 //  Bina paneli
 // ---------------------------------------------------------------------
 let sheetId = null, sheetTimer = 0, trainSel = 'infantry', trainQty = 50;
-function openBuilding(id) { sheetId = id; renderSheet(); $('sheetWrap').classList.add('open'); }
+function openBuilding(id) { sheetId = id; renderSheet(); $('sheetWrap').classList.add('open'); sfx('open'); tutEvent('sheet:' + id); }
 export function closeSheet() { sheetId = null; $('sheetWrap').classList.remove('open'); }
 $('sheetWrap').addEventListener('pointerdown', (e) => { if (e.target.id === 'sheetWrap') closeSheet(); });
 function upgradeBlock(id) {
@@ -503,7 +557,7 @@ function doCollect(id) {
   if (amt) {
     const p = holders[id].plot; _v.set(p.x, holders[id].height, p.z).project(camera);
     floaty(`+${G.fmt(amt)} ${RES[BUILDINGS[p.key].prod].icon}`, (_v.x + 1) / 2 * innerWidth - 30, (1 - _v.y) / 2 * innerHeight - 40, '#ffe68a');
-    sfx('coin');
+    sfx('collect'); tutEvent('collect');
   }
   updateLabels(true); updateTop();
 }
@@ -515,12 +569,12 @@ $('sheet').addEventListener('click', (e) => {
   const a = e.target.closest('[data-act]'); if (!a) return;
   const act = a.dataset.act, id = sheetId;
   if (act === 'close') return closeSheet();
-  if (act === 'upgrade') { const r = G.startUpgrade(id); if (!r.ok) toast(r.why, true); else { toast('🔨 İnşaat başladı'); sfx('build'); refreshPlot(id); } }
-  if (act === 'speed') { if (G.speedUp(id)) { sfx('coin'); } else needGold(); }
+  if (act === 'upgrade') { const r = G.startUpgrade(id); if (!r.ok) toast(r.why, true); else { toast('🔨 İnşaat başladı'); sfx('build'); refreshPlot(id); tutEvent('upgrade'); } }
+  if (act === 'speed') { if (G.speedUp(id)) { sfx('coin'); tutEvent('speed'); } else needGold(); }
   if (act === 'collect') doCollect(id);
-  if (act === 'train') { const r = G.startTraining(trainSel, trainQty); if (!r.ok) toast(r.why, true); else { toast('⚔ Eğitim başladı'); sfx('build'); } }
+  if (act === 'train') { const r = G.startTraining(trainSel, trainQty); if (!r.ok) toast(r.why, true); else { toast('⚔ Eğitim başladı'); sfx('train'); tutEvent('train'); } }
   if (act === 'speedtrain') { if (!G.speedTraining()) needGold(); }
-  if (act === 'heal') { const r = G.startHealing(); if (!r.ok) toast(r.why, true); else { toast('💚 İyileştirme başladı'); } }
+  if (act === 'heal') { const r = G.startHealing(); if (!r.ok) toast(r.why, true); else { toast('💚 İyileştirme başladı'); sfx('heal'); } }
   if (act === 'potion') { const r = G.usePotion(); if (!r.ok) toast(r.why, true); else toast(`🧪 ${r.healed || ''} asker iyileşti`); }
   renderSheet(); updateTop(); updateLabels(true);
 });
@@ -544,7 +598,9 @@ export function navigate(go) {
   closeSheet();
   setNav(go);
   if (go === 'city') { closeModal(); return; }
-  if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); return; }
+  if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); tutEvent('summonOpen'); return; }
+  if (go === 'world') tutEvent('worldOpen');
+  sfx('open');
   modalKind = go;
   renderModal();
 }
@@ -652,7 +708,7 @@ function profileUI() {
     <input data-name maxlength="16" value="${G.S.name.replace(/"/g, '')}" style="width:100%;padding:10px;border-radius:10px;background:#1a1008;color:#fff;border:1px solid var(--line);font-weight:800;font-size:15px;margin-bottom:10px">
     <div class="stats"><div class="stat"><small>Güç</small><b>⚔ ${G.fmt(G.cityPower())}</b></div><div class="stat"><small>Zafer / Yenilgi</small><b>${G.S.stats.wins} / ${G.S.stats.losses}</b></div>
     <div class="stat"><small>Öldürülen düşman</small><b>${G.fmt(G.S.stats.kills)}</b></div><div class="stat"><small>Toplam çağırma</small><b>${G.S.totalPulls}</b></div></div>
-    <div class="row"><button class="btn" data-m="savename">💾 Kaydet</button><button class="btn gray" data-m="sound">${soundOn ? '🔊 Ses açık' : '🔇 Ses kapalı'}</button></div>
+    <div class="row"><button class="btn" data-m="savename">💾 Kaydet</button><button class="btn gray" data-m="sound">${audioState().sfxOn ? '🔊 Efekt' : '🔇 Efekt'}</button><button class="btn gray" data-m="music">${audioState().musicOn ? '🎵 Müzik' : '🔇 Müzik'}</button></div>
     <button class="btn red" style="width:100%;margin-top:10px" data-m="reset">🗑 Oyunu sıfırla</button>`;
 }
 $('modalBox').addEventListener('input', (e) => {
@@ -683,17 +739,18 @@ $('modalBox').addEventListener('click', (e) => {
   const a = m.dataset.m;
   if (a === 'close') closeModal();
   if (a === 'world') { modalKind = 'world'; renderModal(); }
-  if (a === 'toattack') { modalKind = 'attack'; atk.init = false; renderModal(); }
+  if (a === 'toattack') { modalKind = 'attack'; atk.init = false; renderModal(); tutEvent('attackOpen'); }
   if (a === 'march') {
     const troops = { ...atk.troops }, hero = atk.hero;
     const r = G.attackEnemy(worldSel, troops, hero);
     if (!r) return toast('Asker seç', true);
-    closeModal(); atk.init = false;
+    closeModal(); atk.init = false; tutEvent('battle');
     openBattle({ mode: 'attack', result: r.res, attacker: { troops: r.sent, hero }, defender: { troops: addBack(r.res.D, r.res.dLoss), tower: r.enemy.tower }, report: r.rep, title: r.enemy.name });
   }
   if (a === 'gobarracks') { closeModal(); openBuilding('barracks'); focusOn(-17, 2); }
   if (a === 'savename') { const v = $('modalBox').querySelector('[data-name]').value.trim(); if (v) { G.S.name = v; G.save(); updateTop(); toast('Kaydedildi'); } }
-  if (a === 'sound') { soundOn = !soundOn; localStorage.setItem('ds_sound', soundOn ? '1' : '0'); renderModal(); }
+  if (a === 'sound') { setSfx(!audioState().sfxOn); renderModal(); }
+  if (a === 'music') { setMusic(!audioState().musicOn); renderModal(); }
   if (a === 'reset') { if (confirm('Tüm ilerleme silinsin mi? Bu geri alınamaz.')) { G.resetGame(); location.reload(); } }
 });
 const addBack = (a, b) => { const o = {}; for (const k in a) o[k] = a[k] + (b[k] || 0); return o; };
@@ -701,39 +758,20 @@ const addBack = (a, b) => { const o = {}; for (const k in a) o[k] = a[k] + (b[k]
 // ---------------------------------------------------------------------
 //  Basit ses efektleri (WebAudio)
 // ---------------------------------------------------------------------
-let actx = null, soundOn = localStorage.getItem('ds_sound') !== '0';
-export function sfx(kind) {
-  if (!soundOn) return;
-  try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-    if (actx.state === 'suspended') actx.resume();
-    const t = actx.currentTime;
-    const tone = (f0, f1, d, v, type = 'sine', delay = 0) => { const o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.setValueAtTime(f0, t + delay); o.frequency.exponentialRampToValueAtTime(f1, t + delay + d); g.gain.setValueAtTime(0.0001, t + delay); g.gain.exponentialRampToValueAtTime(v, t + delay + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + delay + d); o.connect(g).connect(actx.destination); o.start(t + delay); o.stop(t + delay + d + 0.05); };
-    if (kind === 'coin') { tone(1200, 1200, 0.08, 0.12, 'triangle'); tone(1800, 1800, 0.12, 0.1, 'triangle', 0.06); }
-    if (kind === 'build') { tone(300, 200, 0.12, 0.2, 'square'); tone(260, 180, 0.12, 0.15, 'square', 0.15); }
-    if (kind === 'click') tone(700, 500, 0.05, 0.08);
-    if (kind === 'clash') { tone(900, 300, 0.1, 0.12, 'sawtooth'); tone(1400, 600, 0.08, 0.08, 'square', 0.03); }
-    if (kind === 'horn') { tone(220, 220, 0.6, 0.18, 'sawtooth'); tone(330, 330, 0.6, 0.1, 'sawtooth', 0.05); }
-    if (kind === 'win') [0, 4, 7, 12].forEach((s, i) => tone(440 * Math.pow(2, s / 12), 440 * Math.pow(2, s / 12), 0.25, 0.15, 'triangle', i * 0.12));
-    if (kind === 'lose') [0, -3, -7].forEach((s, i) => tone(330 * Math.pow(2, s / 12), 330 * Math.pow(2, s / 12), 0.35, 0.14, 'triangle', i * 0.18));
-    if (kind === 'summon') { for (let i = 0; i < 6; i++) tone(300 + i * 120, 600 + i * 200, 0.3, 0.06, 'sine', i * 0.08); }
-    if (kind === 'reveal5') [0, 4, 7, 11, 14, 19].forEach((s, i) => tone(523 * Math.pow(2, s / 12), 523 * Math.pow(2, s / 12), 0.5, 0.12, 'triangle', i * 0.09));
-    if (kind === 'reveal') [0, 7].forEach((s, i) => tone(523 * Math.pow(2, s / 12), 523 * Math.pow(2, s / 12), 0.25, 0.1, 'triangle', i * 0.08));
-  } catch (e) { /* ses yok */ }
-}
-document.addEventListener('pointerdown', () => { if (soundOn && actx && actx.state === 'suspended') actx.resume(); }, { capture: true });
+export function sfx(kind) { asfx(kind); }
+document.addEventListener('click', (e) => { if (e.target.closest('button, .troop, .hcard, .kd, .tabs button')) asfx('click'); }, { capture: true });
 
 // ---------------------------------------------------------------------
 //  Olaylar
 // ---------------------------------------------------------------------
 G.onChange((ev, data) => {
-  if (ev === 'built') { refreshPlot(data); const p = PLOTS.find((q) => q.id === data); toast(`✅ ${BUILDINGS[p.key].name} Sv.${G.lvl(data)} hazır!`); sfx('win'); if (p.key === 'townhall') buildWalls(); }
+  if (ev === 'built') { refreshPlot(data); const p = PLOTS.find((q) => q.id === data); toast(`✅ ${BUILDINGS[p.key].name} Sv.${G.lvl(data)} hazır!`); sfx('built'); if (p.key === 'townhall') buildWalls(); }
   if (ev === 'building') refreshPlot(data);
   if (ev === 'trained') toast(`⚔ ${data.n} ${TROOPS[data.type].name} hazır!`);
   if (ev === 'healed') toast(`💚 ${G.totalTroops(data.counts)} asker iyileşti`);
   if (ev === 'battle') $('repDot').classList.remove('hidden');
 });
-export function onSceneClosed() { setNav('city'); updateTop(); updateLabels(true); for (const id in holders) refreshPlot(id); }
+export function onSceneClosed() { tutEvent('sceneClosed'); setNav('city'); updateTop(); updateLabels(true); for (const id in holders) refreshPlot(id); }
 
 // ---------------------------------------------------------------------
 //  Döngü
@@ -742,11 +780,16 @@ let last = performance.now(), tAcc = 0, slow = 0, saveT = 0;
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, (now - last) / 1000); last = now; tAcc += dt;
+  updateAudio();
   if (renderActive(dt, tAcc)) { gameTick(dt); return; }
   // kamera
   if (!drag) { cam.tx += cam.vx * dt; cam.tz += cam.vz * dt; cam.vx *= Math.exp(-6 * dt); cam.vz *= Math.exp(-6 * dt); cam.tx = clamp(cam.tx, -60, 60); cam.tz = clamp(cam.tz, -60, 65); }
   if (focus) { cam.tx = lerp(cam.tx, focus.x, 1 - Math.exp(-5 * dt)); cam.tz = lerp(cam.tz, focus.z, 1 - Math.exp(-5 * dt)); if (Math.hypot(cam.tx - focus.x, cam.tz - focus.z) < 0.2 || drag) focus = null; }
+  cam.dist = lerp(cam.dist, cam.distT, 1 - Math.exp(-8 * dt));
+  cam.pitch = lerp(cam.pitch, 0.78 + (cam.dist - 28) / 142 * 0.22, 1 - Math.exp(-6 * dt));
   applyCam();
+  updatePops(dt);
+  if (grassField) grassField.update(tAcc);
   for (const id in holders) { const c = holders[id].content; if (c && c.userData.update) c.userData.update(tAcc, dt); }
   if (wallGroup) wallGroup.children.forEach((c) => c.userData.update && c.userData.update(tAcc, dt));
   updateAmbient(tAcc, dt);
@@ -765,7 +808,7 @@ function gameTick(dt) {
     if (sheetId && !document.activeElement?.classList.contains('slider')) renderSheet();
     // baskın
     const left = G.S.raid.at - Date.now() / 1000;
-    if (left < 30 && !G.S.raid.warned) { G.S.raid.warned = true; toast('⚠️ Düşman ordusu yaklaşıyor! 30 saniye!', true); sfx('horn'); }
+    if (left < 30 && !G.S.raid.warned) { G.S.raid.warned = true; toast('⚠️ Düşman ordusu yaklaşıyor! 30 saniye!', true); sfx('warn'); }
     if (left <= 0 && !sceneActive() && !$('modal').classList.contains('open')) {
       const r = G.resolveRaid();
       closeSheet();
@@ -799,7 +842,7 @@ async function boot() {
   buildPlots();
   setLoad(80, 'Askerler toplanıyor…'); await frame();
   buildPatrols();
-  initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv });
+  initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   applyCam();
   setLoad(95, 'Son dokunuşlar…'); await frame();
@@ -811,14 +854,7 @@ async function boot() {
   if (G.S.reports.length && G.S.reports[0].t > (G.S.reportsSeen || 0)) $('repDot').classList.remove('hidden');
   const away = Date.now() / 1000 - (G.S.lastSeenBoot || Date.now() / 1000);
   G.S.lastSeenBoot = Date.now() / 1000;
-  if (G.S.totalPulls === 0 && !localStorage.getItem('ds_welcome')) {
-    localStorage.setItem('ds_welcome', '1');
-    openModal(head('Hoş geldin, Lordum!', '⚜') + `<p class="desc">Krallığını büyüt, ordunu eğit ve komşu krallıkları fethet!</p>
-      <div class="stats"><div class="stat"><small>1</small><b>🏰 Binaları yükselt</b></div><div class="stat"><small>2</small><b>⚔ Kışlada asker eğit</b></div>
-      <div class="stat"><small>3</small><b>🔮 Kahraman çağır</b></div><div class="stat"><small>4</small><b>🗺️ Dünyada saldır</b></div></div>
-      <p class="desc">Başlangıç hediyesi olarak <b style="color:var(--gold)">1200 altın</b> verildi. Günde bir kez ücretsiz çağırma hakkın var!</p>
-      <button class="btn gold" style="width:100%" data-m="close">Başlayalım!</button>`);
-  }
+  initTutorial({ sfx, toast, updateTop, getPortrait, plotScreen, focusPlot });
   requestAnimationFrame(loop);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });

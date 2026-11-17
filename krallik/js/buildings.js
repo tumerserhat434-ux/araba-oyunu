@@ -186,6 +186,7 @@ class Kit {
     return this;
   }
   build(height) {
+    if (CUR) { levelExtras(this, CUR.key, CUR.L, height); CUR = null; }
     const m = mats();
     for (const k in this.parts) {
       const mesh = new THREE.Mesh(mergeGeometries(this.parts[k]), m[k]);
@@ -364,54 +365,131 @@ function crate(k, x, z, s = 0.7, ry = 0, y = 0) { k.add(boxUV(s, s, s, 1), 'plan
 function platform(k, w, d, h = 0.35, mat = 'stone') { k.add(boxUV(w, h, d, 2), mat, 0, h / 2, 0); k.add(boxUV(w + 0.5, h * 0.5, d + 0.5, 2), 'stoneDark', 0, h * 0.25, 0); }
 function lantern(k, x, y, z) { const g = geos(); k.add(g.cyl8, 'iron', x, y / 2, z, 0, 0, 0, 0.05, y, 0.05); k.add(g.box, 'window', x, y + 0.15, z, 0, 0, 0, 0.18, 0.25, 0.18); k.add(g.cone8, 'iron', x, y + 0.36, z, 0, 0, 0, 0.16, 0.16, 0.16); }
 
+
+// ---------------------------------------------------------------------
+//  Seviyeye göre eklenen ayrıntılar (her seviye görünür biçimde değişir)
+// ---------------------------------------------------------------------
+let CUR = null;
+const SPOTS = {
+  townhall: null, archery: [[-1.9, 1.9], [1.9, 1.9], [-1.9, -1.9], [1.9, -1.9], [-2.1, 0], [2.1, 0]],
+};
+function planter(k, x, z) { const g = geos(); k.add(boxUV(0.9, 0.35, 0.45, 1), 'plank', x, 0.18, z); k.add(boxUV(0.8, 0.05, 0.38, 1), 'dirt', x, 0.36, z); for (let i = 0; i < 3; i++) k.add(g.ico, ['red', 'leafLight', 'gold'][i % 3] === 'gold' ? 'hay' : ['red', 'leafLight'][i % 2], x - 0.28 + i * 0.28, 0.45, z, 0, i, 0, 0.12, 0.1, 0.12); }
+function hut(k, x, z, roof) { timberHouse(k, 1.4, 1.2, 1.2, x, 0, z, { wall: 'plank' }); k.add(gableRoof(1.4, 1.2, 0.8, 0.15), roof, x, 1.2, z); k.add(gableWall(1.2, 0.8, 0.1), 'plank', x + 0.7, 1.2, z, 0, Math.PI / 2, 0); k.add(gableWall(1.2, 0.8, 0.1), 'plank', x - 0.7, 1.2, z, 0, Math.PI / 2, 0); }
+function statue(k, x, z, mat) {
+  const g = geos();
+  k.add(boxUV(0.7, 0.8, 0.7, 1), 'stone', x, 0.4, z); k.add(boxUV(0.85, 0.12, 0.85, 1), 'stoneDark', x, 0.84, z);
+  k.add(g.cyl8, mat, x - 0.08, 1.2, z, 0, 0, 0.04, 0.07, 0.65, 0.07); k.add(g.cyl8, mat, x + 0.08, 1.2, z, 0, 0, -0.04, 0.07, 0.65, 0.07);
+  k.add(new THREE.CylinderGeometry(0.17, 0.12, 0.6, 10), mat, x, 1.8, z); k.add(g.sphere, mat, x, 2.22, z, 0, 0, 0, 0.11, 0.13, 0.11);
+  k.add(g.cyl8, mat, x + 0.22, 2.05, z, -0.3, 0, -0.4, 0.05, 0.5, 0.05); k.add(g.box, mat, x + 0.34, 2.6, z + 0.15, -0.3, 0, -0.4, 0.05, 0.9, 0.025);
+}
+function brazier(k, x, z) {
+  const g = geos();
+  k.add(g.cyl8, 'gold', x, 0.55, z, 0, 0, 0, 0.06, 1.1, 0.06);
+  k.add(new THREE.CylinderGeometry(0.28, 0.14, 0.25, 12, 1, true), 'gold', x, 1.2, z);
+  const fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: 0xff9030, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  fire.position.set(x, 1.45, z); k.group.add(fire);
+  const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: 0xffe080, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+  core.position.set(x, 1.35, z); k.group.add(core);
+  const ph = Math.random() * 6;
+  k.anims.push((t) => { const f = 0.85 + Math.sin(t * 13 + ph) * 0.1 + Math.sin(t * 7.3 + ph) * 0.08; fire.scale.set(0.8 * f, 1.1 * f, 1); core.scale.setScalar(0.4 * f); });
+}
+function crest(k, y) {
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.07, 8, 32), mats().gold);
+  const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.28, 0), new THREE.MeshStandardMaterial({ color: 0x6ab0ff, emissive: 0x3a8aff, emissiveIntensity: 1.8, roughness: 0.1 }));
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: 0xffd060, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.7 }));
+  glow.scale.setScalar(2.4);
+  const holder = new THREE.Group(); holder.add(ring, gem, glow); holder.position.y = y; k.group.add(holder);
+  k.anims.push((t) => { holder.position.y = y + Math.sin(t * 1.5) * 0.2; ring.rotation.y = t * 1.2; gem.rotation.y = -t * 2; glow.material.opacity = 0.55 + Math.sin(t * 3) * 0.2; });
+}
+function levelExtras(k, key, L, height) {
+  const fp = FOOTPRINT[key] || 7, c = fp * 0.45;
+  const sp = SPOTS[key] || (key === 'townhall' ? [[-4.1, 3.6], [4.1, 3.6], [-4.6, -4.4], [4.6, -4.4], [-4.8, 0.6], [4.8, 0.6]] : [[-c, c], [c, c], [-c, -c], [c, -c], [-c, 0], [c, 0]]);
+  if (L >= 2) { lantern(k, sp[0][0] * 0.92, 1.5, sp[0][1]); lantern(k, sp[1][0] * 0.92, 1.5, sp[1][1]); }
+  if (L >= 3 && key !== 'archery') { planter(k, sp[4][0], sp[4][1] + 0.6); planter(k, sp[5][0], sp[5][1] + 0.6); }
+  if (L >= 4) addBanner(k, sp[2][0], 3.2, sp[2][1], 0.6, 0.9);
+  if (L >= 5 && key !== 'archery') hut(k, sp[3][0] * 0.95, sp[3][1] * 0.95, L >= 8 ? 'roofBlue' : 'roofRed');
+  if (L >= 6) { barrel(k, sp[4][0], sp[4][1] - 0.6); crate(k, sp[5][0], sp[5][1] - 0.6, 0.55, 0.4); }
+  if (L >= 7 && key !== 'archery') { const g = geos(); for (const sx of [-1, 1]) k.add(boxUV(fp * 0.32, 0.55, 0.3, 1), 'stone', sx * fp * 0.27, 0.27, -fp * 0.49); }
+  if (L >= 8) statue(k, sp[0][0] * 0.72, sp[0][1] + (key === 'archery' ? 0 : 0.2), L >= 9 ? 'gold' : 'stoneDark');
+  if (L >= 9) { brazier(k, sp[1][0] * 0.72, sp[1][1] + 0.2); brazier(k, sp[2][0] * 0.8, sp[2][1] * 0.8); }
+  if (L >= 10) crest(k, height + 1.4);
+}
 // ---------------------------------------------------------------------
 //  BİNALAR
 // ---------------------------------------------------------------------
 function tier(level) { return level >= 8 ? 3 : level >= 4 ? 2 : 1; }
 
 function townhall(L) {
-  const k = new Kit(), g = geos(), t = tier(L);
-  platform(k, 10, 10, 0.4);
-  for (let i = 0; i < 3; i++) k.add(boxUV(3.2 - i * 0.2, 0.13, 0.5, 1), 'stone', 0, 0.06 + i * 0.13, 5.2 - i * 0.3);
+  const k = new Kit(), g = geos();
+  const P = 7.6 + L * 0.28;
+  platform(k, P, P, 0.3 + L * 0.03);
+  const py = 0.3 + L * 0.03;
+  for (let i = 0; i < 3; i++) k.add(boxUV(3.2 - i * 0.2, 0.13, 0.5, 1), 'stone', 0, 0.06 + i * py / 3, P / 2 + 0.3 - i * 0.3);
   let top;
-  if (t === 1) {
-    timberHouse(k, 7, 3.2, 5, 0, 0.4, -0.5);
-    k.add(gableRoof(7, 5, 2.4), 'thatch', 0, 3.6, -0.5);
-    k.add(gableWall(5, 2.4), 'plaster', 3.5, 3.6, -0.5, 0, Math.PI / 2, 0); k.add(gableWall(5, 2.4), 'plaster', -3.5, 3.6, -0.5, 0, Math.PI / 2, 0);
-    doorAt(k, 0, 2.02, 0, 1.4, 2.0);
-    for (const x of [-2.3, 2.3]) windowAt(k, x, 2.2, 2.03);
-    tower(k, 3.3, 2.0, 0.9, 4.6, { mat: 'plank', roofMat: 'thatch', windows: 1 });
-    addBanner(k, -3.4, 4.5, 2.0);
-    addSmoke(k, -2, 6.2, -1.5); k.add(boxUV(0.6, 1.6, 0.6, 1), 'stone', -2, 5.4, -1.5);
-    top = 6.5;
+  if (L <= 3) {
+    const W = 5.2 + L * 0.5, H = 2.6 + L * 0.25, D = 4.2 + L * 0.3;
+    timberHouse(k, W, H, D, 0, py, -0.5);
+    let ry = py + H;
+    if (L >= 3) { timberHouse(k, W - 0.8, 1.8, D - 0.6, 0, ry, -0.5); ry += 1.8; }
+    const roofM = L >= 3 ? 'roofRed' : 'thatch';
+    k.add(gableRoof(L >= 3 ? W - 0.8 : W, L >= 3 ? D - 0.6 : D, 2.2), roofM, 0, ry, -0.5);
+    for (const sx of [-1, 1]) k.add(gableWall(L >= 3 ? D - 0.6 : D, 2.2), 'plaster', sx * (L >= 3 ? W - 0.8 : W) / 2, ry, -0.5, 0, Math.PI / 2, 0);
+    doorAt(k, 0, D / 2 - 0.5 + 0.02, 0, 1.3, 2.0);
+    for (const x of [-W / 2 + 1, W / 2 - 1]) windowAt(k, x, py + 1.6, D / 2 - 0.48);
+    if (L >= 3) for (const x of [-1.2, 1.2]) windowAt(k, x, ry - 0.9, (D - 0.6) / 2 - 0.48);
+    if (L >= 2) tower(k, W / 2 - 0.2, D / 2 - 0.6, 0.85, H + 2.2 + (L - 2) * 0.6, { mat: 'plank', roofMat: L >= 3 ? 'roofRed' : 'thatch', windows: 1 });
+    addBanner(k, -W / 2 + 0.2, py + H + 1.4, D / 2 - 0.4);
+    k.add(boxUV(0.6, 1.6, 0.6, 1), 'stone', -W / 4, ry + 0.9, -1.4); addSmoke(k, -W / 4, ry + 2.0, -1.4);
+    top = ry + 3;
   } else {
-    const W = t === 3 ? 7.4 : 6.6, H = t === 3 ? 6.2 : 5, D = t === 3 ? 6 : 5.4;
-    k.add(boxUV(W, H, D, 2), 'stone', 0, 0.4 + H / 2, -0.6);
-    crenellations(k, W, D, 0.4 + H, 0, -0.6);
-    // ana çatı
-    k.add(boxUV(W - 1.6, 1.4, D - 1.6, 2), 'stone', 0, 0.4 + H + 0.7, -0.6);
-    k.add(gableRoof(W - 1.6, D - 1.6, 2.6), 'roofBlue', 0, 0.4 + H + 1.4, -0.6);
-    k.add(gableWall(D - 1.6, 2.6, 0.2), 'stone', (W - 1.6) / 2, 0.4 + H + 1.4, -0.6, 0, Math.PI / 2, 0); k.add(gableWall(D - 1.6, 2.6, 0.2), 'stone', -(W - 1.6) / 2, 0.4 + H + 1.4, -0.6, 0, Math.PI / 2, 0);
-    doorAt(k, 0, D / 2 - 0.6 + 0.01, 0, 1.6, 2.4, 'plank');
-    for (const x of [-2.2, 2.2]) { windowAt(k, x, 2.0, D / 2 - 0.58, 0, 0.5, 0.9, true); windowAt(k, x, 4.0, D / 2 - 0.58, 0, 0.5, 0.9, true); }
-    windowAt(k, 0, 4.2, D / 2 - 0.58, 0, 0.7, 1.0, true);
-    const tr = t === 3 ? 1.3 : 1.1, th = H + (t === 3 ? 3 : 2);
-    const corners = t === 3 ? [[-1, 1], [1, 1], [-1, -1], [1, -1]] : [[-1, 1], [1, 1]];
-    for (const [sx, sz] of corners) tower(k, sx * W / 2, -0.6 + sz * D / 2, tr, th, { gold: t === 3, roofMat: 'roofBlue', wa: sx > 0 ? 0 : Math.PI });
-    for (const sx of [-1, 1]) addBanner(k, sx * 1.6, H - 0.6, D / 2 - 0.45, 0.8, 1.6, 0, false);
-    if (t === 3) {
-      // merkez kule + altın süslemeler
-      tower(k, 0, -1.6, 1.2, H + 6, { gold: true, roofMat: 'roofBlue', roofK: 2.6, windows: 2 });
-      k.add(g.box, 'gold', 0, 0.4 + H - 0.2, D / 2 - 0.58, 0, 0, 0, W + 0.1, 0.15, 0.1);
-      k.add(g.torus, 'gold', 0, 0.4 + H + 4.2, -1.6 + 1.25, 0, 0, 0, 0.5, 0.5, 0.5);
-      k.add(g.cyl12, 'marble', 0, 0.4 + H + 4.2, -1.6 + 1.22, Math.PI / 2, 0, 0, 0.45, 0.05, 0.45);
-      top = H + 6 + 4;
-    } else top = H + 4.5;
-    for (const sx of [-1, 1]) lantern(k, sx * 2.0, 1.8, 5.0);
-    addBanner(k, 0, th + 3.4 + (t === 3 ? 0 : 0), -0.6 - D / 2 - 0.2, 1.0, 1.4, 0, true);
+    const s4 = L - 4;
+    const W = 5.6 + s4 * 0.35, H = 4 + s4 * 0.45, D = 4.8 + s4 * 0.25, z0 = -0.6;
+    const roof = L >= 6 ? 'roofBlue' : 'roofRed', gold = L >= 9;
+    k.add(boxUV(W, H, D, 2), 'stone', 0, py + H / 2, z0);
+    k.add(boxUV(W + 0.2, 0.25, D + 0.2, 2), 'stoneDark', 0, py + 1.2, z0);
+    if (L >= 5) crenellations(k, W, D, py + H, 0, z0);
+    k.add(boxUV(W - 1.4, 1.2, D - 1.4, 2), 'stone', 0, py + H + 0.6, z0);
+    k.add(gableRoof(W - 1.4, D - 1.4, 2.3 + s4 * 0.12), roof, 0, py + H + 1.2, z0);
+    for (const sx of [-1, 1]) k.add(gableWall(D - 1.4, 2.3 + s4 * 0.12, 0.2), 'stone', sx * (W - 1.4) / 2, py + H + 1.2, z0, 0, Math.PI / 2, 0);
+    doorAt(k, 0, z0 + D / 2 + 0.01, 0, 1.5, 2.3);
+    const rows = H > 5.5 ? [2.0, 3.8, 5.4] : [2.0, 3.6];
+    for (const y of rows) for (const x of [-W / 2 + 1.1, W / 2 - 1.1]) windowAt(k, x, py + y, z0 + D / 2 + 0.02, 0, 0.5, 0.85, true);
+    if (L >= 6) windowAt(k, 0, py + H - 1.0, z0 + D / 2 + 0.02, 0, 0.75, 1.0, true);
+    const tr = 0.95 + s4 * 0.06, th = H + 1.6 + s4 * 0.3;
+    const T = [];
+    if (L >= 4) T.push([1, 1]);
+    if (L >= 5) T.push([-1, 1]);
+    if (L >= 8) T.push([-1, -1], [1, -1]);
+    for (const [sx, sz] of T) tower(k, sx * W / 2, z0 + sz * D / 2, tr, th, { gold, roofMat: roof, wa: sx > 0 ? 0 : Math.PI });
+    if (L >= 6) { // kapı kulesi (gatehouse)
+      const gz = z0 + D / 2 + 1.1;
+      for (const sx of [-1, 1]) k.add(boxUV(1.0, 3.4, 1.4, 2), 'stone', sx * 1.25, py + 1.7, gz);
+      k.add(boxUV(3.5, 1.0, 1.4, 2), 'stone', 0, py + 3.0, gz);
+      crenellations(k, 3.5, 1.4, py + 3.5, 0, gz, 'stone', 0.7);
+      k.add(new THREE.TorusGeometry(0.75, 0.12, 6, 14, Math.PI), 'stoneDark', 0, py + 2.4, gz + 0.71);
+      for (const sx of [-1, 1]) addBanner(k, sx * 1.25, py + 2.8, gz + 0.72, 0.6, 1.2, 0, false);
+    }
+    if (L >= 7) tower(k, 0, z0 - D / 2 + 0.4, 1.15, H + 3.5 + s4 * 0.3, { gold, roofMat: roof, roofK: 2.5, windows: 2 });
+    if (L >= 10) { // büyük merkez kulesi + altın kubbe
+      const ch = H + 6.5;
+      k.add(cylUV(1.3, 1.45, ch, 16, 2), 'stone', 0, ch / 2 + py, z0);
+      roundCren(k, 1.5, ch + py, 0, z0, 12);
+      k.add(new THREE.SphereGeometry(1.25, 16, 10, 0, TAU, 0, Math.PI / 2), 'gold', 0, ch + py + 0.3, z0);
+      k.add(g.cyl8, 'gold', 0, ch + py + 1.9, z0, 0, 0, 0, 0.05, 1.4, 0.05);
+      k.add(g.sphere, 'gold', 0, ch + py + 2.7, z0, 0, 0, 0, 0.2, 0.2, 0.2);
+      for (let i = 0; i < 4; i++) { const a = (i / 4) * TAU + Math.PI / 4; windowAt(k, Math.cos(a) * 1.35, ch * 0.75 + py, z0 + Math.sin(a) * 1.35, Math.PI / 2 - a, 0.4, 0.8, true); }
+    }
+    if (gold) {
+      k.add(g.box, 'gold', 0, py + H - 0.3, z0 + D / 2 + 0.03, 0, 0, 0, W + 0.1, 0.14, 0.06);
+      k.add(g.box, 'gold', 0, py + 1.2, z0 + D / 2 + 0.12, 0, 0, 0, W + 0.25, 0.08, 0.04);
+      k.add(g.torus, 'gold', 0, py + H + 1.9, z0 + (D - 1.4) / 2 + 0.06, 0, 0, 0, 0.45, 0.45, 0.45);
+      k.add(g.cyl12, 'marble', 0, py + H + 1.9, z0 + (D - 1.4) / 2 + 0.04, Math.PI / 2, 0, 0, 0.42, 0.05, 0.42);
+    }
+    for (const sx of [-1, 1]) addBanner(k, sx * 1.6, py + H - 0.8, z0 + D / 2 + 0.06, 0.75, 1.5, 0, false);
+    addBanner(k, 0, py + H + 4.6 + s4 * 0.2, z0 - D / 2 - 0.3, 1.0, 1.4, 0, true);
+    top = L >= 10 ? H + 10 : L >= 7 ? H + 6 : H + 4.5;
   }
-  // meydan dekoru
-  for (const sx of [-1, 1]) { barrel(k, sx * 4.2, 3.8); crate(k, sx * 4.4, 2.9, 0.6, 0.3); }
+  for (const sx of [-1, 1]) { barrel(k, sx * (P / 2 - 0.7), P / 2 - 1.2); crate(k, sx * (P / 2 - 0.8), P / 2 - 2.1, 0.6, 0.3); }
   return k.build(top);
 }
 
@@ -709,7 +787,9 @@ const BUILDERS = { townhall, barracks, archery, hospital, potion, heroes, summon
 export function createBuilding(key, level) {
   mats(); geos();
   const f = BUILDERS[key];
+  CUR = { key, L: Math.max(1, level) };
   const grp = f ? f(Math.max(1, level)) : new THREE.Group();
+  CUR = null;
   // seviye büyüdükçe hafif ölçek artışı (ayak izi içinde)
   const s = 0.9 + Math.min(level, 10) * 0.012;
   grp.scale.setScalar(s);

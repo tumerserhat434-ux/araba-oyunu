@@ -4,6 +4,7 @@
 //  kalkan amblemleri, silahlar ve iskelet tabanlı animasyon.
 // =====================================================================
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const TAU = Math.PI * 2;
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -476,7 +477,42 @@ function assemble(h, weapon, shieldKind, team, metal, opts = {}) {
     mesh(taper(0.025, 0.02, 0.62, 6), matStrapDark(), sc, 0, -0.06, 0, 0, 0, 0, 1, 1, 0.5);
   }
 }
+// Aynı kemik grubundaki, aynı malzemeli parçaları tek ağa birleştir (çizim çağrısını ~%60 azaltır)
+const MERGE_CACHE = new Map();
+function optimize(root) {
+  const groups = [];
+  root.traverse((o) => { if (!o.isMesh && !o.isSprite) groups.push(o); });
+  for (const g of groups) {
+    const leaves = g.children.filter((c) => c.isMesh && !c.children.length && !Array.isArray(c.material) && !c.userData.keep);
+    const byMat = new Map();
+    for (const m of leaves) { const k = m.material.uuid; if (!byMat.has(k)) byMat.set(k, []); byMat.get(k).push(m); }
+    for (const [, list] of byMat) {
+      if (list.length < 2) continue;
+      list.forEach((m) => m.updateMatrix());
+      const key = list[0].material.uuid + '|' + list.map((m) => m.geometry.uuid + ':' + m.matrix.elements.map((e) => e.toFixed(3)).join(',')).join(';');
+      let geo = MERGE_CACHE.get(key);
+      if (!geo) {
+        const parts = list.map((m) => {
+          let gg = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+          for (const a of Object.keys(gg.attributes)) if (!['position', 'normal', 'uv'].includes(a)) gg.deleteAttribute(a);
+          if (!gg.attributes.uv) gg.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(gg.attributes.position.count * 2), 2));
+          gg.clearGroups();
+          return gg.applyMatrix4(m.matrix);
+        });
+        geo = mergeGeometries(parts);
+        parts.forEach((pp) => pp.dispose());
+        if (!geo) continue;
+        MERGE_CACHE.set(key, geo);
+      }
+      const merged = new THREE.Mesh(geo, list[0].material);
+      merged.castShadow = true; merged.receiveShadow = true;
+      list.forEach((m) => g.remove(m));
+      g.add(merged);
+    }
+  }
+}
 function finalize(obj, kind, h, horse) {
+  optimize(obj);
   obj.userData.kind = kind;
   obj.userData.rig = h.rig;
   obj.userData.inner = h.inner;
