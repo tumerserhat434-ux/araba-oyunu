@@ -369,7 +369,21 @@ function buildNight() {
   const fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.BufferAttribute(fpos, 3));
   const flies = new THREE.Points(fg, new THREE.PointsMaterial({ size: 0.7, map: glow, color: 0xd8ff70, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   city.add(flies);
+  // yavaş döngü: ~8 dk gece, ~2 dk alacakaranlık (asla tam gündüz değil)
+  const NIGHT = { bg: new THREE.Color(0x0b1430), fog: new THREE.Color(0x0e1a3a), sun: new THREE.Color(0x9fb8ff), sunI: 1.55, hs: new THREE.Color(0x5a74c8), hi: 0.62, exp: 1.15 };
+  const DUSK = { bg: new THREE.Color(0x3a2a58), fog: new THREE.Color(0x5a3a5a), sun: new THREE.Color(0xffa070), sunI: 2.0, hs: new THREE.Color(0x9a7ac8), hi: 0.85, exp: 1.2 };
+  const cyc = { bg: new THREE.Color(), fog: new THREE.Color(), sun: new THREE.Color(), hs: new THREE.Color() };
   nightTick = (t) => {
+    const u = (Date.now() / 1000 % 600) / 600; // 10 dakikalık tur
+    const k = u < 0.8 ? 0 : Math.sin((u - 0.8) / 0.2 * Math.PI); // son %20'de alacakaranlık
+    const e = k * k * (3 - 2 * k);
+    city.background.copy(cyc.bg.copy(NIGHT.bg).lerp(DUSK.bg, e));
+    city.fog.color.copy(cyc.fog.copy(NIGHT.fog).lerp(DUSK.fog, e));
+    sun.color.copy(cyc.sun.copy(NIGHT.sun).lerp(DUSK.sun, e)); sun.intensity = lerp(NIGHT.sunI, DUSK.sunI, e);
+    hemiNight.color.copy(cyc.hs.copy(NIGHT.hs).lerp(DUSK.hs, e)); hemiNight.intensity = lerp(NIGHT.hi, DUSK.hi, e);
+    renderer.toneMappingExposure = lerp(NIGHT.exp, DUSK.exp, e);
+    stars.material.opacity = 1 - e * 0.8; moon.material.opacity = 1 - e * 0.5;
+    flies.visible = e < 0.6;
     moon.position.set(camera.position.x - 160, camera.position.y + 110, camera.position.z - 260);
     stars.position.set(camera.position.x, 0, camera.position.z);
     for (let i = 0; i < FN; i++) { const d = fd[i]; fpos[i * 3] = d.x + Math.sin(t * d.s + d.p) * 1.6; fpos[i * 3 + 1] = d.y + Math.sin(t * d.s * 1.7 + d.p) * 0.5; fpos[i * 3 + 2] = d.z + Math.cos(t * d.s * 0.8 + d.p) * 1.6; }
