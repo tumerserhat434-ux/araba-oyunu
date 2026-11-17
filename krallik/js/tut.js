@@ -29,7 +29,7 @@ export function initTutorial(ctx) {
   if (G.S.tut === 'done') return;
   idx = Math.max(0, STEPS.findIndex((s) => s.id === G.S.tut));
   build();
-  C.getPortrait('emre').then((u) => { portrait = u; const im = box && box.querySelector('img'); if (im) im.src = u; });
+  C.getAvatar('emre').then((u) => { portrait = u; const im = box && box.querySelector('img'); if (im) im.src = u; });
   show();
 }
 function build() {

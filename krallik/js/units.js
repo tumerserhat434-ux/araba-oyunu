@@ -638,6 +638,21 @@ function kkHero(def) {
   return obj;
 }
 
+function attachHero3d(obj, def) {
+  const swap = () => {
+    if (obj.userData.disposed) return;
+    const h = A.hero3d(def.id, 1.9 + (def.rarity - 2) * 0.06); if (!h) return;
+    const ud = obj.userData;
+    // KayKit gövdesini (ve atı) gizle, yeni modeli ekle
+    obj.children.forEach((c) => { if (!c.isSprite && !(c.isMesh && c.geometry && c.geometry.type === 'PlaneGeometry')) c.visible = false; });
+    obj.add(h.scene);
+    const mixer = new THREE.AnimationMixer(h.inner);
+    const act = h.clips[0] && mixer.clipAction(h.clips[0]); if (act) { act.play(); mixer.update(Math.random() * 2); }
+    ud.h3 = { mixer, root: h.scene, inner: h.inner, t: 0 };
+    ud.mounted = false;
+  };
+  A.loadHero3d(def.id).then((ok) => { if (ok) swap(); });
+}
 const PANTS = { blue: '#2a3448', red: '#3a2a24' };
 export function createSoldier(type, team = 'blue') {
   { const cfg = (KKCFG[team] || KKCFG.blue)[type]; if (cfg) { const o = kkUnit(cfg[0], cfg[1], cfg[2], { mounted: type === 'cavalry', team, coat: ['#5a3a22', '#3a2416', '#7a5a3a', '#2a2420'][Math.floor(Math.random() * 4)] }); if (o) return o; } }
@@ -668,7 +683,8 @@ export function createSoldier(type, team = 'blue') {
 }
 
 export function createHero(def) {
-  { const o = kkHero(def); if (o) return o; }
+  const o = kkHero(def);
+  if (o) { attachHero3d(o, def); return o; }
   const L = def.look || {}, R = def.rarity || 2;
   const metal = L.metal || 'steel';
   const team = 'blue';
@@ -805,6 +821,14 @@ function animateHorse(hs, state, t, dt, ud) {
 }
 export function animateUnit(obj, state, t, dt) {
   const ud = obj.userData;
+  if (ud.h3) {
+    const H = ud.h3; dt = Math.min(dt || 0.016, 0.1); H.t += dt;
+    H.mixer.update(dt * (state === 'cheer' ? 1.6 : 1));
+    if (state === 'cheer') { const b = Math.abs(Math.sin(H.t * 4)); H.root.position.y = b * 0.12; H.root.rotation.z = Math.sin(H.t * 4) * 0.05; }
+    else { H.root.position.y *= 0.85; H.root.rotation.z *= 0.85; }
+    if (ud.fx) ud.fx(t);
+    return;
+  }
   if (ud.kk) return kkAnimate(obj, state, t, dt);
   if (!ud.rig) return;
   dt = Math.min(dt || 0.016, 0.1);

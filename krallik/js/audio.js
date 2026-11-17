@@ -9,9 +9,31 @@ let theme = 'city', nextNote = 0, step = 0, bar = 0, started = false, nextBird =
 const plucks = new Map();
 
 export const audioState = () => ({ musicOn, sfxOn });
+// ---- Dosya tabanlı sesler (Higgsfield ile üretildi) ----
+const FILES = ['click', 'coin', 'build', 'built', 'train', 'horn', 'clash', 'win', 'lose', 'summon', 'reveal5', 'heal', 'open', 'arrow'];
+const MUSIC = { city: 'music_city', battle: 'music_battle', summon: 'music_summon' };
+const buf = {};
+let fileMusic = null, musicSrc = null, musicGainNode = null, ambSrc = null;
+async function loadBuf(name) { try { const r = await fetch('assets/audio/' + name + '.mp3'); const a = await r.arrayBuffer(); buf[name] = await new Promise((res, rej) => ctx.decodeAudioData(a, res, rej)); } catch (e) { /* yok */ } }
+async function loadFiles() {
+  await Promise.all(FILES.map(loadBuf));
+  await loadBuf(MUSIC.city); fileMusic = true; startMusicFile();
+  await loadBuf('ambience'); startAmbience();
+  await Promise.all([loadBuf(MUSIC.battle), loadBuf(MUSIC.summon)]);
+}
+function startAmbience() { if (!buf.ambience || ambSrc) return; ambSrc = ctx.createBufferSource(); ambSrc.buffer = buf.ambience; ambSrc.loop = true; const g = ctx.createGain(); g.gain.value = 0.35; ambSrc.connect(g).connect(ambBus); ambSrc.start(); }
+function startMusicFile() {
+  const b = buf[MUSIC[theme]] || buf[MUSIC.city]; if (!b) return;
+  const t = ctx.currentTime;
+  if (musicSrc) { const old = musicSrc, og = musicGainNode; og.gain.setTargetAtTime(0, t, 0.4); setTimeout(() => { try { old.stop(); } catch (e) {} }, 2000); }
+  musicSrc = ctx.createBufferSource(); musicSrc.buffer = b; musicSrc.loop = true;
+  musicGainNode = ctx.createGain(); musicGainNode.gain.setValueAtTime(0, t); musicGainNode.gain.setTargetAtTime(0.75, t, 0.6);
+  musicSrc.connect(musicGainNode).connect(musicBus); musicSrc.start();
+}
+function playFile(name, vol = 1, rate = 1) { const b = buf[name]; if (!b) return false; const s2 = ctx.createBufferSource(); s2.buffer = b; s2.playbackRate.value = rate; const g = ctx.createGain(); g.gain.value = vol; s2.connect(g).connect(sfxBus); s2.start(); return true; }
 export function setMusic(on) { musicOn = on; localStorage.setItem('ds_music', on ? '1' : '0'); if (musicBus) musicBus.gain.setTargetAtTime(on ? 0.55 : 0, ctx.currentTime, 0.3); }
 export function setSfx(on) { sfxOn = on; localStorage.setItem('ds_sound', on ? '1' : '0'); if (sfxBus) { sfxBus.gain.setTargetAtTime(on ? 0.9 : 0, ctx.currentTime, 0.05); ambBus.gain.setTargetAtTime(on ? 0.5 : 0, ctx.currentTime, 0.3); } }
-export function setTheme(t) { if (theme !== t) { theme = t; step = 0; } }
+export function setTheme(t) { if (theme !== t) { theme = t; step = 0; if (fileMusic && ctx) startMusicFile(); } }
 
 export function initAudio() {
   if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -40,6 +62,7 @@ export function initAudio() {
   wn.connect(wf).connect(wg).connect(ambBus); wn.start();
   started = true;
   nextNote = ctx.currentTime + 0.3;
+  loadFiles();
 }
 document.addEventListener('pointerdown', () => initAudio(), { capture: true });
 
@@ -148,12 +171,15 @@ function ambience() {
     for (let i = 0; i < n; i++) { const t = now + i * rand(0.08, 0.14); tone(t, base * rand(0.9, 1.1), base * rand(1.1, 1.4), 0.07, 0.025, 'sine', ambBus); }
   }
 }
-export function updateAudio() { if (!started || ctx.state !== 'running') return; scheduleMusic(); ambience(); }
+export function updateAudio() { if (!started || ctx.state !== 'running') return; if (!fileMusic) scheduleMusic(); if (!ambSrc) ambience(); }
 
 // --- Efektler ---
 export function sfx(kind) {
   if (!ctx || !sfxOn) return;
   if (navigator.vibrate && (kind === 'click')) navigator.vibrate(6);
+  const FILEMAP = { click: ['click', 0.5], open: ['open', 0.6], close: ['click', 0.35], coin: ['coin', 0.7], collect: ['coin', 0.8], build: ['build', 0.8], built: ['built', 0.8], train: ['train', 0.7], heal: ['heal', 0.8], clash: ['clash', 0.5], arrow: ['arrow', 0.5], horn: ['horn', 0.8], warn: ['horn', 0.7], win: ['win', 0.9], lose: ['lose', 0.9], summon: ['summon', 0.9], reveal: ['heal', 0.8], reveal5: ['reveal5', 1] };
+  const fm = FILEMAP[kind];
+  if (fm && playFile(fm[0], fm[1], kind === 'clash' ? 0.85 + Math.random() * 0.3 : 1)) return;
   const t = ctx.currentTime;
   switch (kind) {
     case 'click': tone(t, 900, 600, 0.05, 0.08, 'triangle'); noise(t, 0.03, 'highpass', 3000, 0.04); break;

@@ -550,7 +550,9 @@ function portraitRenderer() {
   pr = { renderer, scene, camera, canvas };
   return pr;
 }
-export function getPortrait(id) {
+export function getPortrait(id) { return Promise.resolve('assets/heroes/' + id + '.webp'); }
+export function getAvatar(id) { return Promise.resolve('assets/heroes/' + id + '_a.webp'); }
+export function getPortrait3d(id) {
   if (portraitCache[id]) return portraitCache[id];
   portraitCache[id] = new Promise((resolve) => {
     setTimeout(() => {

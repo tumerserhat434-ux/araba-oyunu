@@ -8,6 +8,7 @@ import * as ASSETS from './assets.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 import { RES, BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
+import { getAvatar } from './scenes.js';
 import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
 import { createGrass } from './grass.js';
 import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState } from './audio.js';
@@ -487,7 +488,7 @@ function updateTop() {
   $('thLvl').textContent = G.thLevel();
   $('logDot').classList.toggle('hidden', !G.loginPending());
   $('evDot').classList.toggle('hidden', !G.claimableCount());
-  if (avatarFor !== G.S.commander) { avatarFor = G.S.commander; getPortrait(G.S.commander).then((u) => { $('avatarImg').src = u; }); }
+  if (avatarFor !== G.S.commander) { avatarFor = G.S.commander; getAvatar(G.S.commander).then((u) => { $('avatarImg').src = u; }); }
   $('troopCount').textContent = G.fmt(G.totalTroops());
   $('builderCount').textContent = `${G.busyBuilders()}/${G.builders()}`;
   $('freeDot').classList.toggle('hidden', !G.freePullAvailable());
@@ -637,7 +638,19 @@ function needGold() { toast('Yetersiz altın', true); setTimeout(() => navigate(
 // ---------------------------------------------------------------------
 //  Modallar: dünya, kahramanlar, mağaza, raporlar, profil
 // ---------------------------------------------------------------------
-export function openModal(html) { $('modalBox').innerHTML = html; $('modal').classList.add('open'); }
+export function openModal(html) {
+  const box = $('modalBox');
+  if (html.includes('<!--/head-->')) { const [h, b] = html.split('<!--/head-->'); html = h + `<div class="w-body">${PENDING_SIDE}<div class="w-main">${b}</div></div>`; box.classList.add('win'); }
+  else box.classList.remove('win');
+  PENDING_SIDE = '';
+  box.innerHTML = html; $('modal').classList.add('open');
+}
+let PENDING_SIDE = '';
+const UI = (n) => `assets/ui/${n}.webp`;
+const ICON_MAP = { '🗺️': 'nav_world', '⚔️': 'nav_heroes', '🛡️': 'nav_heroes', '🪙': 'res_gold', '📜': 'nav_reports', '⚜': 'nav_city', '📋': 'nav_quest', '🏆': 'ic_trophy', '📅': 'ic_calendar' };
+const resImg = (r, sz = 18) => `<img src="${UI('res_' + r)}" width="${sz}" height="${sz}" alt="">`;
+const pill = (r, v) => `<span class="w-pill">${resImg(r)}+${G.fmt(v)}</span>`;
+function tabsHtml(tabs, active) { return `<aside class="w-side">${tabs.map((t) => `<button class="w-tab ${t.id === active ? 'on' : ''}" data-wtab="${t.id}"><img src="${UI(t.icon)}" alt=""><span>${t.label}</span>${t.dot ? '<em class="dot"></em>' : ''}</button>`).join('')}</aside>`; }
 export function closeModal() { $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; setNav('city'); }
 $('modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') closeModal(); });
 function setNav(go) { document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.go === go)); }
@@ -660,11 +673,15 @@ export function navigate(go) {
   modalKind = go;
   renderModal();
 }
-function head(title, icon) { return `<div class="sh-head"><div class="sh-ico">${icon}</div><div><h2>${title}</h2></div><button class="x" data-m="close">✕</button></div>`; }
+function head(title, icon, tabs, active) {
+  const ic = ICON_MAP[icon] || icon || 'ic_gift';
+  PENDING_SIDE = tabs ? tabsHtml(tabs, active) : '';
+  return `<div class="w-head"><div class="w-medal"><img src="${UI(ic)}" alt=""></div><div class="w-plaque"><i class="laurel l"></i><span>${title}</span><i class="laurel r"></i></div></div><button class="w-x" data-m="close">✕</button><!--/head-->`;
+}
 function renderModal() {
   const k = modalKind;
   if (k === 'world') return openModal(worldUI());
-  if (k === 'heroes') { openModal(heroesUI()); fillPortraits(); return; }
+  if (k === 'heroes') { openModal(heroesUI()); return; }
   if (k === 'shop') return openModal(shopUI());
   if (k === 'reports') { G.S.reportsSeen = G.S.reports.length ? G.S.reports[0].t : 0; G.save(); $('repDot').classList.add('hidden'); return openModal(reportsUI()); }
   if (k === 'profile') return openModal(profileUI());
@@ -723,40 +740,44 @@ function attackUI() {
 }
 let questTab = 'main';
 const rewardTxt = (r) => Object.entries(r).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ');
+const rewardPills = (r) => Object.entries(r).map(([k, v]) => pill(k, v)).join('');
 function questsUI() {
   G.dailyReset();
   let body = '';
+  const qRow = (icon, text, x, y, reward, btn) => `<div class="w-row"><img src="${UI(icon)}" alt=""><div class="rt">${text}<div class="pb"><i><b style="width:${Math.min(100, x / y * 100)}%"></b></i><small>${G.fmt(x)}/${G.fmt(y)}</small></div></div><div class="w-rw">${rewardPills(reward)}${btn}</div></div>`;
   if (questTab === 'main') {
     const list = G.activeQuests();
-    if (!list.length) body = '<p class="desc">🏆 Tüm ana görevleri tamamladın!</p>';
+    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Krallık Görevleri</div><div class="bs">Görevleri tamamla, krallığını büyüt!</div></div><span class="bt2">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length}</span></div>`;
+    if (!list.length) body += '<p class="desc">🏆 Tüm ana görevleri tamamladın!</p>';
     for (const q of list) {
       const [x, y] = G.questProgress(q), ok = x >= y;
-      body += `<div class="quest ${ok ? 'ok' : ''}"><div class="qi">${q.text}<div class="qr">Ödül: ${rewardTxt(q.reward)}</div>
-        <div class="progress ${ok ? 'green' : ''}" style="height:10px;margin:5px 0 0"><span style="width:${x / y * 100}%"></span></div></div>
-        ${ok ? `<button class="btn gold" data-claimq="${q.id}">Al</button>` : `<small style="font-weight:900">${G.fmt(x)}/${G.fmt(y)}</small>`}</div>`;
+      const icon = q.t[0] === 'bld' ? 'nav_city' : q.t[1] === 'wins' ? 'nav_heroes' : q.t[1] === 'summons' ? 'ic_summon' : q.t[1] === 'trained' ? 'nav_heroes' : 'nav_quest';
+      body += qRow(icon, q.text, x, y, q.reward, ok ? `<button class="w-btn gold" data-claimq="${q.id}">Al</button>` : `<button class="w-btn" data-goq="${q.id}">Git</button>`);
     }
-    body += `<p class="demo">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length} görev tamamlandı</p>`;
-  } else {
+  } else if (questTab === 'daily') {
+    const n = G.dailyClaimedCount();
+    const steps = [1, 2, 3, DAILY_CHEST.need];
+    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Günlük Görevler</div><div class="bs">${DAILY_CHEST.need} görev bitir, sandığı aç!</div></div><span class="bt2">⏱ ${G.fmtTime((new Date().setHours(24, 0, 0, 0) - Date.now()) / 1000)}</span></div>`;
+    body += `<div class="w-card"><div class="w-track">${steps.map((st, i) => `<div class="ms ${n >= st ? 'ok' : ''}"><div class="box"><img src="${UI(i === 3 ? 'nav_shop' : i === 1 ? 'res_gold' : 'res_food')}" alt="">${i === 3 ? '' : `<small>${i === 1 ? '+30' : '+500'}</small>`}</div><div class="node">${st}</div></div>`).join('')}</div>
+      <div style="text-align:center;margin-top:8px"><button class="w-btn gold" data-chest ${!G.S.daily.chest && n >= DAILY_CHEST.need ? '' : 'disabled'}>${G.S.daily.chest ? 'Sandık alındı' : `Sandığı aç (${Math.min(n, DAILY_CHEST.need)}/${DAILY_CHEST.need})`}</button></div></div>`;
     for (const d of DAILY) {
       const x = G.dailyProg(d), ok = x >= d.n, got = G.S.daily.claimed[d.id];
-      body += `<div class="quest ${ok ? 'ok' : ''}" style="${got ? 'opacity:.5' : ''}"><div class="qi">${d.text}<div class="qr">Ödül: ${rewardTxt(d.reward)}</div>
-        <div class="progress ${ok ? 'green' : ''}" style="height:10px;margin:5px 0 0"><span style="width:${x / d.n * 100}%"></span></div></div>
-        ${got ? '✅' : ok ? `<button class="btn gold" data-claimd="${d.id}">Al</button>` : `<small style="font-weight:900">${x}/${d.n}</small>`}</div>`;
+      const icon = { collects: 'res_food', trained: 'nav_heroes', upgrades: 'nav_city', wins: 'ic_trophy', summons: 'ic_summon', heals: 'ic_gift' }[d.stat] || 'nav_quest';
+      body += qRow(icon, d.text, x, d.n, d.reward, got ? '<button class="w-btn green" disabled>✓</button>' : ok ? `<button class="w-btn gold" data-claimd="${d.id}">Al</button>` : `<button class="w-btn" data-goq="d:${d.stat}">Git</button>`);
     }
-    const n = G.dailyClaimedCount();
-    body += `<div class="chest"><div style="font-size:36px">${G.S.daily.chest ? '📭' : '🎁'}</div><b>Günlük Sandık</b> — ${Math.min(n, DAILY_CHEST.need)}/${DAILY_CHEST.need} görev<div class="qr" style="margin:4px 0 8px">${rewardTxt(DAILY_CHEST.reward)}</div>
-      <button class="btn gold" data-chest ${!G.S.daily.chest && n >= DAILY_CHEST.need ? '' : 'disabled'}>${G.S.daily.chest ? 'Alındı' : 'Sandığı aç'}</button></div>`;
-  }
-  return head('Görevler', '📋') + `<div class="tabs"><button data-qtab="main" class="${questTab === 'main' ? 'on' : ''}">Ana görevler</button><button data-qtab="daily" class="${questTab === 'daily' ? 'on' : ''}">Günlük</button></div>` + body;
+  } else body += loginBody();
+  const dailyDot = DAILY.some((d) => !G.S.daily.claimed[d.id] && G.dailyProg(d) >= d.n);
+  return head('Görevler', 'nav_quest', [{ id: 'main', label: 'Ana Görevler', icon: 'nav_quest', dot: G.activeQuests().some(G.questDone) }, { id: 'daily', label: 'Günlük', icon: 'ic_calendar', dot: dailyDot }, { id: 'login', label: 'Giriş Ödülü', icon: 'ic_gift', dot: G.loginPending() }], questTab) + body;
 }
-function loginUI() {
+function loginBody() {
   const streak = G.S.login.streak || 0, pending = G.loginPending();
   const yk = (() => { const y = new Date(Date.now() - 86400000); return `${y.getFullYear()}-${y.getMonth()}-${y.getDate()}`; })();
   const nextDay = pending ? (G.S.login.last === yk ? streak % 7 : 0) : (streak - 1) % 7;
-  const cells = LOGIN_REWARDS.map((r, i) => { const k = Object.keys(r); return `<div class="${i < nextDay ? 'got' : ''} ${i === nextDay ? 'today' : ''}">Gün ${i + 1}<i>${r.gold ? '🪙' : RES[k[0]].icon}</i>${r.gold ? r.gold : G.fmt(r[k[0]])}</div>`; }).join('');
-  return head('Günlük Giriş Ödülü', '📅') + `<p class="desc">Her gün gir, ödüller büyüsün! 7. gün büyük ödül seni bekliyor.</p><div class="cal">${cells}</div>
-    <button class="btn gold" style="width:100%" data-m="login" ${pending ? '' : 'disabled'}>${pending ? '🎁 Ödülü al' : 'Yarın tekrar gel'}</button>`;
+  const cells = LOGIN_REWARDS.map((r, i) => { const k = r.gold ? 'gold' : Object.keys(r)[0]; return `<div class="${i < nextDay ? 'got' : ''} ${i === nextDay ? 'today' : ''}">Gün ${i + 1}<i><img src="${UI(i === 6 ? 'nav_shop' : 'res_' + k)}" width="30" height="30" alt=""></i>${G.fmt(r[k])}</div>`; }).join('');
+  return `<div class="w-banner" style="background-image:url(${UI('banner_profile')})"><div><div class="bt">Günlük Giriş</div><div class="bs">Her gün gir, 7. gün büyük ödül!</div></div></div><div class="w-card"><div class="cal" style="margin:0">${cells}</div></div>
+    <button class="w-btn gold" style="width:100%;padding:12px" data-m="login" ${pending ? '' : 'disabled'}>${pending ? 'Ödülü al' : 'Yarın tekrar gel'}</button>`;
 }
+function loginUI() { questTab = 'login'; return questsUI(); }
 function updateQuestUI() {
   const n = G.claimableCount();
   $('questDot').classList.toggle('hidden', !n);
@@ -815,10 +836,12 @@ function heroesUI() {
   const cards = list.map((h) => {
     const o = G.S.heroes[h.id];
     return `<div class="hcard ${o ? '' : 'locked'} ${G.S.commander === h.id ? 'cmd' : ''}" style="--rc:${RARITY[h.rarity].color}" data-hero="${h.id}">
-      <div class="ph" data-portrait="${h.id}">⏳</div><span class="st">${stars(h.rarity)}</span>${o ? `<span class="lv">Sv.${o.level}</span>` : ''}<div class="hn">${h.name}</div></div>`;
+      <img src="assets/heroes/${h.id}.webp" alt="" loading="lazy"><span class="st">${stars(h.rarity)}</span>${o ? `<span class="lv">Sv.${o.level}</span>` : ''}<div class="hn">${h.name}</div></div>`;
   }).join('');
-  return head('Karakter Deposu', '🛡️') + `<div class="tabs"><button data-tab="mine" class="${heroTab === 'mine' ? 'on' : ''}">Kahramanlarım (${Object.keys(G.S.heroes).length})</button><button data-tab="all" class="${heroTab === 'all' ? 'on' : ''}">Koleksiyon (${HEROES.length})</button></div>
-    <div class="hgrid">${cards}</div>`;
+  const own = Object.keys(G.S.heroes).length;
+  return head('Kahramanlar', 'nav_heroes', [{ id: 'mine', label: `Benimkiler (${own})`, icon: 'nav_heroes' }, { id: 'all', label: `Koleksiyon (${HEROES.length})`, icon: 'ic_trophy' }], heroTab) +
+    `<div class="w-stats"><div class="w-stat"><img src="${UI('nav_heroes')}"><div><small>Kahraman</small><b>${own} / ${HEROES.length}</b></div></div><div class="w-stat"><img src="${UI('ic_summon')}"><div><small>5★ garantiye</small><b>${SUMMON.pity5 - G.S.pity5}</b></div></div></div>
+    <div class="hgrid v2">${cards}</div>`;
 }
 export async function fillPortraits(root = $('modalBox')) {
   const els = [...root.querySelectorAll('[data-portrait]')];
@@ -828,12 +851,13 @@ export async function fillPortraits(root = $('modalBox')) {
     const img = new Image(); img.src = url; el.replaceWith(img);
   }
 }
+let shopTab = 'gold';
 function shopUI() {
-  const packs = SHOP.map((p) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="pg">🪙</div><b>${G.fmt(p.gold)}</b>${p.bonus ? `<small>+${p.bonus} bonus</small>` : '<small>&nbsp;</small>'}<button class="btn gold" data-buy="${p.id}">${p.price}</button></div>`).join('');
-  const rp = RES_PACKS.map((p) => `<div class="pack"><div class="pg" style="font-size:22px">${Object.keys(p.res).map((r) => RES[r].icon).join('')}</div><b style="font-size:14px">${Object.entries(p.res).map(([r, v]) => G.fmt(v)).join(' / ')}</b><button class="btn" data-rbuy="${p.id}">🪙 ${p.gold}</button></div>`).join('');
-  return head('Altın Mağazası', '🪙') + `<div class="shop">${packs}</div>
-    <h3 class="cinzel" style="color:var(--gold);margin:16px 0 8px">Kaynak Paketleri</h3><div class="shop">${rp}</div>
-    <p class="demo">⚠️ Demo mağaza: gerçek ödeme alınmaz, altın ücretsiz eklenir. Gerçek satış için App Store / Google Play ödeme sistemi veya bir ödeme sağlayıcı bağlanması gerekir.</p>`;
+  let body = `<div class="w-banner" style="background-image:url(${UI('banner_shop')})"><div><div class="bt">Kraliyet Hazinesi</div><div class="bs">Altın paketleri ve kaynaklar</div></div></div>`;
+  if (shopTab === 'gold') body += `<div class="shop">${SHOP.map((p) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="pg"><img src="${UI('res_gold')}" width="54" height="54" alt=""></div><b>${G.fmt(p.gold)}</b>${p.bonus ? `<small>+${p.bonus} bonus</small>` : '<small>&nbsp;</small>'}<button class="w-btn gold" style="width:100%" data-buy="${p.id}">${p.price}</button></div>`).join('')}</div>`;
+  else body += `<div class="shop">${RES_PACKS.map((p) => `<div class="pack"><div class="pg">${Object.keys(p.res).map((r) => resImg(r, 34)).join('')}</div><b style="font-size:14px">${Object.values(p.res).map((v) => G.fmt(v)).join(' / ')}</b><button class="w-btn" style="width:100%" data-rbuy="${p.id}">${resImg('gold')} ${p.gold}</button></div>`).join('')}</div>`;
+  body += '<p class="demo">⚠️ Demo mağaza: gerçek ödeme alınmaz, altın ücretsiz eklenir.</p>';
+  return head('Mağaza', 'nav_shop', [{ id: 'gold', label: 'Altın', icon: 'res_gold' }, { id: 'res', label: 'Kaynak', icon: 'res_wood' }], shopTab) + body;
 }
 function reportsUI() {
   if (!G.S.reports.length) return head('Savaş Raporları', '📜') + '<p class="desc">Henüz savaş yok. Dünya haritasından bir krallığa saldır!</p>';
@@ -845,13 +869,35 @@ function reportsUI() {
     ${r.kind === 'attack' && r.win ? `<div class="ln">Ganimet: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)} 🪙${r.loot.gold || 0}</div>` : ''}
     ${r.kind === 'defense' && !r.win ? `<div class="ln">Yağmalanan: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}</div>` : ''}</div>`).join('');
 }
+let profTab = 'me';
 function profileUI() {
-  return head('Krallık', '⚜') + `<div class="qty"><span>Krallık adı</span></div>
-    <input data-name maxlength="16" value="${G.S.name.replace(/"/g, '')}" style="width:100%;padding:10px;border-radius:10px;background:#1a1008;color:#fff;border:1px solid var(--line);font-weight:800;font-size:15px;margin-bottom:10px">
-    <div class="stats"><div class="stat"><small>Güç</small><b>⚔ ${G.fmt(G.cityPower())}</b></div><div class="stat"><small>Zafer / Yenilgi</small><b>${G.S.stats.wins} / ${G.S.stats.losses}</b></div>
-    <div class="stat"><small>Öldürülen düşman</small><b>${G.fmt(G.S.stats.kills)}</b></div><div class="stat"><small>Toplam çağırma</small><b>${G.S.totalPulls}</b></div></div>
-    <div class="row"><button class="btn" data-m="savename">💾 Kaydet</button><button class="btn gray" data-m="sound">${audioState().sfxOn ? '🔊 Efekt' : '🔇 Efekt'}</button><button class="btn gray" data-m="music">${audioState().musicOn ? '🎵 Müzik' : '🔇 Müzik'}</button></div>
-    <button class="btn red" style="width:100%;margin-top:10px" data-m="reset">🗑 Oyunu sıfırla</button>`;
+  const h = HERO_BY_ID[G.S.commander], th = G.thLevel();
+  const id = (G.S.created * 7919 % 90000000 + 10000000) | 0;
+  let body = '';
+  if (profTab === 'me') {
+    const badges = [
+      { n: 'İlk Zafer', i: 'ic_trophy', ok: G.S.stats.wins >= 1 }, { n: 'Çağırıcı', i: 'ic_summon', ok: G.S.totalPulls >= 10 },
+      { n: 'Kale Lordu', i: 'nav_city', ok: th >= 5 }, { n: 'Hasat Ustası', i: 'res_food', ok: (G.S.counters?.collects || 0) >= 20 },
+      { n: 'Fatih', i: 'nav_heroes', ok: G.S.stats.wins >= 10 }, { n: 'Hazine', i: 'nav_shop', ok: G.S.res.gold >= 2000 },
+      { n: 'Kâşif', i: 'nav_world', ok: G.S.stats.kills >= 500 }, { n: 'Efsane', i: 'ic_gift', ok: Object.keys(G.S.heroes).some((x) => HERO_BY_ID[x].rarity === 5) },
+    ];
+    body = `<div class="w-banner" style="background-image:url(${UI('banner_profile')});min-height:140px;align-items:center">
+      <div class="w-prof"><div class="w-ava"><img src="assets/heroes/${G.S.commander}_a.webp" alt=""></div><div><div class="nm">${G.S.name}</div><div class="sub">ID: ${id} • Komutan: ${h ? h.name : '-'}</div>
+      <div class="w-xp"><span class="lvl">${th}</span><div class="bar"><span style="width:${th * 10}%"></span></div></div></div></div></div>
+      <div class="w-stats">
+        <div class="w-stat"><img src="${UI('nav_heroes')}"><div><small>Güç</small><b>${G.fmt(G.cityPower())}</b></div></div>
+        <div class="w-stat"><img src="${UI('ic_trophy')}"><div><small>Zafer / Yenilgi</small><b>${G.S.stats.wins} / ${G.S.stats.losses}</b></div></div>
+        <div class="w-stat"><img src="${UI('nav_world')}"><div><small>Öldürülen düşman</small><b>${G.fmt(G.S.stats.kills)}</b></div></div>
+        <div class="w-stat"><img src="${UI('ic_summon')}"><div><small>Toplam çağırma</small><b>${G.S.totalPulls}</b></div></div></div>
+      <div class="w-card"><h4><img src="${UI('ic_trophy')}">Rozetlerim</h4><div class="w-badges">${badges.map((b) => `<div class="w-badge ${b.ok ? '' : 'off'}"><img src="${UI(b.i)}" alt="">${b.n}</div>`).join('')}</div></div>`;
+  } else {
+    body = `<div class="w-card"><h4><img src="${UI('nav_city')}">Krallık adı</h4>
+      <input data-name maxlength="16" value="${G.S.name.replace(/"/g, '')}" style="width:100%;padding:11px;border-radius:12px;background:#120a30;color:#fff;border:1px solid var(--wline);font-weight:800;font-size:15px;margin-bottom:8px">
+      <button class="w-btn green" style="width:100%" data-m="savename">Kaydet</button></div>
+      <div class="w-card"><h4><img src="${UI('nav_reports')}">Ses</h4><div class="row"><button class="w-btn" style="flex:1" data-m="sound">${audioState().sfxOn ? '🔊 Efekt açık' : '🔇 Efekt kapalı'}</button><button class="w-btn" style="flex:1" data-m="music">${audioState().musicOn ? '🎵 Müzik açık' : '🔇 Müzik kapalı'}</button></div></div>
+      <button class="w-btn red" style="width:100%;padding:12px" data-m="reset">Oyunu sıfırla</button>`;
+  }
+  return head('Profil', 'nav_heroes', [{ id: 'me', label: 'Profilim', icon: 'nav_heroes' }, { id: 'set', label: 'Ayarlar', icon: 'nav_quest' }], profTab) + body;
 }
 $('modalBox').addEventListener('input', (e) => {
   const s = e.target.dataset.slider;
@@ -859,6 +905,16 @@ $('modalBox').addEventListener('input', (e) => {
 });
 $('modalBox').addEventListener('change', (e) => { if (e.target.dataset.hero !== undefined) { atk.hero = e.target.value; const y = $('modalBox').scrollTop; renderModal(); $('modalBox').scrollTop = y; } });
 $('modalBox').addEventListener('click', (e) => {
+  const wt = e.target.closest('[data-wtab]');
+  if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; return renderModal(); }
+  const gq = e.target.closest('[data-goq]');
+  if (gq) { const v = gq.dataset.goq; const q = QUESTS.find((x) => x.id === v); closeModal();
+    if (q && q.t[0] === 'bld') { const p = PLOTS.find((x) => x.key === q.t[1]); if (p) { openBuilding(p.id); focusOn(p.x, p.z); } return; }
+    if (v.includes('trained') || (q && q.t[1] === 'trained')) { openBuilding('barracks'); focusOn(-17, 2); return; }
+    if (v.includes('wins') || (q && q.t[1] === 'wins')) return navigate('world');
+    if (v.includes('summons') || (q && q.t[1] === 'summons')) return navigate('summon');
+    if (v.includes('heals')) { openBuilding('hospital'); return; }
+    return; }
   const qt = e.target.closest('[data-qtab]'); if (qt) { questTab = qt.dataset.qtab; return renderModal(); }
   const cq = e.target.closest('[data-claimq]'); if (cq) { const r = G.claimQuest(cq.dataset.claimq); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('coin'); updateTop(); } return renderModal(); }
   const cd = e.target.closest('[data-claimd]'); if (cd) { const r = G.claimDaily(cd.dataset.claimd); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('coin'); updateTop(); } return renderModal(); }
@@ -1011,7 +1067,7 @@ async function boot() {
   if (G.S.reports.length && G.S.reports[0].t > (G.S.reportsSeen || 0)) $('repDot').classList.remove('hidden');
   const away = Date.now() / 1000 - (G.S.lastSeenBoot || Date.now() / 1000);
   G.S.lastSeenBoot = Date.now() / 1000;
-  initTutorial({ sfx, toast, updateTop, getPortrait, plotScreen, focusPlot });
+  initTutorial({ sfx, toast, updateTop, getPortrait, getAvatar, plotScreen, focusPlot });
   updateQuestUI();
   if (G.S.tut === 'done' && G.loginPending()) setTimeout(() => { modalKind = 'login'; openModal(loginUI()); }, 900);
   requestAnimationFrame(loop);
