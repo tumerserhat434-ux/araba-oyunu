@@ -72,8 +72,15 @@ export function upgradeCost(key, toLevel) {
   for (const r in b.base) if (b.base[r]) out[r] = Math.round(b.base[r] * k / 10) * 10;
   return out;
 }
-// Süre: Sv.12'ye kadar ×1.55, sonra dik artar (Sv.20 ≈ 3 sa, Sv.30 ≈ 10 sa, Sv.40 ≈ 1 gün — Belediye için)
-export function upgradeTime(key, toLevel) { return Math.round(BUILDINGS[key].time * 1.5 * Math.pow(1.55, Math.min(toLevel, 12) - 1) * (toLevel > 12 ? Math.pow(toLevel / 12, 3) : 1)); }
+// Süre (Belediye için): Sv.12 ≈ 37 dk, Sv.13 = 1 sa, Sv.14 = 2,5 sa, Sv.15 = 7 sa, sonra her seviye ×1,25
+// (Sv.20 ≈ 21 sa, Sv.25 ≈ 2,7 gün, Sv.30 ≈ 8 gün, Sv.40 ≈ 2,5 ay). Diğer binalar kendi taban sürelerine göre oranlanır.
+export function thSeconds(L) {
+  if (L <= 12) return 12 * 1.5 * Math.pow(1.55, L - 1);
+  if (L === 13) return 3600;
+  if (L === 14) return 9000;
+  return 25200 * Math.pow(1.25, L - 15);
+}
+export function upgradeTime(key, toLevel) { return Math.round(thSeconds(toLevel) * BUILDINGS[key].time / 12); }
 export function prodPerHour(key, level) { const b = BUILDINGS[key]; return b.prod ? Math.round(b.rate * level * Math.pow(1.08, level - 1)) : 0; }
 export function prodCap(key, level) { return prodPerHour(key, level) * 3; }
 

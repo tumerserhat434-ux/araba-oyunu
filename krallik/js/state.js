@@ -143,7 +143,8 @@ export function fmtTime(s) {
   return `${x}sn`;
 }
 export const totalTroops = (t = S.troops) => Object.values(t).reduce((a, b) => a + b, 0);
-export const gemCostForTime = (sec) => Math.max(1, Math.ceil(sec / 12));
+// 1 saate kadar 12 sn = 1 altın; daha uzun sürelerde dakika başına 1 altın (uzun inşaatları hızlandırmak cazip kalsın)
+export const gemCostForTime = (sec) => Math.max(1, sec <= 3600 ? Math.ceil(sec / 12) : Math.ceil(300 + (sec - 3600) / 60));
 
 // ---------------------------------------------------------------------
 //  Binalar

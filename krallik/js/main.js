@@ -572,6 +572,7 @@ function updateTop() {
 //  Bina paneli
 // ---------------------------------------------------------------------
 const PORTRAIT_CACHE = {};
+const PORTRAIT_CLEAR = (key) => { for (const k in PORTRAIT_CACHE) if (k.startsWith(key + ':')) delete PORTRAIT_CACHE[k]; };
 let sheetId = null, sheetTimer = 0, trainSel = 'infantry', trainQty = 50;
 function openBuilding(id) { sheetId = id; renderSheet(); $('sheetWrap').classList.add('open'); sfx('open'); tutEvent('sheet:' + id); }
 export function closeSheet() { sheetId = null; $('sheetWrap').classList.remove('open'); }
@@ -1177,6 +1178,7 @@ async function boot() {
   setLoad(4, 'Modeller yükleniyor…'); await frame();
   await ASSETS.loadAll((f) => setLoad(4 + f * 40, `Modeller yükleniyor… %${Math.round(f * 100)}`));
   BLD.setUnitFactory(createSoldier, animateUnit, createTank);
+  ASSETS.setOnHFLoaded((k) => { const base = k.replace(/_2$|[234]$/, ''); for (const id in holders) if (holders[id].plot.key === base) { holders[id].state = ''; refreshPlot(id); } PORTRAIT_CLEAR(base); });
   setLoad(46, 'Arazi hazırlanıyor…'); await frame();
   city.environment = makeEnv(0x1a2a5a, 0x2a3a6a, 0x0a1010, false);
   city.environmentIntensity = 0.55;

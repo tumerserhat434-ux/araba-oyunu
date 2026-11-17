@@ -855,12 +855,16 @@ const KKMAP = {
 };
 const PROP_S = 4.2;
 const HF_SMOKE = { potion: [0.18, 0.9, -0.1], farm: [-0.15, 0.75, -0.05], lumber: [-0.3, 0.85, -0.15], hospital: [-0.25, 0.8, -0.2] };
+// gelişmiş modele geçiş seviyeleri (en yüksek seviyenin ~%40'ı)
+const TIER2 = { barracks: 12, archery: 12, farm: 12, lumber: 12, quarry: 12, warehouse: 12, hospital: 10, academy: 10, forge: 10, rally: 10, tankyard: 10, potion: 8, heroes: 4, summon: 4 };
 const HF_FILL = { townhall: 0.9, archery: 0.78, summon: 0.82, farm: 0.92, quarry: 0.92 };
 function prop(name, x, z, ry = 0, s = 1, parent) { const m = A.model(name); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(PROP_S * s); parent.add(m); return m; }
 function kkBuilding(key, L) {
   const def = KKMAP[key]; if (!def || !(A.ready.models || A.hasHF(key))) return null;
   // Belediye Binası her 10 seviyede tamamen yeni bir modele geçer
-  const tierKey = key === 'townhall' ? (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall') : key;
+  // diğer binalar: en yüksek seviyenin ~%40'ında gelişmiş modele geçer (<anahtar>_2)
+  const tierKey = key === 'townhall' ? (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall') : (TIER2[key] && L >= TIER2[key] ? key + '_2' : key);
+  if (tierKey !== key) A.ensureHF(tierKey);
   const hk = A.hasHF(tierKey) ? tierKey : key;
   const isHF = A.hasHF(hk);
   const name = def.m(L);
@@ -915,7 +919,7 @@ function kkBuilding(key, L) {
   if (arm) k.anims.push((t) => { const u = (t * 0.35) % 1; arm.rotation.x = u < 0.15 ? -(u / 0.15) * 1.2 : -1.2 + Math.min(1, (u - 0.15) / 0.85) * 1.2; });
   if (turret) k.anims.push((t) => { turret.rotation.y = Math.sin(t * 0.3) * 0.8; });
   if (def.smoke && !isHF) addSmoke(k, def.smoke[0] * size.x * sc, def.smoke[1] * h, def.smoke[2] * size.z * sc);
-  if (isHF && HF_SMOKE[key]) { const [sx, sy, sz] = HF_SMOKE[key]; addSmoke(k, sx * size.x * sc, sy * h, sz * size.z * sc); }
+  if (isHF && hk === key && HF_SMOKE[key]) { const [sx, sy, sz] = HF_SMOKE[key]; addSmoke(k, sx * size.x * sc, sy * h, sz * size.z * sc); }
   if (def.glow) {
     const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: textures().glow, color: def.glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.6 }));
     gl.position.set(0.25 * size.x * sc, h * 0.35, 0.3 * size.z * sc); gl.scale.setScalar(fp * 0.4); k.group.add(gl);
@@ -929,7 +933,7 @@ function kkBuilding(key, L) {
     k.anims.push((t) => { rune.rotation.y = t * 0.3; halo.material.opacity = 0.4 + Math.sin(t * 2.2) * 0.15; crystals.forEach((cr, i) => { const a = t * 0.8 + (i / 4) * TAU; cr.position.set(Math.cos(a) * fp * 0.36, h * 0.55 + Math.sin(t * 2 + i) * 0.4, Math.sin(a) * fp * 0.36); cr.rotation.y = t * 2; }); });
   }
   if (isHF && hk === key) hfAnimate(k, key, L, size.clone().multiplyScalar(sc), fp);
-  if (hk !== key) thTierFx(k, size.clone().multiplyScalar(sc), L);
+  if (hk !== key && key === 'townhall') thTierFx(k, size.clone().multiplyScalar(sc), L);
   if (L > 10) tierDecor(k, key, L, fp, h, base);
   if (L >= 10) crest(k, h + 1.6);
   const grp = k.build(h + 0.5);

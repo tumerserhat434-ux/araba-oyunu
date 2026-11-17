@@ -18,11 +18,27 @@ export const MODEL_LIST = [
 ];
 export const CHAR_LIST = ['Knight', 'Barbarian', 'Rogue', 'Rogue_Hooded', 'Mage'];
 // Higgsfield ile özel tasarlanan binalar (assets/hf/<anahtar>.glb)
-export const HF_LIST = ['townhall', 'barracks', 'archery', 'hospital', 'potion', 'heroes', 'summon', 'farm', 'lumber', 'quarry', 'warehouse', 'academy', 'tankyard', 'rally', 'forge', 'townhall2', 'townhall3', 'townhall4'];
+export const HF_LIST = ['townhall', 'barracks', 'archery', 'hospital', 'potion', 'heroes', 'summon', 'farm', 'lumber', 'quarry', 'warehouse', 'academy', 'tankyard', 'rally', 'forge'];
 const hf = new Map(), hfSizes = new Map();
 export const PART_LIST = ['p_sails', 'p_wheel', 'p_saw', 'p_fountain', 'p_crystal', 'p_armillary', 'p_cart', 'u_tank', 'p_portal'];
 const CENTERED = new Set(['p_sails', 'p_wheel', 'p_saw', 'p_crystal']);
 export const hasHF = (k) => hf.has(k);
+// Gelişmiş seviye modelleri gerektiğinde yüklenir (açılışı yavaşlatmasın)
+let hfLoader = null, onHF = null;
+const hfLazy = new Map();
+export function setOnHFLoaded(cb) { onHF = cb; }
+export function ensureHF(k) {
+  if (hf.has(k) || hfLazy.has(k) || !hfLoader) return;
+  hfLazy.set(k, hfLoader.loadAsync('assets/hf/' + k + '.glb').then((g) => {
+    const root = g.scene; prep(root);
+    root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.8; o.material.metalness = 0; if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x40384a); } } });
+    const pivot = new THREE.Group(); pivot.add(root); root.rotation.y = -Math.PI / 2; root.updateMatrixWorld(true);
+    const b = new THREE.Box3().setFromObject(root), c = b.getCenter(new THREE.Vector3());
+    root.position.set(-c.x, -b.min.y, -c.z); pivot.updateMatrixWorld(true);
+    hfSizes.set(k, new THREE.Box3().setFromObject(pivot).getSize(new THREE.Vector3()));
+    hf.set(k, pivot); onHF?.(k);
+  }).catch(() => {}));
+}
 export function hfModel(k) { const m = hf.get(k); return m ? m.clone(true) : null; }
 export const hfSize = (k) => hfSizes.get(k);
 
@@ -68,6 +84,7 @@ export async function loadAll(onProgress = () => {}) {
     hf.set(k, pivot);
   }).catch(() => {}));
   await Promise.all(jobs); ready.models = models.size > 0;
+  hfLoader = loader;
   await Promise.all(hjobs); await Promise.all(pjobs);
   await Promise.all(cjobs); ready.chars = chars.size > 0;
 }

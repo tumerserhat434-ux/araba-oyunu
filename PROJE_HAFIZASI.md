@@ -358,6 +358,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - Yeni görevler q20–q25 (Belediye 15/20/30/40 vb.).
 - Bildirim (toast) v2: lacivert-altın çerçeve, solda madalyon simge (mesajın başındaki emoji), hata için kırmızı.
 
+### 5.11 Uzun süreler ve tüm binalara gelişmiş görünüm
+- Süre `data.js → thSeconds(L)`: Belediye Sv.12 ≈ 37 dk, Sv.13 = 1 sa, Sv.14 = 2,5 sa, Sv.15 = 7 sa, sonra her seviye ×1,25 (Sv.20 ≈ 21 sa, Sv.30 ≈ 8 gün, Sv.40 ≈ 77 gün). Diğer binalar taban süre oranıyla ölçeklenir (`upgradeTime = thSeconds × time/12`).
+- Altınla hızlandırma `gemCostForTime`: 1 saate kadar 12 sn = 1 altın, sonrası dakika başına 1 altın.
+- 14 binanın tamamına Higgsfield ile "aynı binanın gelişmiş hali" modeli: `assets/hf/<anahtar>_2.glb`. Geçiş seviyeleri `buildings.js → TIER2` (Sv.30'luk binalar 12, Sv.25'likler 10, İksir 8, Karakter Deposu/Çağırma 4).
+- Gelişmiş modeller ve Belediye kademe modelleri (townhall2/3/4) açılışta yüklenmez; `assets.js → ensureHF(k)` ile gerektiğinde yüklenir, `setOnHFLoaded` ile şehirde yerine geçer.
+- Gelişmiş modellerde eski hareketli parçalar (yel değirmeni kanadı vb.) kullanılmaz; modelin kendi parçaları sabit.
+- Notlar: SAM 3D (1 kredi) bina görsellerinde yine başarısız oldu. Referans görsel yükleme (upload.higgsfield.ai) ortam güvenlik kuralına takıldı; promptlar mevcut binanın tarifiyle yazıldı. İlk denemede 7 görsel "önce/sonra" çifti olarak çıktı, "tek bina" vurgusuyla yeniden üretildi.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
