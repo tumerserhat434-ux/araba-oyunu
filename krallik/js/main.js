@@ -819,26 +819,38 @@ function worldUI() {
   return head('Dünya Haritası', '🗺️') + `<div class="wmap"><svg>${lines}</svg>${kds}</div>${info}
     <p class="demo">Diğer krallıklar şu an bilgisayar tarafından yönetiliyor. Gerçek çevrimiçi oyuncular için sunucu bağlantısı gerekir.</p>`;
 }
-let atk = { troops: {}, hero: null };
+let atk = { troops: {}, heroes: [] };
 function attackUI() {
   const e = G.S.enemies.find((q) => q.id === worldSel);
   if (!e) return worldUI();
-  if (!atk.init) { atk = { init: true, troops: {}, hero: G.S.commander }; for (const t in TROOPS) atk.troops[t] = Math.floor(G.S.troops[t] * 0.8); }
+  if (!atk.init) { atk = { init: true, troops: {}, heroes: G.S.heroes[G.S.commander] ? [G.S.commander] : [] }; for (const t in TROOPS) atk.troops[t] = Math.floor(G.S.troops[t] * 0.8); }
+  const owned = Object.keys(G.S.heroes).map((id) => HERO_BY_ID[id]).sort((a, b) => b.rarity - a.rarity || G.S.heroes[b.id].level - G.S.heroes[a.id].level);
+  const slots = Array.from({ length: G.MAX_COMMANDERS }, (_, i) => {
+    const id = atk.heroes[i];
+    if (!id) return `<div class="cmd-slot empty"><span>＋</span></div>`;
+    const h = HERO_BY_ID[id];
+    return `<div class="cmd-slot" style="--rc:${RARITY[h.rarity].color}" data-cmdpick="${id}"><img src="assets/heroes/${id}_a.webp" alt="">${i === 0 ? '<em class="crown">👑</em>' : ''}<b>Sv.${G.S.heroes[id].level}</b><i>✕</i></div>`;
+  }).join('');
+  const pool = owned.map((h) => `<button class="cmd-pick ${atk.heroes.includes(h.id) ? 'on' : ''}" style="--rc:${RARITY[h.rarity].color}" data-cmdpick="${h.id}"><img src="assets/heroes/${h.id}_a.webp" alt=""><span>${h.name.split(' ').pop()}</span><small>${'★'.repeat(h.rarity)}</small></button>`).join('');
   let rows = '';
   for (const t in TROOPS) {
-    const max = G.S.troops[t];
-    rows += `<div class="qty"><span>${TROOPS[t].icon} ${TROOPS[t].name}</span><span>${atk.troops[t]} / ${max}</span></div>
-      <input class="slider" type="range" min="0" max="${max}" value="${atk.troops[t]}" data-slider="${t}" ${max ? '' : 'disabled'}>`;
+    const max = G.S.troops[t], v = Math.min(atk.troops[t] || 0, max);
+    rows += `<div class="tr-row ${max ? '' : 'off'}"><div class="tr-top"><span class="tr-ic">${TROOPS[t].icon}</span><b>${TROOPS[t].name}</b><span class="tr-n">${G.fmt(v)} <small>/ ${G.fmt(max)}</small></span></div>
+      <div class="tr-ctl"><input class="slider" type="range" min="0" max="${max}" value="${v}" data-slider="${t}" ${max ? '' : 'disabled'}>
+      <button class="tq" data-tq="${t}:0">0</button><button class="tq" data-tq="${t}:half">½</button><button class="tq" data-tq="${t}:all">Tümü</button></div></div>`;
   }
-  const owned = Object.keys(G.S.heroes).map((id) => HERO_BY_ID[id]).sort((a, b) => b.rarity - a.rarity);
-  const heroSel = owned.map((h) => `<option value="${h.id}" ${h.id === atk.hero ? 'selected' : ''}>${stars(h.rarity)} ${h.name} (Sv.${G.S.heroes[h.id].level})</option>`).join('');
-  const myP = G.armyPower(atk.troops, atk.hero, G.S.heroes[atk.hero]?.level, G.S.heroes[atk.hero]?.copies);
-  return head(`${e.name}'a Saldır`, '⚔️') + `
-    <div class="qty"><span>Komutan</span></div>
-    <select data-hero style="width:100%;padding:10px;border-radius:10px;background:#1a1008;color:#fff;border:1px solid var(--line);font-weight:800;margin-bottom:8px">${heroSel}</select>
-    ${rows}
-    <div class="stats" style="margin-top:8px"><div class="stat"><small>Ordu gücün</small><b>⚔ ${G.fmt(myP)}</b></div><div class="stat"><small>Düşman gücü</small><b>⚔ ${G.fmt(e.power)}</b></div></div>
-    <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${G.totalTroops(atk.troops) ? '' : 'disabled'}>🚩 Yürüyüş başlat</button></div>`;
+  const tot = G.totalTroops(atk.troops), myP = G.armyPowerMulti(atk.troops, atk.heroes), better = myP >= e.power;
+  return head('Sefer Kampı', '⚔️') + `
+    <div class="w-banner camp-banner"><div><div class="bt">${e.name}</div><div class="bs">Lord ${e.lord} • ⚔ ${G.fmt(e.power)}</div></div></div>
+    <div class="w-card"><div class="camp-h"><b>Komutanlar</b><span>${atk.heroes.length} / ${G.MAX_COMMANDERS}</span></div>
+      <div class="cmd-slots">${slots}</div>
+      <div class="cmd-pool">${pool || '<p class="desc">Henüz kahramanın yok.</p>'}</div>
+      <p class="camp-note">İlk komutan 👑 tam bonus verir, diğerleri azalan oranda (%50, %35, %25, %20) katkı sağlar.</p></div>
+    <div class="w-card"><div class="camp-h"><b>Birlikler</b><span>${G.fmt(tot)} asker</span></div>
+      <div class="row" style="margin-bottom:8px"><button class="w-btn" data-tall="none">Temizle</button><button class="w-btn" data-tall="half">Yarısı</button><button class="w-btn gold" data-tall="all">Hepsini seç</button></div>
+      ${rows}</div>
+    <div class="stats"><div class="stat"><small>Ordu gücün</small><b style="color:${better ? '#7dff9a' : '#ffb08a'}">⚔ ${G.fmt(myP)}</b></div><div class="stat"><small>Düşman gücü</small><b>⚔ ${G.fmt(e.power)}</b></div></div>
+    <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${tot ? '' : 'disabled'}>🚩 Yürüyüşe çık</button></div>`;
 }
 let questTab = 'main';
 const rewardTxt = (r) => Object.entries(r).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ');
@@ -1007,7 +1019,6 @@ $('modalBox').addEventListener('input', (e) => {
   const s = e.target.dataset.slider;
   if (s) { atk.troops[s] = +e.target.value; const box = $('modalBox'), y = box.scrollTop; clearTimeout(soon); soon = setTimeout(() => { renderModal(); $('modalBox').scrollTop = y; }, 60); }
 });
-$('modalBox').addEventListener('change', (e) => { if (e.target.dataset.hero !== undefined) { atk.hero = e.target.value; const y = $('modalBox').scrollTop; renderModal(); $('modalBox').scrollTop = y; } });
 $('modalBox').addEventListener('click', (e) => {
   const wt = e.target.closest('[data-wtab]');
   if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; return renderModal(); }
@@ -1042,6 +1053,12 @@ $('modalBox').addEventListener('click', (e) => {
     if (G.S.res.gold < p.gold) return needGold();
     G.S.res.gold -= p.gold; G.gainRes(p.res); G.save(); toast('📦 Kaynaklar eklendi'); sfx('coin'); updateTop(); return;
   }
+  const cp = e.target.closest('[data-cmdpick]');
+  if (cp && modalKind === 'attack') { const id = cp.dataset.cmdpick, i = atk.heroes.indexOf(id); if (i >= 0) atk.heroes.splice(i, 1); else if (atk.heroes.length < G.MAX_COMMANDERS) atk.heroes.push(id); else toast('En fazla 5 komutan', true); sfx('click'); return renderModal(); }
+  const tq = e.target.closest('[data-tq]');
+  if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
+  const ta = e.target.closest('[data-tall]');
+  if (ta) { const m2 = ta.dataset.tall; for (const t in TROOPS) atk.troops[t] = m2 === 'all' ? G.S.troops[t] : m2 === 'half' ? Math.floor(G.S.troops[t] / 2) : 0; return renderModal(); }
   const m = e.target.closest('[data-m]'); if (!m) return;
   const a = m.dataset.m;
   if (a === 'close') closeModal();
@@ -1049,8 +1066,8 @@ $('modalBox').addEventListener('click', (e) => {
   if (a === 'world') { modalKind = 'world'; renderModal(); }
   if (a === 'toattack') { modalKind = 'attack'; atk.init = false; renderModal(); tutEvent('attackOpen'); }
   if (a === 'march') {
-    const troops = { ...atk.troops }, hero = atk.hero;
-    const r = G.attackEnemy(worldSel, troops, hero);
+    const troops = { ...atk.troops }, hero = atk.heroes[0];
+    const r = G.attackEnemy(worldSel, troops, atk.heroes);
     if (!r) return toast('Asker seç', true);
     closeModal(); atk.init = false; tutEvent('battle');
     openBattle({ mode: 'attack', result: r.res, attacker: { troops: r.sent, hero }, defender: { troops: addBack(r.res.D, r.res.dLoss), tower: r.enemy.tower }, report: r.rep, title: r.enemy.name });

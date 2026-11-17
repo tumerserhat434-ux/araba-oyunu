@@ -648,7 +648,7 @@ function attachHero3d(obj, def) {
     obj.add(h.scene);
     const mixer = new THREE.AnimationMixer(h.inner);
     const act = h.clips[0] && mixer.clipAction(h.clips[0]); if (act) { act.play(); mixer.update(Math.random() * 2); }
-    ud.h3 = { mixer, root: h.scene, inner: h.inner, t: 0 };
+    ud.h3 = { mixer, root: h.scene, inner: h.inner, t: 0, still: !act };
     ud.mounted = false;
   };
   A.loadHero3d(def.id).then((ok) => { if (ok) swap(); });
@@ -856,6 +856,7 @@ export function animateUnit(obj, state, t, dt) {
     const H = ud.h3; dt = Math.min(dt || 0.016, 0.1); H.t += dt;
     H.mixer.update(dt * (state === 'cheer' ? 1.6 : 1));
     if (state === 'cheer') { const b = Math.abs(Math.sin(H.t * 4)); H.root.position.y = b * 0.12; H.root.rotation.z = Math.sin(H.t * 4) * 0.05; }
+    else if (H.still) { H.root.position.y = Math.sin(H.t * 1.8) * 0.02; H.root.rotation.z = Math.sin(H.t * 0.9) * 0.015; }
     else { H.root.position.y *= 0.85; H.root.rotation.z *= 0.85; }
     if (ud.fx) ud.fx(t);
     return;

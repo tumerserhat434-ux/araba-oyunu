@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import * as A from './assets.js';
 import { createSoldier, createHero, animateUnit } from './units.js';
-import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost } from './data.js';
+import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL } from './data.js';
 import * as G from './state.js';
 import { setTheme } from './audio.js';
 
@@ -411,9 +411,9 @@ function buildSummonScene() {
   const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 200);
   camera.position.set(0, 2.2, 7.5); camera.lookAt(0, 1.3, 0);
   scene.add(new THREE.HemisphereLight(0xc8b8ff, 0x2a1a40, 1.3));
-  const key = new THREE.SpotLight(0xfff0e0, 90, 22, 0.6, 0.6, 1.2); key.position.set(2.5, 8, 5); key.target.position.set(0, 1, 0); key.castShadow = true; scene.add(key, key.target);
+  const key = new THREE.SpotLight(0xfff0e0, 55, 22, 0.6, 0.6, 1.2); key.position.set(2.5, 8, 5); key.target.position.set(0, 1, 0); key.castShadow = true; scene.add(key, key.target);
   const rim = new THREE.PointLight(0xb06bff, 40, 12, 1.5); rim.position.set(0, 2.8, -1.8); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xf0e8ff, 2.2); fill.position.set(0, 3, 8); scene.add(fill);
+  const fill = new THREE.DirectionalLight(0xf0e8ff, 1.3); fill.position.set(0, 3, 8); scene.add(fill);
   const face = new THREE.SpotLight(0xfff4ea, 0, 14, 0.45, 0.7, 1.2); face.position.set(0, 2.6, 4.5); face.target.position.set(0, 1.3, -0.45); scene.add(face, face.target);
   // gölge yakalayıcı zemin
   const floor = new THREE.Mesh(new THREE.CircleGeometry(12, 48).rotateX(-Math.PI / 2), new THREE.ShadowMaterial({ opacity: 0.45 }));
@@ -502,12 +502,16 @@ export function openSummon() {
     if (S.heroSlot) S.scene.remove(S.heroSlot);
     const m = createHero(h); m.position.set(0, S.heroBase, -0.45); m.rotation.y = 0;
     S.scene.add(m); S.heroSlot = m; S.heroState = 'cheer'; S.heroT = 0;
-    S.aura.material.color.set(RARITY[r.rarity].color).multiplyScalar(1.6); S.aura.material.opacity = 0.9;
+    S.aura.material.color.set(RARITY[r.rarity].color); S.aura.material.opacity = 0.35;
     C.sfx(r.rarity >= 4 ? 'reveal5' : 'reveal');
-    ov().innerHTML = `<div class="reveal"><div class="rs" style="color:${RARITY[r.rarity].color}">${stars(r.rarity)}</div>
-      <div class="rn" style="color:${RARITY[r.rarity].color}">${h.name}</div><div class="rt">${h.title} • ${RARITY[r.rarity].name}</div>
-      ${r.isNew ? '<div class="new">YENİ!</div>' : `<div class="new" style="background:#5a3aa0">Kopya → yetenek gücü +1</div>`}</div>
-      <div class="ov-bottom"><button class="btn gold" id="sNext">${idx < queue.length - 1 || results.length > 1 ? 'Devam ▶' : 'Tamam'}</button></div>`;
+    const RC = RARITY[r.rarity].color, roleTxt = { infantry: '🗡️ Piyade', archer: '🏹 Okçu', cavalry: '🐎 Süvari', tank: '⚙️ Tank' }[h.role];
+    ov().innerHTML = `<div class="rv-top" style="--rc:${RC}">
+        <div class="rv-plate"><div class="rv-stars">${'★'.repeat(r.rarity)}</div><div class="rv-name">${h.name}</div>
+        <div class="rv-sub"><span class="rv-rar">${RARITY[r.rarity].name}</span><span>${h.title}</span></div></div>
+        ${r.isNew ? '<div class="rv-tag new">YENİ KAHRAMAN!</div>' : '<div class="rv-tag dup">Kopya • yetenek gücü +1</div>'}
+      </div>
+      <div class="ov-bottom"><div class="rv-info" style="--rc:${RC}"><div class="rv-role">${roleTxt} komutanı • ⚔ ${h.atk} • 🛡 ${h.def}</div><div class="rv-skill">✨ ${h.skill}</div></div>
+        <button class="btn gold" id="sNext">${idx < queue.length - 1 || results.length > 1 ? 'Devam ▶' : 'Tamam'}</button></div>`;
     $('sNext').onclick = () => { idx++; if (idx < queue.length) showHero(queue[idx]); else if (results.length > 1) showGrid(); else { phase = 'idle'; ui(); } };
   };
   const showGrid = () => {
@@ -525,7 +529,7 @@ export function openSummon() {
     const speed = phase === 'charge' ? 1 + pT * 8 : 1;
     S.spin += dt * speed;
     S.ring.rotation.z = -S.spin * 0.9; S.ring2.rotation.z = S.spin * 1.4; S.runeMesh.rotation.y = S.spin * 0.2;
-    S.disc.material.opacity = 0.22 + Math.sin(t * 2) * 0.08 + (phase === 'charge' ? pT * 0.3 : 0);
+    const dim = S.heroSlot ? 0.35 : 1; S.disc.material.opacity = (0.22 + Math.sin(t * 2) * 0.08) * dim + (phase === 'charge' ? pT * 0.3 : 0); S.ring.material.opacity = 0.7 * dim; S.ring2.material.opacity = 0.5 * dim;
     S.crystals.forEach((c) => { c.m.material.opacity = 0.35 + Math.sin(t * 2.2 + c.ph) * 0.2 + (phase === 'charge' ? pT * 0.3 : 0); });
     if (innerWidth !== S.lw || innerHeight !== S.lh) { S.lw = innerWidth; S.lh = innerHeight; fitCover(S.bg, 768 / 1366); }
     const pa = S.parts.geometry.attributes.position.array;
@@ -548,8 +552,8 @@ export function openSummon() {
       S.heroT += dt;
       S.heroSlot.rotation.y = Math.sin(S.heroT * 0.5) * 0.5;
       animateUnit(S.heroSlot, S.heroT < 2 ? 'cheer' : 'idle', t, dt);
-      S.aura.material.opacity = 0.6 + Math.sin(t * 3) * 0.2;
-      S.face.intensity = Math.min(70, S.face.intensity + dt * 140);
+      S.aura.material.opacity = 0.25 + Math.sin(t * 3) * 0.08;
+      S.face.intensity = Math.min(28, S.face.intensity + dt * 60);
     } else { S.aura.material.opacity = Math.max(0, S.aura.material.opacity - dt); S.face.intensity = Math.max(0, S.face.intensity - dt * 140); }
     const mounted = S.heroSlot && S.heroSlot.userData.mounted;
     const ty = mounted ? 1.5 : 1.15;
@@ -614,7 +618,7 @@ export function openHeroViewer(id) {
     const bonus = o ? heroBonus(h, o.level, o.copies) : heroBonus(h, 1, 0);
     const cost = o ? heroLevelCost(o.level) : null;
     const maxed = o && o.level >= G.heroMaxLevel();
-    const roleTxt = { infantry: '🗡️ Piyade komutanı', archer: '🏹 Okçu komutanı', cavalry: '🐎 Süvari komutanı' }[h.role];
+    const roleTxt = { infantry: '🗡️ Piyade komutanı', archer: '🏹 Okçu komutanı', cavalry: '🐎 Süvari komutanı', tank: '⚙️ Tank komutanı' }[h.role];
     ov().innerHTML = `<div class="ov-top"><button class="x" id="hPrev" style="margin:0">◀</button>
       <div style="text-align:center"><div class="rs" style="color:${RARITY[h.rarity].color};font-size:18px;text-shadow:0 0 12px currentColor">${stars(h.rarity)}</div>
       <div class="ov-title" style="color:${RARITY[h.rarity].color};font-size:19px">${h.name}</div><div style="font-weight:800;font-size:12px;color:#e8d6b0;text-shadow:0 1px 3px #000">${h.title} • ${roleTxt}</div></div>
@@ -623,10 +627,15 @@ export function openHeroViewer(id) {
         <div class="stats" style="grid-template-columns:repeat(3,1fr)">
           <div class="stat"><small>Seviye</small><b>${o ? o.level : '-'} <small style="display:inline">/ ${G.heroMaxLevel()}</small></b></div>
           <div class="stat"><small>Birlik bonusu</small><b>+${bonus.toFixed(0)}%</b></div>
-          <div class="stat"><small>Kopya</small><b>${o ? o.copies : 0} / 5</b></div></div>
+          <div class="stat"><small>Kopya</small><b>${o ? o.copies : 0} / 5</b></div>
+          <div class="stat"><small>⚔ Saldırı</small><b>${heroAtk(h, o ? o.level : 1)}${o && !maxed ? ` <span class="up">→ ${heroAtk(h, o.level + 1)}</span>` : ''}</b></div>
+          <div class="stat"><small>🛡 Savunma</small><b>${heroDef(h, o ? o.level : 1)}</b></div>
+          <div class="stat"><small>En yüksek</small><b>Sv.${HERO_MAX_LEVEL}</b></div></div>
+        ${o && maxed && o.level < HERO_MAX_LEVEL ? '<p class="desc" style="margin:0 0 8px;color:#ffcf8a">Daha yüksek seviye için Karakter Deposu\'nu yükselt (her seviye +15).</p>' : ''}
         <p class="desc" style="margin:0 0 10px">✨ <b>${h.skill}</b></p>
         ${o ? `<div class="row">
           <button class="btn" id="hLvl" ${maxed ? 'disabled' : ''}>${maxed ? 'Sınırda' : `⬆ Seviye • 🌾${G.fmt(cost.food)} 🪨${G.fmt(cost.stone)}`}</button>
+          ${maxed ? '' : '<button class="btn blue" id="hLvl10" style="flex:0 0 auto;padding:0 12px">x10</button>'}
           <button class="btn ${G.S.commander === h.id ? 'gray' : 'gold'}" id="hCmd">${G.S.commander === h.id ? '👑 Komutan' : '👑 Komutan yap'}</button></div>`
         : `<button class="btn purple" style="width:100%" id="hGo">🔒 Henüz sahip değilsin — Çağır</button>`}
       </div></div>`;
@@ -634,6 +643,7 @@ export function openHeroViewer(id) {
     $('hPrev').onclick = () => { cur = (cur - 1 + list.length) % list.length; setHero(); };
     $('hNext').onclick = () => { cur = (cur + 1) % list.length; setHero(); };
     if ($('hLvl')) $('hLvl').onclick = () => { const r = G.levelUpHero(h.id); if (!r.ok) C.toast(r.why, true); else { C.toast('⬆ Seviye atladı!'); C.sfx('reveal'); anim = 'cheer'; animT = 0; } renderUI(); };
+    if ($('hLvl10')) $('hLvl10').onclick = () => { let n = 0; while (n < 10 && G.levelUpHero(h.id).ok) n++; if (!n) C.toast('Yetersiz kaynak', true); else { C.toast(`⬆ ${n} seviye atladı!`); C.sfx('reveal'); anim = 'cheer'; animT = 0; } renderUI(); };
     if ($('hCmd')) $('hCmd').onclick = () => { G.setCommander(h.id); C.toast('👑 Yeni komutan: ' + h.name); renderUI(); };
     if ($('hGo')) $('hGo').onclick = () => { close(); openSummon(); };
   };

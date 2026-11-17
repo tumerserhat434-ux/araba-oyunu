@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
+import { BUILDINGS, PLOTS, MAX_LEVEL, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -288,7 +288,7 @@ export function usePotion() {
 // ---------------------------------------------------------------------
 //  Kahramanlar ve çağırma
 // ---------------------------------------------------------------------
-export const heroMaxLevel = () => Math.max(1, maxLevelOf('heroes')) * 6;
+export const heroMaxLevel = () => Math.min(HERO_MAX_LEVEL, Math.max(1, maxLevelOf('heroes')) * 15);
 export function heroPower(id) { const h = HERO_BY_ID[id], o = S.heroes[id]; return o ? Math.round(heroBonus(h, o.level, o.copies) * 10 + (h.atk + h.def) * o.level) : 0; }
 export function levelUpHero(id) {
   const o = S.heroes[id]; if (!o) return { ok: false };
@@ -388,7 +388,9 @@ export function simulateBattle(att, def) {
   // att/def: { troops:{}, hero:{bonus, role}, tower }
   const A = { ...att.troops }, D = { ...def.troops };
   const A0 = { ...A }, D0 = { ...D };
-  const bonusFor = (side, type) => { const h = side.hero; if (!h) return 1; return 1 + (h.bonus / 100) * (h.role === type || (h.role === 'infantry' && type === 'spearman') ? 1 : 0.4); };
+  const heroList = (side) => side.heroes || (side.hero ? [side.hero] : []);
+  const bonusFor = (side, type) => combinedBonus(heroList(side), type) / 100 + 1;
+  const mainBonus = (side) => Math.max(0, ...heroList(side).map((h) => h.bonus));
   const rounds = [];
   const dmgOf = (X, side, Y) => {
     const ytot = totalTroops(Y) || 1, out = {};
@@ -412,7 +414,7 @@ export function simulateBattle(att, def) {
     const kill = (Y, dmg, side) => {
       for (const t in Y) {
         const d = TROOPS[t];
-        const defMul = 1 + (side.hero ? side.hero.bonus / 100 * 0.5 : 0);
+        const defMul = 1 + mainBonus(side) / 100 * 0.5;
         const k = dmg[t] * 0.11 / ((d.hp * 0.08 + d.def * 0.1 * defMul) * (side.defMul || 1)) * rand(0.9, 1.1);
         Y[t] = Math.max(0, Y[t] - Math.round(Math.min(Y[t], k)));
       }
@@ -427,6 +429,18 @@ export function simulateBattle(att, def) {
   const win = aRemainRatio > dRemainRatio;
   return { win, A, D, aLoss, dLoss, rounds, aRemainRatio, dRemainRatio };
 }
+// Birden çok komutan: en güçlüsü tam, diğerleri azalan oranda katkı verir
+const CMD_W = [1, 0.5, 0.35, 0.25, 0.2];
+export const MAX_COMMANDERS = 5;
+export function combinedBonus(heroes, type) {
+  const c = heroes.map((h) => h.bonus * (!type || h.role === type || (h.role === 'infantry' && type === 'spearman') ? 1 : 0.4)).sort((a, b) => b - a);
+  return c.slice(0, MAX_COMMANDERS).reduce((s, v, i) => s + v * CMD_W[i], 0);
+}
+export function heroesOf(ids) { return (ids || []).map(heroOf).filter(Boolean); }
+export function armyPowerMulti(troops, ids) {
+  let p = 0; for (const t in troops) { const d = TROOPS[t]; p += troops[t] * (d.atk + d.def + d.hp * 0.4); }
+  return Math.round(p * (1 + combinedBonus(heroesOf(ids)) / 100));
+}
 function heroOf(id) { const h = id && HERO_BY_ID[id], o = id && S.heroes[id]; return h && o ? { bonus: heroBonus(h, o.level, o.copies), role: h.role, id } : null; }
 // Kayıpları yaralı/ölü olarak ayır (hastane kapasitesi)
 function applyLosses(loss) {
@@ -439,13 +453,16 @@ function applyLosses(loss) {
   }
   return { wounded, dead };
 }
-export function attackEnemy(enemyId, sent, heroId) {
+export function attackEnemy(enemyId, sent, heroIds) {
+  if (!Array.isArray(heroIds)) heroIds = heroIds ? [heroIds] : [];
+  heroIds = heroIds.filter((id) => S.heroes[id]).slice(0, MAX_COMMANDERS);
+  const heroId = heroIds[0];
   const e = S.enemies.find((q) => q.id === enemyId);
   if (!e) return null;
   for (const t in sent) { sent[t] = Math.min(sent[t], S.troops[t]); }
   if (!totalTroops(sent)) return null;
   for (const t in sent) S.troops[t] -= sent[t];
-  const res = simulateBattle({ troops: sent, hero: heroOf(heroId), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: null, tower: e.tower * 120 });
+  const res = simulateBattle({ troops: sent, heroes: heroesOf(heroIds), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: null, tower: e.tower * 120 });
   const split = applyLosses(res.aLoss);
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {};
@@ -461,8 +478,8 @@ export function attackEnemy(enemyId, sent, heroId) {
   e.power = armyPower(e.troops) + e.tower * 260;
   S.stats.kills += totalTroops(res.dLoss);
   // kahraman deneyimi
-  if (heroId && S.heroes[heroId] && res.win && S.heroes[heroId].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[heroId].level++;
-  const rep = { t: now(), kind: 'attack', win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, hero: heroId };
+  if (res.win) for (const id of heroIds) if (S.heroes[id].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[id].level++;
+  const rep = { t: now(), kind: 'attack', win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, hero: heroId, heroes: heroIds };
   S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
   save(); emit('battle', rep);
   return { rep, res, enemy: e, sent };

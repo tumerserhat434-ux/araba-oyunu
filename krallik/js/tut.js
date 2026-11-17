@@ -16,7 +16,7 @@ const STEPS = [
   { id: 'closeSummon', text: 'Kahramanlarını <b>Karakter Deposu</b>\'nda geliştirip komutan yapabilirsin. Şimdi <b>Tamam</b> ve <b>✕</b> ile şehre dön.', wait: 'sceneClosed', top: true, ghost: true },
   { id: 'world', text: 'Fetih zamanı! <b>🗺️ Dünya</b> haritasını aç.', sel: 'nav [data-go=world]', wait: 'worldOpen' },
   { id: 'pick', text: 'İşaretlediğim zayıf krallığa dokun, ardından <b>⚔ Saldır</b>\'a bas.', sel: () => { const e = [...G.S.enemies].sort((a, b) => a.power - b.power)[0]; return e ? `[data-k="${e.id}"]` : '[data-k]'; }, wait: 'attackOpen', top: true, alt: '[data-m=toattack]' },
-  { id: 'march', text: 'Askerlerini ve komutanını seç, sonra <b>🚩 Yürüyüş başlat</b>!', sel: '[data-m=march]', wait: 'battle', top: true },
+  { id: 'march', text: 'Askerlerini ve en fazla 5 komutanını seç, sonra <b>🚩 Yürüyüşe çık</b>!', sel: '[data-m=march]', wait: 'battle', top: true },
   { id: 'battle', text: '', wait: 'sceneClosed', hidden: true },
   { id: 'hospital', text: 'Savaşta yaralanan askerler <b>Hastane</b>\'de iyileşir; hastane yoksa ölürler! Hastane arsasına dokunup inşa et.', plot: 'hospital', wait: 'sheet:hospital' },
   { id: 'done', text: 'Tebrikler Lordum, artık hazırsın! 🎉 Ödülün: <b>🪙 300 altın</b>. Unutma: düşmanlar zaman zaman şehrine saldırır, kulelerini ve ordunu güçlü tut!', btn: 'Bitir', reward: true },

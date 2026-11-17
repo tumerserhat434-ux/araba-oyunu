@@ -16,7 +16,7 @@ export const BUILDINGS = {
   archery: { name: 'Okçu Kulesi', icon: '🏹', desc: 'Şehri saldırılara karşı korur. Savunmada düşmana ok yağdırır.', base: { food: 80, wood: 220, stone: 160 }, time: 10, reqTH: 2 },
   hospital: { name: 'Hastane', icon: '💚', desc: 'Savaşta yaralanan askerler buraya gelir ve iyileştirilir. Kapasite dolarsa yaralılar ölür.', base: { food: 200, wood: 180, stone: 80 }, time: 9, reqTH: 2 },
   potion: { name: 'İksir Deposu', icon: '🧪', desc: 'Şifa iksiri üretir ve saklar. Her iksir yaralı askerleri anında iyileştirir.', base: { food: 160, wood: 120, stone: 140 }, time: 10, reqTH: 3 },
-  heroes: { name: 'Karakter Deposu', icon: '🛡️', desc: 'Kahramanların burada yaşar. Seviyesi, kahramanların ulaşabileceği en yüksek seviyeyi belirler.', base: { food: 180, wood: 160, stone: 120 }, time: 10, reqTH: 1 },
+  heroes: { name: 'Karakter Deposu', icon: '🛡️', desc: 'Kahramanların burada yaşar. Her seviyesi kahraman seviye sınırını 15 artırır (Sv.10 = 150).', base: { food: 180, wood: 160, stone: 120 }, time: 10, reqTH: 1 },
   summon: { name: 'Çağırma Atölyesi', icon: '🔮', desc: 'Altınla kahraman çağır. 5 yıldızlı efsanevi kahramanlar çok nadir çıkar!', base: { food: 120, wood: 160, stone: 160 }, time: 10, reqTH: 1 },
   farm: { name: 'Çiftlik', icon: '🌾', desc: 'Yiyecek üretir.', base: { food: 40, wood: 90, stone: 0 }, time: 5, reqTH: 1, prod: 'food', rate: 900 },
   lumber: { name: 'Kereste Atölyesi', icon: '🪵', desc: 'Odun üretir.', base: { food: 90, wood: 40, stone: 0 }, time: 5, reqTH: 1, prod: 'wood', rate: 800 },
@@ -89,7 +89,15 @@ export const HEROES = [
   { id: 'tugrul', name: 'Demirpençe Tuğrul', title: 'Bozkırın Fırtınası', rarity: 5, role: 'cavalry', atk: 28, def: 18, skill: 'Yıldırım Hücum: Süvarilerin saldırısı +35%, ilk turda çifte hasar.', look: { primary: '#1d1a2e', secondary: '#c9a227', metal: 'gold', helmet: 'winged', hair: '#1a1410', beard: true, female: false, weapon: 'lance' } },
   { id: 'elara', name: 'Gölgeok Elara', title: 'Ay Ormanının Gözü', rarity: 5, role: 'archer', atk: 30, def: 14, skill: 'Gümüş Yağmur: Okçu hasarı +40%, düşman okçularını susturur.', look: { primary: '#2a4a3a', secondary: '#e8e0c8', metal: 'gold', helmet: 'hood', hair: '#d8c08a', beard: false, female: true, weapon: 'bow' } },
   { id: 'baran', name: 'Altınkalkan Baran', title: 'Yıkılmaz Sur', rarity: 5, role: 'infantry', atk: 22, def: 30, skill: 'Tanrısal Kalkan: Tüm birliklerin savunması +30%, yaralı oranı azalır.', look: { primary: '#5a1414', secondary: '#f0c040', metal: 'gold', helmet: 'crown', hair: '#3a2416', beard: true, female: false, weapon: 'hammer' } },
+  { id: 'kerem', name: 'Aslanyürek Kerem', title: 'Kralın Kılıcı', rarity: 5, role: 'infantry', atk: 26, def: 28, skill: 'Aslan Kükremesi: Tüm birliklerin saldırısı ve savunması +25%.', look: { primary: '#8a1a1a', secondary: '#f0c040', metal: 'gold', helmet: 'none', hair: '#5a3418', beard: true, female: false, weapon: 'sword' } },
+  { id: 'selin', name: 'Yıldızok Selin', title: 'Gece Avcısı', rarity: 5, role: 'archer', atk: 32, def: 13, skill: 'Yıldız Yağmuru: Okçu hasarı +45%, ilk turda düşmanı sersemletir.', look: { primary: '#1a2a6a', secondary: '#c8d8f0', metal: 'steel', helmet: 'hood', hair: '#e8e8f0', beard: false, female: true, weapon: 'bow' } },
+  { id: 'bora', name: 'Fırtınabey Bora', title: 'Şimşek Süvarisi', rarity: 5, role: 'cavalry', atk: 30, def: 17, skill: 'Şimşek Hücumu: Süvari saldırısı +40%, okçulara çifte hasar.', look: { primary: '#1a3a7a', secondary: '#60e0ff', metal: 'steel', helmet: 'winged', hair: '#101010', beard: true, female: false, weapon: 'lance' } },
+  { id: 'nilufer', name: 'Şafak Kraliçesi Nilüfer', title: 'Güneşin Mızrağı', rarity: 5, role: 'infantry', atk: 24, def: 27, skill: 'Şafak Işığı: Mızrakçılar +35% hasar, tüm birlik savunması +15%.', look: { primary: '#d87a5a', secondary: '#f0d070', metal: 'gold', helmet: 'crown', hair: '#8a3a1a', beard: false, female: true, weapon: 'spear' } },
+  { id: 'doruk', name: 'Demirusta Doruk', title: 'Tankların Babası', rarity: 5, role: 'tank', atk: 31, def: 24, skill: 'Buhar Topu: Tank hasarı +45%, tank savunması +20%.', look: { primary: '#3a3028', secondary: '#c89030', metal: 'bronze', helmet: 'none', hair: '#b03a10', beard: true, female: false, weapon: 'hammer' } },
   // 4★
+  { id: 'tolga', name: 'Kalkanbaş Tolga', title: 'Dağ Kalkanı', rarity: 4, role: 'infantry', atk: 16, def: 25, skill: 'Dağ Duvarı: Piyade savunması +30%.', look: { primary: '#2a5a2a', secondary: '#c89a40', metal: 'bronze', helmet: 'none', hair: '#a0a0a0', beard: true, female: false, weapon: 'hammer' } },
+  { id: 'ece', name: 'Zehirok Ece', title: 'Bataklık Gölgesi', rarity: 4, role: 'archer', atk: 24, def: 10, skill: 'Zehirli Ok: Okçu hasarı +26%.', look: { primary: '#1a3a1a', secondary: '#8a3a9a', metal: 'dark', helmet: 'none', hair: '#101010', beard: false, female: true, weapon: 'bow' } },
+  { id: 'arda', name: 'Çarkçı Arda', title: 'Genç Pilot', rarity: 4, role: 'tank', atk: 21, def: 16, skill: 'Çark Ustası: Tank hasarı +25%.', look: { primary: '#6a4a2a', secondary: '#3a5a9a', metal: 'bronze', helmet: 'none', hair: '#e0c060', beard: false, female: false, weapon: 'hammer' } },
   { id: 'kaan', name: 'Fırtına Atlısı Kaan', title: 'Rüzgârın Oğlu', rarity: 4, role: 'cavalry', atk: 22, def: 14, skill: 'Kanat Baskını: Süvari saldırısı +22%.', look: { primary: '#123a6a', secondary: '#b8c4d0', metal: 'steel', helmet: 'great', hair: '#2a1a10', beard: false, female: false, weapon: 'lance' } },
   { id: 'lara', name: 'Kurt Avcısı Lara', title: 'Kuzeyin Nişancısı', rarity: 4, role: 'archer', atk: 23, def: 11, skill: 'Kurt Oku: Okçu hasarı +25%.', look: { primary: '#4a3a2a', secondary: '#8aa070', metal: 'bronze', helmet: 'hood', hair: '#8a3a1a', beard: false, female: true, weapon: 'bow' } },
   { id: 'oguz', name: 'Taşyürek Oğuz', title: 'Dağların Bekçisi', rarity: 4, role: 'infantry', atk: 18, def: 22, skill: 'Kaya Duruşu: Piyade savunması +25%.', look: { primary: '#3a3a40', secondary: '#a0a0a8', metal: 'dark', helmet: 'nasal', hair: '#1a1a1a', beard: true, female: false, weapon: 'axe' } },
@@ -109,9 +117,14 @@ export const HERO_BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
 // Kahraman birlik bonusu (yüzde) — nadirlik + seviye + kopya
 export function heroBonus(h, level, copies) {
   const base = { 2: 5, 3: 12, 4: 22, 5: 35 }[h.rarity];
-  return base + level * (h.rarity * 0.35) + (copies || 0) * h.rarity * 0.8;
+  return base + level * (h.rarity * 0.16) + (copies || 0) * h.rarity * 0.8;
 }
-export function heroLevelCost(level) { return { food: Math.round(200 * Math.pow(1.35, level)), stone: Math.round(60 * Math.pow(1.35, level)) }; }
+export const HERO_MAX_LEVEL = 150;
+// Kahraman saldırısı: her seviyede %4 artar
+export function heroAtk(h, level) { return Math.round(h.atk * (1 + (Math.max(1, level) - 1) * 0.04)); }
+export function heroDef(h, level) { return Math.round(h.def * (1 + (Math.max(1, level) - 1) * 0.035)); }
+// Yükseltme maliyeti seviyeyle birlikte artar (Sv.1 ≈ 330 buğday, Sv.149 ≈ 100 bin buğday)
+export function heroLevelCost(level) { const f = Math.round(220 * (1 + level * 0.45) * (1 + level / 25) / 10) * 10; return { food: f, stone: Math.round(f * 0.35 / 10) * 10 }; }
 
 // Çağırma
 export const SUMMON = { cost1: 100, cost10: 900, pity5: 150, pity4: 10 };

@@ -178,7 +178,7 @@ cd araba-oyunu && python3 -m http.server 8000
 
 ### 4.3 Kahramanlar ve çağırma
 
-- **15 özgün kahraman** (id, ad):
+- **23 özgün kahraman** (id, ad). Yeni 5★: kerem (Aslanyürek Kerem, piyade), selin (Yıldızok Selin, okçu), bora (Fırtınabey Bora, süvari, rig başarısız → hareketsiz model + koddan nefes), nilufer (Şafak Kraliçesi Nilüfer, piyade), doruk (Demirusta Doruk, **tank** komutanı). Yeni 4★: tolga (piyade), ece (okçu), arda (tank). Eski liste:
 
   | Nadirlik | Kahramanlar |
   |---|---|
@@ -333,6 +333,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Görev çubuğu:** Lacivert, altın çerçeveli, üstte taç (`assets/ui/crown.webp`), solda parşömen, "Bölüm N:" + görev + (x/y), yeşil yüzdeli çubuk, yeşil "Git »" düğmesi.
 - **Çağırma atölyesi:** Arka plan `assets/ui/bg_summon.webp` (mistik tapınak), Higgsfield portal modeli `assets/hf/p_portal.glb` (parça listesinde), halkada dönen girdap, kristal ışıltıları, zeminde rün dairesi. Kahraman portal kaidesinde çıkar, önden ışıkla aydınlanır.
 - Bu adımda ~10 kredi harcandı (4 görsel + 1 Tripo).
+
+### 5.8 Sefer kampı, çoklu komutan, kahraman seviyesi 150
+- **Sefer Kampı** (`attackUI`): 5 komutan yuvası + kahraman seçici, birlik başına sürgü ve 0/½/Tümü düğmeleri, Hepsini seç/Yarısı/Temizle. Birlik sınırı yok.
+- Çoklu komutan: `state.js → combinedBonus` en güçlü komutan tam, diğerleri %50/%35/%25/%20 katkı. `attackEnemy(id, troops, heroIds[])`, kazanınca her komutan %50 şansla seviye alır.
+- Kahraman seviye sınırı: `HERO_MAX_LEVEL = 150`, Karakter Deposu her seviye +15. `heroBonus` = taban + sv×nadirlik×0.16. `heroAtk/heroDef` her seviye %4/%3,5 artar. Maliyet `heroLevelCost` seviyeyle artar (Sv.1 ≈ 330 buğday, Sv.149 ≈ 100 bin). Görüntüleyicide x10 düğmesi.
+- Çağırma tanıtım ekranı sadeleştirildi: üstte çerçeveli isim levhası, altta rol/yetenek kutusu; ışıklar ve parıltı azaltıldı.
+- Bu adımda ~130 kredi (8 görsel, 8 Tripo, 9 rigging denemesi).
 
 ## 6. Önemli tasarım kararları (neden böyle)
 
