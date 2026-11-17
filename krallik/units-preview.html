@@ -1,0 +1,30 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>units preview</title>
+<style>body{margin:0;background:#888}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "../lib/three.module.min.js", "three/addons/": "../lib/jsm/" } }</script></head>
+<body><script type="module">
+import * as THREE from 'three';
+import { createSoldier, createHero, animateUnit } from './js/units.js';
+import { HEROES } from './js/data.js';
+const q = new URLSearchParams(location.search);
+const r = new THREE.WebGLRenderer({ antialias: true }); r.setSize(innerWidth, innerHeight); r.shadowMap.enabled = true; r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0xa8c8e0);
+const pm = new THREE.PMREMGenerator(r); const es = new THREE.Scene(); es.add(new THREE.Mesh(new THREE.SphereGeometry(10), new THREE.MeshBasicMaterial({ color: 0x8aa0b8, side: THREE.BackSide }))); const sunm = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 6, 5) })); sunm.position.set(4, 6, 5); es.add(sunm); s.environment = pm.fromScene(es, 0.03).texture;
+s.add(new THREE.HemisphereLight(0xdfefff, 0x6a5a3a, 1.0));
+const sun = new THREE.DirectionalLight(0xfff0d8, 2.6); sun.position.set(4, 8, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10 }); s.add(sun);
+const g = new THREE.Mesh(new THREE.PlaneGeometry(60, 60).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x6a8a4a })); g.receiveShadow = true; s.add(g);
+const mode = q.get('m') || 'soldiers', state = q.get('s') || 'idle';
+const units = [];
+if (mode === 'soldiers') {
+  ['infantry', 'spearman', 'archer', 'cavalry'].forEach((t, i) => { for (const [k, team] of [[0, 'blue'], [1, 'red']]) { const u = createSoldier(t, team); u.position.set(-4.5 + i * 3, 0, k * -2.5); s.add(u); units.push(u); } });
+} else {
+  const list = mode === 'heroes5' ? HEROES.slice(0, 7) : HEROES.slice(7);
+  list.forEach((h, i) => { const u = createHero(h); u.position.set(-((list.length - 1) * 1.6) / 2 + i * 1.6, 0, h.role === 'cavalry' ? -1.5 : 0); s.add(u); units.push(u); });
+}
+const cam = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 100);
+const yaw = +(q.get('yaw') || 0.35), dist = +(q.get('d') || 13), ty = +(q.get('y') || 1.1), tx = +(q.get('x') || 0);
+cam.position.set(tx + Math.sin(yaw) * dist, ty + dist * 0.25, Math.cos(yaw) * dist); cam.lookAt(tx, ty, 0);
+let t = 0;
+window.step = (n) => { for (let i = 0; i < n; i++) { t += 1 / 30; units.forEach((u, k) => animateUnit(u, state, t + k * 0.3, 1 / 30)); } r.render(s, cam); };
+window.step(+(q.get('f') || 20)); window.ready = true;
+</script></body></html>

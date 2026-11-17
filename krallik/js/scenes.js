@@ -187,19 +187,26 @@ export function openBattle(opts) {
   const update = (dt, t) => {
     T += dt;
     camAng.a += dt * 0.05;
-    const ca = Math.sin(camAng.a) * 0.35;
-    camera.position.set(Math.sin(ca) * 34, 17, Math.cos(ca) * 34);
-    camera.lookAt(0, 1, 0);
+    const ca = Math.sin(camAng.a) * 0.3;
+    if (innerWidth < innerHeight) {
+      const bs = sides.blue.sign;
+      camera.position.set(bs * (30 + Math.cos(ca) * 2), 19, Math.sin(ca) * 10 + 6);
+      camera.lookAt(-bs * 2, 0, 0);
+    } else {
+      camera.position.set(Math.sin(ca) * 34, 17, Math.cos(ca) * 34);
+      camera.lookAt(0, 1, 0);
+    }
     const p = clamp((T - 2.6) / 7, 0, 1), ep = ease(p);
     // ölüm kontrolü
     for (const team of ['blue', 'red']) {
       const want = Math.round(N0[team] * lerp(1, sides[team].remain, ep));
-      const alive = units.filter((u) => u.team === team && u.alive);
-      if (alive.length > want && T > 2.6) {
+      let alive = units.filter((u) => u.team === team && u.alive);
+      while (alive.length > want && T > 2.6) {
         const engaged = alive.filter((u) => u.state === 'attack');
         const pool = engaged.length ? engaged : alive;
         const u = pool[Math.floor(Math.random() * pool.length)];
         u.alive = false; u.state = 'die';
+        alive = alive.filter((v) => v !== u);
       }
       const shown = Math.round(lerp(T0[team], T0[team] * sides[team].remain, ep));
       const el = $(team === 'blue' ? 'bBlue' : 'bRed'); if (el) el.textContent = G.fmt(shown);
@@ -277,6 +284,7 @@ function buildSummonScene() {
   scene.add(new THREE.HemisphereLight(0x8a7aff, 0x1a1020, 0.8));
   const key = new THREE.SpotLight(0xfff0e0, 60, 20, 0.6, 0.6, 1.2); key.position.set(2.5, 7, 4); key.target.position.set(0, 1, 0); key.castShadow = true; scene.add(key, key.target);
   const rim = new THREE.PointLight(0xb06bff, 30, 12, 1.5); rim.position.set(0, 2.5, -2.5); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0xf0e8ff, 1.4); fill.position.set(0, 2, 8); scene.add(fill);
   // zemin: rün dairesi
   const rune = canvasTex(512, 512, (ctx) => {
     ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 512, 512);
@@ -385,7 +393,7 @@ export function openSummon() {
     S.spin += dt * speed;
     S.ring.rotation.z = S.spin * 0.6; S.ring2.rotation.z = -S.spin; S.runeMesh.rotation.y = S.spin * 0.2;
     S.disc.material.opacity = 0.6 + Math.sin(t * 2) * 0.15 + (phase === 'charge' ? pT * 0.3 : 0);
-    S.crystals.forEach((c, i) => { const a = c.a + S.spin * 0.4; c.m.position.set(Math.cos(a) * c.r, c.y + Math.sin(t * 1.5 + i) * 0.25 + (phase === 'charge' ? pT * 0.5 : 0), Math.sin(a) * c.r - 1); c.m.rotation.y = t * 2; });
+    S.crystals.forEach((c, i) => { const a = c.a + S.spin * 0.4; c.m.position.set(Math.cos(a) * c.r, c.y + Math.sin(t * 1.5 + i) * 0.25 + (phase === 'charge' ? pT * 0.5 : 0) + (S.heroSlot ? 2.4 : 0), Math.sin(a) * c.r - 1.5); c.m.rotation.y = t * 2; });
     const pa = S.parts.geometry.attributes.position.array;
     for (let i = 0; i < pa.length; i += 3) { pa[i + 1] += dt * (0.3 + (phase === 'charge' ? pT * 3 : 0)); if (pa[i + 1] > 7) pa[i + 1] = 0; }
     S.parts.geometry.attributes.position.needsUpdate = true;
@@ -408,9 +416,11 @@ export function openSummon() {
       animateUnit(S.heroSlot, S.heroT < 2 ? 'cheer' : 'idle', t, dt);
       S.aura.material.opacity = 0.6 + Math.sin(t * 3) * 0.2;
     } else S.aura.material.opacity = Math.max(0, S.aura.material.opacity - dt);
-    const ty = S.heroSlot && S.heroSlot.userData.mounted ? 1.9 : 1.3;
-    S.camera.position.set(Math.sin(t * 0.15) * 0.6, S.heroSlot ? 2.0 : 2.4, S.heroSlot ? 6.0 : 7.5);
-    S.camera.lookAt(0, ty, 0);
+    const mounted = S.heroSlot && S.heroSlot.userData.mounted;
+    const ty = mounted ? 1.5 : 1.15;
+    const k = innerWidth < innerHeight ? Math.min(2.1, 0.85 / (innerWidth / innerHeight)) : 1;
+    S.camera.position.set(Math.sin(t * 0.15) * 0.6, S.heroSlot ? 1.7 + (mounted ? 0.5 : 0) : 2.6, (S.heroSlot ? (mounted ? 6.5 : 4.6) : 8.5) * k);
+    S.camera.lookAt(0, S.heroSlot ? ty - (k > 1 ? 0.25 : 0) : 1.9, 0);
   };
   open({ scene: S.scene, camera: S.camera, update });
 }
@@ -428,6 +438,7 @@ function buildHall() {
   const camera = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 100);
   scene.add(new THREE.HemisphereLight(0xffe8c8, 0x2a1a0a, 0.7));
   const key = new THREE.SpotLight(0xfff0d8, 80, 20, 0.5, 0.5, 1.2); key.position.set(3, 7, 5); key.target.position.set(0, 1, 0); key.castShadow = true; key.shadow.mapSize.set(1024, 1024); scene.add(key, key.target);
+  const fill = new THREE.DirectionalLight(0xfff4e8, 1.6); fill.position.set(0, 2, 8); scene.add(fill);
   const rim = new THREE.SpotLight(0x9ab8ff, 50, 20, 0.6, 0.5, 1.2); rim.position.set(-3, 5, -4); rim.target.position.set(0, 1, 0); scene.add(rim, rim.target);
   const floorTex = canvasTex(512, 512, (ctx) => {
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) { const v = rand(60, 90); ctx.fillStyle = `rgb(${v + 10},${v},${v - 12})`; ctx.fillRect(x * 64 + 1, y * 64 + 1, 62, 62); }

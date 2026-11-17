@@ -106,12 +106,12 @@ function buildTerrain() {
     const stroke = (pts, w, col, blur) => { ctx.strokeStyle = col; ctx.lineWidth = w / SZ * PX; ctx.filter = blur ? `blur(${blur}px)` : 'none'; ctx.beginPath(); pts.forEach(([x, z], i) => (i ? ctx.lineTo(m(x), m(z)) : ctx.moveTo(m(x), m(z)))); ctx.stroke(); };
     const lines = PLOTS.filter((q) => q.id !== 'townhall').map((q) => [[0, 0], [q.x * 0.55, q.z * 0.2 + (q.z > 0 ? 4 : -4)], [q.x, q.z]]);
     lines.push([[0, 0], [0, 50]]);
-    for (const l of lines) stroke(l, 4.2, 'rgba(120,92,58,.55)', 6);
-    for (const l of lines) stroke(l, 3.0, 'rgba(150,118,78,.95)', 2);
+    for (const l of lines) stroke(l, 3.4, 'rgba(110,88,58,.45)', 5);
+    for (const l of lines) stroke(l, 2.3, 'rgba(146,118,82,.92)', 1.5);
     // meydan
     ctx.filter = 'blur(3px)'; ctx.fillStyle = 'rgba(160,150,135,1)'; ctx.beginPath(); ctx.arc(m(0), m(0), 10 / SZ * PX, 0, 7); ctx.fill();
     ctx.filter = 'none';
-    for (let i = 0; i < 1400; i++) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 9.6; ctx.fillStyle = `rgba(${rand(110, 190)},${rand(105, 175)},${rand(95, 160)},.9)`; const x = m(Math.cos(a) * r), y = m(Math.sin(a) * r); ctx.fillRect(x, y, rand(4, 8), rand(4, 8)); }
+    for (let i = 0; i < 1400; i++) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 9.6; const gv = rand(120, 175); ctx.fillStyle = `rgba(${gv + 6},${gv},${gv - 12},.9)`; const x = m(Math.cos(a) * r), y = m(Math.sin(a) * r); ctx.fillRect(x, y, rand(4, 8), rand(4, 8)); }
     // toprak lekeleri
     ctx.globalCompositeOperation = 'source-atop';
     for (let i = 0; i < 3000; i++) { ctx.fillStyle = `rgba(${rand(60, 120)},${rand(50, 90)},${rand(30, 60)},.35)`; ctx.fillRect(Math.random() * PX, Math.random() * PX, 2, 2); }
@@ -287,7 +287,7 @@ function updateAmbient(t, dt) {
 // ---------------------------------------------------------------------
 //  Kamera kontrolü
 // ---------------------------------------------------------------------
-const cam = { tx: 0, tz: 4, dist: isMobile ? 78 : 70, yaw: 0.55, pitch: 0.92, vx: 0, vz: 0 };
+const cam = { tx: 0, tz: 4, dist: innerHeight > innerWidth ? 120 : 80, yaw: 0.55, pitch: 0.92, vx: 0, vz: 0 };
 function applyCam() {
   const cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
   camera.position.set(cam.tx + Math.sin(cam.yaw) * cp * cam.dist, sp * cam.dist, cam.tz + Math.cos(cam.yaw) * cp * cam.dist);
@@ -309,7 +309,7 @@ canvas.addEventListener('pointermove', (e) => {
   if (pointers.size === 2) {
     const [a, b] = [...pointers.values()];
     const d = Math.hypot(a.x - b.x, a.y - b.y);
-    cam.dist = clamp(dist0 * pinch0 / Math.max(1, d), 28, 130);
+    cam.dist = clamp(dist0 * pinch0 / Math.max(1, d), 28, 170);
     return;
   }
   if (!drag) return;
@@ -332,7 +332,7 @@ const endPtr = (e) => {
 };
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', (e) => { if (!sceneActive()) cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 28, 130); }, { passive: true });
+canvas.addEventListener('wheel', (e) => { if (!sceneActive()) cam.dist = clamp(cam.dist * (1 + Math.sign(e.deltaY) * 0.1), 28, 170); }, { passive: true });
 document.addEventListener('touchmove', (e) => { if (!e.target.closest('.sheet, .modal-box, .res10')) e.preventDefault(); }, { passive: false });
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -348,7 +348,7 @@ function tapAt(x, y) {
   } else closeSheet();
 }
 let focus = null;
-function focusOn(x, z) { focus = { x, z: z + 6 }; }
+function focusOn(x, z) { const k = innerHeight > innerWidth ? cam.dist * 0.16 : cam.dist * 0.06; focus = { x: x + Math.sin(cam.yaw) * k, z: z + Math.cos(cam.yaw) * k }; }
 
 // ---------------------------------------------------------------------
 //  Etiketler
