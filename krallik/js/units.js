@@ -665,7 +665,7 @@ export function createTank(team = 'blue', len = 2.7) {
     o.castShadow = true;
     const key = o.material.uuid + team; if (!tankMats.has(key)) { const mt = o.material.clone(); mt.color = team === 'red' ? new THREE.Color(1.15, 0.58, 0.52) : new THREE.Color(0.78, 0.9, 1.25); tankMats.set(key, mt); } o.material = tankMats.get(key);
   });
-  const obj = new THREE.Group(), inner = new THREE.Group(); m.rotation.y = Math.PI / 2; inner.add(m); obj.add(inner);
+  const obj = new THREE.Group(), inner = new THREE.Group(); inner.add(m); obj.add(inner);
   obj.userData = { tank: true, inner, h: sz.y * k, len, recoil: 0 };
   return obj;
 }
