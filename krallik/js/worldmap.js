@@ -70,16 +70,16 @@ function paintGround(list, lakes, seed) {
   let sd = seed; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   return canvasTex(N, N, (x) => {
     // taban: ortası biraz daha açık, kenarlara doğru koyulaşan serin yeşil
-    const bg = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N * 0.75); bg.addColorStop(0, '#6a8662'); bg.addColorStop(0.6, '#587258'); bg.addColorStop(1, '#40584a'); x.fillStyle = bg; x.fillRect(0, 0, N, N);
+    const bg = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N * 0.75); bg.addColorStop(0, '#467a40'); bg.addColorStop(0.6, '#36603a'); bg.addColorStop(1, '#24442e'); x.fillStyle = bg; x.fillRect(0, 0, N, N);
     // büyük doğal lekeler: çayır, taşlık, kuru toprak
-    for (let i = 0; i < 300; i++) { const r = 30 + rnd() * 170, g = x.createRadialGradient(0, 0, 0, 0, 0, r); const col = ['122,148,104', '86,112,90', '128,130,118', '104,128,88', '140,138,108'][i % 5]; g.addColorStop(0, `rgba(${col},.45)`); g.addColorStop(1, `rgba(${col},0)`); x.save(); x.translate(rnd() * N, rnd() * N); x.scale(1, 0.6 + rnd() * 0.8); x.fillStyle = g; x.fillRect(-r, -r, 2 * r, 2 * r); x.restore(); }
+    for (let i = 0; i < 300; i++) { const r = 30 + rnd() * 170, g = x.createRadialGradient(0, 0, 0, 0, 0, r); const col = ['70,110,60', '40,76,52', '72,88,84', '58,96,50', '84,98,72'][i % 5]; g.addColorStop(0, `rgba(${col},.45)`); g.addColorStop(1, `rgba(${col},0)`); x.save(); x.translate(rnd() * N, rnd() * N); x.scale(1, 0.6 + rnd() * 0.8); x.fillStyle = g; x.fillRect(-r, -r, 2 * r, 2 * r); x.restore(); }
     // ince doku: çim tutamları ve çakıl
-    for (let i = 0; i < 34000; i++) { x.fillStyle = ['#7a9670', '#55705a', '#8aa07c', '#4c6650', '#9a9c88'][i % 5]; x.globalAlpha = 0.25 + rnd() * 0.35; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 2.5, 1 + rnd() * 2.5); }
+    for (let i = 0; i < 34000; i++) { x.fillStyle = ['#4a7a44', '#2e5238', '#5a8a4c', '#26402e', '#6a7a60'][i % 5]; x.globalAlpha = 0.25 + rnd() * 0.35; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 2.5, 1 + rnd() * 2.5); }
     x.globalAlpha = 1;
     // yollar: her şehirden tahta ve en yakın komşuya yumuşak toprak yol
     const road = (ax, ay, bx, by, w) => {
       const mx = (ax + bx) / 2 + (rnd() - 0.5) * 70, my = (ay + by) / 2 + (rnd() - 0.5) * 70;
-      for (const [col, ww] of [['rgba(40,46,36,.35)', w + 7], ['#a89a78', w], ['rgba(200,186,150,.5)', w * 0.35]]) { x.strokeStyle = col; x.lineWidth = ww; x.lineCap = 'round'; x.beginPath(); x.moveTo(ax * k, ay * k); x.quadraticCurveTo(mx * k, my * k, bx * k, by * k); x.stroke(); }
+      for (const [col, ww] of [['rgba(10,16,12,.45)', w + 7], ['#7a6c50', w], ['rgba(170,150,110,.45)', w * 0.35]]) { x.strokeStyle = col; x.lineWidth = ww; x.lineCap = 'round'; x.beginPath(); x.moveTo(ax * k, ay * k); x.quadraticCurveTo(mx * k, my * k, bx * k, by * k); x.stroke(); }
     };
     const pts = list.map((c) => [c.mapX, c.mapY]);
     pts.forEach((p, i) => {
@@ -88,7 +88,7 @@ function paintGround(list, lakes, seed) {
       const a = Math.atan2(p[1] - TH.y, p[0] - TH.x); road(p[0], p[1], TH.x + Math.cos(a) * TH.r, TH.y + Math.sin(a) * TH.r, 6);
     });
     // göl kıyıları
-    for (const l of lakes) { x.fillStyle = 'rgba(150,140,110,.9)'; x.beginPath(); x.ellipse(l.x * k, l.z * k, (l.r + 4) * k, (l.r * 0.7 + 4) * k, l.a, 0, 7); x.fill(); }
+    for (const l of lakes) { x.fillStyle = 'rgba(96,88,68,.9)'; x.beginPath(); x.ellipse(l.x * k, l.z * k, (l.r + 4) * k, (l.r * 0.7 + 4) * k, l.a, 0, 7); x.fill(); }
     // taht meydanı: koyu taş halka ve ışınsal taş döşeme
     const cx = TH.x * k, cy = TH.y * k, R = (TH.r + 10) * k;
     const pg = x.createRadialGradient(cx, cy, 0, cx, cy, R); pg.addColorStop(0, '#5a5a62'); pg.addColorStop(0.8, '#4a4a54'); pg.addColorStop(1, 'rgba(60,60,70,0)'); x.fillStyle = pg; x.beginPath(); x.arc(cx, cy, R, 0, 7); x.fill();
@@ -96,7 +96,7 @@ function paintGround(list, lakes, seed) {
     for (let r = 14; r < TH.r; r += 9) { x.beginPath(); x.arc(cx, cy, r * k, 0, 7); x.stroke(); }
     for (let a = 0; a < 48; a++) { const an = a / 48 * Math.PI * 2; x.beginPath(); x.moveTo(cx + Math.cos(an) * 14 * k, cy + Math.sin(an) * 14 * k); x.lineTo(cx + Math.cos(an) * TH.r * k, cy + Math.sin(an) * TH.r * k); x.stroke(); }
     // şehir meydanları
-    for (const c of list) { const g = x.createRadialGradient(c.mapX * k, c.mapY * k, 0, c.mapX * k, c.mapY * k, 16 * k); g.addColorStop(0, 'rgba(120,116,104,.95)'); g.addColorStop(1, 'rgba(120,116,104,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.mapX * k, c.mapY * k, 16 * k, 0, 7); x.fill(); }
+    for (const c of list) { const g = x.createRadialGradient(c.mapX * k, c.mapY * k, 0, c.mapX * k, c.mapY * k, 16 * k); g.addColorStop(0, 'rgba(92,86,74,.95)'); g.addColorStop(1, 'rgba(92,86,74,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.mapX * k, c.mapY * k, 16 * k, 0, 7); x.fill(); }
   });
 }
 
@@ -161,14 +161,14 @@ function makeHeli() {
 
 export function openWorldMap(opts = {}) {
   const scene = new THREE.Scene();
-  const SKY = 0x1c2a44;
+  const SKY = 0x0b1430;
   scene.background = new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, 300, 900);
   const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 1, 2200);
-  scene.add(new THREE.HemisphereLight(0xe4ecff, 0x3c4a3a, 2.0));
-  const moon = new THREE.DirectionalLight(0xfff2dc, 2.3); moon.position.set(-200, 340, 160); scene.add(moon);
-  const rim = new THREE.DirectionalLight(0x9ab8ff, 0.8); rim.position.set(220, 160, -200); scene.add(rim);
-  scene.add(new THREE.AmbientLight(0x50608a, 0.45));
+  scene.add(new THREE.HemisphereLight(0xa8bcf8, 0x22342a, 2.15));
+  const moon = new THREE.DirectionalLight(0xc8d6ff, 2.2); moon.position.set(-200, 340, 160); scene.add(moon);
+  const rim = new THREE.DirectionalLight(0xffc890, 0.45); rim.position.set(220, 160, -200); scene.add(rim);
+  scene.add(new THREE.AmbientLight(0x3a4a80, 0.55));
 
   const S = G.S, myServer = S.server || 1, server = opts.server || myServer, home = server === myServer;
   // şehirler
@@ -188,8 +188,8 @@ export function openWorldMap(opts = {}) {
   const lakes = []; for (let i = 0; i < 6; i++) { const l = { x: 80 + rnd() * 840, z: 80 + rnd() * 840, r: 16 + rnd() * 22, a: rnd() * 3 }; if (free(l.x, l.z, l.r + 26)) lakes.push(l); }
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: paintGround(list, lakes, server * 977 + 3) }));
   ground.material.map.anisotropy = 8; ground.position.set(MAP / 2, 0, MAP / 2); scene.add(ground);
-  const outer = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x3e5446 })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
-  const waterMat = new THREE.MeshStandardMaterial({ color: 0x3a7ab8, roughness: 0.12, metalness: 0.3, emissive: 0x0c2a5a, emissiveIntensity: 0.6 });
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x1c3024 })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x2a5a9a, roughness: 0.1, metalness: 0.4, emissive: 0x0e2a6a, emissiveIntensity: 0.9 });
   for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
 
   // ormanlar: kümeler halinde, şehir ve tahttan uzak; harita kenarında daha sık
@@ -265,7 +265,7 @@ export function openWorldMap(opts = {}) {
     const terr = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: terrTex(), color: col, transparent: true, opacity: 0.8, depthWrite: false })); terr.scale.set(c.me ? 44 : 38, 1, c.me ? 44 : 38); terr.position.y = 0.18 + (c.me ? 0.02 : 0); g.add(terr);
     const base = new THREE.Mesh(baseGeo, baseMat); base.position.y = 0.4; g.add(base);
     const cm = cityModel(c.th || 1); cm.position.y = 0.8; if (c.me) cm.scale.multiplyScalar(1.2); g.add(cm);
-    const gg = groundGlow(0xffa040, 26, 0.35); gg.position.y = 0.3; g.add(gg);
+    const gg = groundGlow(0xffa040, 32, 0.6); gg.position.y = 0.3; g.add(gg);
     { let h = 0; for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const hr = () => ((h = (h * 16807) % 2147483647) / 2147483647);
       const n = c.me ? 8 : 6;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + hr() * 0.4 + 0.3; if (Math.abs(Math.sin(a) - 1) < 0.25 && c.me) continue; const nm = HOUSES[Math.floor(hr() * HOUSES.length)], m = A.model(nm); if (!m) break; const rr = 14 + hr() * 3; m.scale.setScalar(3.3 + hr() * 0.6); m.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr); m.rotation.y = -a + Math.PI / 2; g.add(m); }

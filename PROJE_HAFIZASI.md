@@ -466,6 +466,11 @@ cd araba-oyunu && python3 -m http.server 8000
 - `S.mines` (~24: 7 buğday, 7 kereste, 7 taş, 3 altın), 10–20 dk'da yenilenir (`tickMines`). `findMine(type, L)` Ara penceresinden (sekmeler: Zombi/Buğday/Kereste/Taş/Altın).
 - Harita: KayKit parçalarıyla maden görünümleri (tarla, kereste yığını, taş, altın maden binası + ışık), renkli seviye rozetleri, kazımdayken mavi bayrak ve ordu madende bekler, kart (verim, süre, tam verim gücü, birlik sayısı, Kaz / Geri çağır). Sefer Kampı maden için "Kazım Birliği" görünümü (saatlik verim, toplam).
 
+### 5.24 Gece haritası, yeni sol çipler, daha az zombi
+- Dünya haritası şehirle aynı gece paleti: gök/sis `0x0b1430`, Hemisphere `0xa8bcf8/0x22342a` 2,15, ay ışığı `0xc8d6ff` 2,2, sıcak arka ışık; zemin koyu gece yeşili (`#467a40` → `#24442e`), koyu yollar, parlak göl. Şehir ışık havuzu daha güçlü (32, 0,6).
+- Sol çipler (`#side .hchip`): Higgsfield simgeleri `assets/ui/ic_troops.webp` (miğfer + kalkan) ve `ic_builder.webp` (çekiç + mala + baret), iki satır (Ordu / İnşaatçı + sayı).
+- Zombi sayısı 36 → 14, maden 24 → 16; zombiler şehirden 70–450 birim uzakta, aralarında en az 40 birim; eski kayıtlarda fazlası açılışta azaltılır (sıradaki seviye ve seferdekiler korunur).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

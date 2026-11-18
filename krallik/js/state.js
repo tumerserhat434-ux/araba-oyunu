@@ -65,6 +65,8 @@ export function load() {
   S.alliance ??= null;
   S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
   S.mines ||= []; S.mineMax ||= { food: 0, wood: 0, stone: 0, gold: 0 }; S.mineNext ||= 0;
+  if (S.zombies.length > 14) { const keep = new Set(S.marches.map((m) => m.target)), nx = (S.zombieMax || 0) + 1; S.zombies = S.zombies.filter((z, i) => keep.has(z.id) || z.level === nx || i % 3 === 0).slice(0, 14); }
+  if (S.mines.length > 16) S.mines = S.mines.filter((q, i) => q.busy || i % 3 !== 2).slice(0, 16);
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
@@ -783,22 +785,22 @@ export const zombieUnlocked = (L) => L <= (S.zombieMax || 0) + 1;
 export function zombieLoot(L) { const k = 1 + (L - 1) * 0.15, o = {}; for (const r of ['food', 'wood', 'stone']) o[r] = Math.round(rand(10000, 50000) * k * (r === 'stone' ? 0.6 : 1) / 100) * 100; return o; }
 export function zombieItems(L) { const out = [{ id: 's1m', n: 1 + Math.floor(L / 20) }]; if (Math.random() < 0.3 + Math.min(0.4, L * 0.004)) out.push({ id: 's5m', n: 1 + Math.floor(L / 40) }); return out; }
 export const zombieLootRange = (L) => { const k = 1 + (L - 1) * 0.15; return [Math.round(10000 * k), Math.round(50000 * k)]; };
-const ZOMBIE_COUNT = 36;
+const ZOMBIE_COUNT = 14;
 function makeZombie(L, near) {
   const n = Math.max(20, Math.round(zombiePower(L) / 36.8));
   const z = { id: 'z' + Math.random().toString(36).slice(2, 8), zombie: true, level: L, name: `Zombi Sv.${L}`, lord: 'Ölüler Ordusu', th: L, tower: 0, hero: null, res: {}, shieldUntil: 0, troops: { infantry: n, spearman: 0, archer: 0, cavalry: 0, tank: 0 } };
   z.power = armyPower(z.troops);
   for (let k = 0; k < 40; k++) {
-    const a = rand(0, Math.PI * 2), d = near ? rand(35, 160) : rand(60, 420), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
+    const a = rand(0, Math.PI * 2), d = near ? rand(70, 200) : rand(120, 450), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
     if (x < 30 || x > 970 || y < 30 || y > 970 || nearThrone(x, y, 16)) continue;
-    if (occupied().concat([[S.mapX, S.mapY]]).every(([px, py]) => Math.hypot(px - x, py - y) > 28) && S.zombies.every((q) => Math.hypot(q.mapX - x, q.mapY - y) > 18)) { z.mapX = Math.round(x); z.mapY = Math.round(y); return z; }
+    if (occupied().concat([[S.mapX, S.mapY]]).every(([px, py]) => Math.hypot(px - x, py - y) > 30) && S.zombies.concat(S.mines || []).every((q) => Math.hypot(q.mapX - x, q.mapY - y) > 40)) { z.mapX = Math.round(x); z.mapY = Math.round(y); return z; }
   }
   return null;
 }
 // eksik zombileri tamamla: yarısı oyuncunun sıradaki seviyelerine yakın, yarısı 1–100 karışık
 function spawnZombies(n) {
   for (let i = 0; i < n; i++) {
-    const m = S.zombieMax || 0, nearLv = i % 2 === 0;
+    const m = S.zombieMax || 0, nearLv = i % 3 === 0;
     const L = nearLv ? Math.max(1, Math.min(ZOMBIE_MAX_LEVEL, m + randi(-2, 2) + (i % 4 === 0 ? 1 : 0))) : randi(1, ZOMBIE_MAX_LEVEL);
     const z = makeZombie(L, nearLv); if (z) S.zombies.push(z);
   }
@@ -868,7 +870,7 @@ function makeMine(type, L, near) {
   return null;
 }
 function ensureNextMine(type) { const next = Math.min(MINE_MAX_LEVEL, (S.mineMax[type] || 0) + 1); if (!S.mines.some((q) => q.type === type && q.level === next && !q.busy)) { const m = makeMine(type, next, true); if (m) { S.mines.push(m); emit('mines'); } } }
-const MINE_COUNT = 24;
+const MINE_COUNT = 16;
 export function tickMines(force) {
   if (S.mapX == null) return;
   const t = now();
