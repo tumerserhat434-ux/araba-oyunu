@@ -2,27 +2,27 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611182229';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182229';
-import * as ASSETS from './assets.js?v=2611182229';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182229';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer } from './online.js?v=2611182229';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182229';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182229';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182229';
-import * as G from './state.js?v=2611182229';
-import { getAvatar } from './scenes.js?v=2611182229';
-import { initCampaign, openCampaign } from './campui.js?v=2611182229';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182229';
-import { campIdx, stageLabel } from './campaign.js?v=2611182229';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182229';
-import { createGrass } from './grass.js?v=2611182229';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182229';
-import { initTutorial, tutEvent } from './tut.js?v=2611182229';
-import { icon } from './icons.js?v=2611182229';
-import { paintCity } from './terrain.js?v=2611182229';
-import { createLife, createVillager, animVillager } from './life.js?v=2611182229';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182229';
+import * as BLD from './buildings.js?v=2611182238';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182238';
+import * as ASSETS from './assets.js?v=2611182238';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182238';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer } from './online.js?v=2611182238';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182238';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182238';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182238';
+import * as G from './state.js?v=2611182238';
+import { getAvatar } from './scenes.js?v=2611182238';
+import { initCampaign, openCampaign } from './campui.js?v=2611182238';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182238';
+import { campIdx, stageLabel } from './campaign.js?v=2611182238';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182238';
+import { createGrass } from './grass.js?v=2611182238';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182238';
+import { initTutorial, tutEvent } from './tut.js?v=2611182238';
+import { icon } from './icons.js?v=2611182238';
+import { paintCity } from './terrain.js?v=2611182238';
+import { createLife, createVillager, animVillager } from './life.js?v=2611182238';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182238';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1846,7 +1846,9 @@ function chatMsgs(list, opts = {}) {
   const tm = (t) => { const d = new Date(t), today = new Date().toDateString() === d.toDateString(); return today ? d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }); };
   if (list === null) return '<div class="al-off">Yükleniyor…</div>';
   if (!list.length) return `<div class="al-off">${opts.empty || 'Henüz mesaj yok. İlk mesajı sen yaz! 👋'}</div>`;
-  return list.map((m) => `<div class="al-msg ${m.uid === online.uid ? 'me' : ''}">${frameHtml(m.hero, m.frame, 32)}<div class="al-bub"><b>${m.tag ? `<em class="ch-tag">[${esc(m.tag)}]</em> ` : ''}${esc(m.name)}${opts.server && m.server ? ` <i class="ch-srv">#${m.server}</i>` : ''} <small>${tm(m.t)}</small>${m.uid !== online.uid && !opts.dm ? `<button class="ch-add" data-chaddu="${m.uid}" data-chname="${esc(m.name)}" title="Arkadaş ekle">＋</button>` : ''}</b><span>${esc(m.text)}</span></div></div>`).join('');
+  const av = (m) => (m.uid === online.uid ? [G.S.commander, G.S.frame] : opts.friend && m.uid === opts.friend.uid ? [opts.friend.hero || m.hero, opts.friend.frame || m.frame] : [m.hero, m.frame]);
+  const nm = (m) => (m.uid === online.uid ? G.S.name : opts.friend && m.uid === opts.friend.uid ? opts.friend.name || m.name : m.name);
+  return list.map((m) => `<div class="al-msg ${m.uid === online.uid ? 'me' : ''}">${frameHtml(...av(m), 32)}<div class="al-bub"><b>${m.tag ? `<em class="ch-tag">[${esc(m.tag)}]</em> ` : ''}${esc(nm(m))}${opts.server && m.server ? ` <i class="ch-srv">#${m.server}</i>` : ''} <small>${tm(m.t)}</small>${m.uid !== online.uid && !opts.dm ? `<button class="ch-add" data-chaddu="${m.uid}" data-chname="${esc(m.name)}" title="Arkadaş ekle">＋</button>` : ''}</b><span>${esc(m.text)}</span></div></div>`).join('');
 }
 function chatUI() {
   const u = chatUnread();
@@ -1860,7 +1862,7 @@ function chatUI() {
   if (CH.dm) {
     const f = CH.dm;
     return H(errBox('dmMsgs') + `<div class="ch-dmh"><button class="w-btn" data-chback>‹ Geri</button>${frameHtml(f.hero, f.frame, 34)}<div><b>${esc(f.name)}</b><small>ID: ${esc(f.pid || '—')}</small></div></div>
-      <div class="al-chat ch-list" id="chList">${chatMsgs(CH.dmMsgs, { dm: true, empty: 'Henüz mesaj yok. Selam ver! 👋' })}</div>${input(`${esc(f.name)} kişisine yaz…`)}`);
+      <div class="al-chat ch-list" id="chList">${chatMsgs(CH.dmMsgs, { dm: true, friend: f, empty: 'Henüz mesaj yok. Selam ver! 👋' })}</div>${input(`${esc(f.name)} kişisine yaz…`)}`);
   }
   const fr = (G.S.friends || []).map((f) => { const d = CH.dmList.find((x) => x.id === pairId(online.uid, f.uid)), unread = d && d.lastBy && d.lastBy !== online.uid && (d.lastAt || 0) > (chatSeen().dm[d.id] || 0); return { f, d, unread }; }).sort((a, b) => (b.d?.lastAt || 0) - (a.d?.lastAt || 0));
   return H(`<div class="ch-me"><div><small>Senin oyuncu ID'n</small><b id="chMyId">${shortId(online.uid)}</b></div><button class="w-btn" data-chcopy>📋 Kopyala</button></div>
@@ -1870,6 +1872,7 @@ function chatUI() {
     ${fr.length ? `<div class="ch-fr">${fr.map(({ f, d, unread }) => `<button class="ch-frow ${unread ? 'new' : ''}" data-chfriend="${f.uid}">${frameHtml(f.hero, f.frame, 40)}<div><b>${esc(f.name)}</b><small>${d?.last ? esc((d.lastBy === online.uid ? 'Sen: ' : '') + d.last) : 'ID: ' + esc(f.pid || '—')}</small></div>${unread ? '<em class="ch-new">Yeni</em>' : '<i>›</i>'}</button>`).join('')}</div>` : '<div class="al-off">Henüz arkadaşın yok. Bir oyuncunun ID\'sini yazıp ekle ya da sohbette adının yanındaki ＋ butonuna bas.</div>'}`);
 }
 function openDm(f) {
+  CH.fresh[f.uid] = 0; refreshFriends();
   CH.dm = f; CH.dmMsgs = null; if (CH.dmUnsub) CH.dmUnsub();
   CH.dmUnsub = watchDm(pairId(online.uid, f.uid), (m, e) => { if (m) { CH.dmMsgs = m; chErr('dmMsgs'); } else { chErr('dmMsgs', e); CH.dmMsgs = CH.dmMsgs || []; } if (CH.dm === f) { chatMarkSeen(); chatRerender('dm'); } });
   chatMarkSeen(); renderModal();

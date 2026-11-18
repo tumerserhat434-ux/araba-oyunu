@@ -326,7 +326,7 @@ export async function sendDm(friend, text, me) {
   try {
     const id = pairId(user.uid, friend.uid), t = Date.now(), msg = String(text).slice(0, 300);
     await FS.setDoc(FS.doc(db, 'dms', id), { members: [user.uid, friend.uid].sort(), names: { [user.uid]: me.name, [friend.uid]: friend.name || 'Oyuncu' }, last: msg.slice(0, 80), lastAt: t, lastBy: user.uid }, { merge: true });
-    await FS.addDoc(FS.collection(db, 'dms', id, 'msgs'), { uid: user.uid, name: me.name, text: msg, t });
+    await FS.addDoc(FS.collection(db, 'dms', id, 'msgs'), { uid: user.uid, name: me.name, hero: me.hero || null, frame: me.frame || null, text: msg, t });
     return { ok: true };
   } catch (e) { return { ok: false, why: errOf(e) }; }
 }
