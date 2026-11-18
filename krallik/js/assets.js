@@ -118,7 +118,7 @@ export function loadHero3d(id) {
     h3loader = h3loader || (() => { const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder); return l; })();
     h3p.set(id, h3loader.loadAsync('assets/heroes3d/' + id + '.glb').then((g) => {
       const root = g.scene;
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.65; o.material.metalness = 0; } } });
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.65; o.material.metalness = 0; if (o.material.map) { o.material.map.anisotropy = 8; o.material.map.needsUpdate = true; } } } });
       root.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(root), sz = b.getSize(new THREE.Vector3());
       h3.set(id, { scene: root, clips: g.animations, h: sz.y, minY: b.min.y });

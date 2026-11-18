@@ -30,8 +30,10 @@ export function renderActive(dt, t) {
   C.renderer.render(active.scene, active.camera);
   return true;
 }
+const HI_DPR = Math.min(devicePixelRatio || 1, 3);
 function open(obj, theme = 'city') {
   setTheme(theme);
+  if (obj.hiDpr) { C.renderer.setPixelRatio(HI_DPR); } else if (C.baseDpr) C.renderer.setPixelRatio(C.baseDpr);
   if (active) active.dispose?.();
   active = obj;
   ['top', 'side', 'nav', 'labels', 'rside', 'bottomHud'].forEach((id) => $(id).classList.add('hidden'));
@@ -41,6 +43,7 @@ function open(obj, theme = 'city') {
 }
 function close() {
   if (!active) return;
+  if (C.baseDpr) C.renderer.setPixelRatio(C.baseDpr);
   active.dispose?.();
   active = null;
   ov().classList.add('hidden'); ov().innerHTML = '';
@@ -586,7 +589,7 @@ export function openSummon() {
     S.camera.position.set(Math.sin(t * 0.15) * 0.6, S.heroSlot ? 2.0 + (mounted ? 0.5 : 0) : 2.6, (S.heroSlot ? (mounted ? 6.8 : 5.4) : 8.5) * k);
     S.camera.lookAt(0, S.heroSlot ? S.heroBase + ty + (k > 1 ? 0.75 : 0.2) : 1.9, 0);
   };
-  open({ scene: S.scene, camera: S.camera, update }, 'summon');
+  open({ scene: S.scene, camera: S.camera, update, hiDpr: true }, 'summon');
 }
 
 // =====================================================================
@@ -699,7 +702,7 @@ export function openHeroViewer(id) {
     H.camera.position.set(0, ty + 0.9, (mounted ? 9.5 : 7.4) * (portrait ? 1.2 : 1));
     H.camera.lookAt(0, ty - (portrait ? 0.15 : 0), 0);
   };
-  open({ scene: H.scene, camera: H.camera, update, dispose: () => { cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); } });
+  open({ scene: H.scene, camera: H.camera, update, hiDpr: true, dispose: () => { cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); } });
 }
 
 // =====================================================================

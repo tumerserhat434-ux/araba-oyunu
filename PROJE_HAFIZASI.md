@@ -483,6 +483,11 @@ cd araba-oyunu && python3 -m http.server 8000
 - Kahraman görüntüleyici (`scenes.js renderUI`, CSS "Kahraman ekranı v2" `.hv-*`): küçük altın çerçeveli isim levhası, 4'lü istatistik (Seviye/Saldırı/Savunma/Bonus), kısa yetenek satırı, tek satır Yüce yükseltme kutusu, köşeleri kesik butonlar (Seviye kaynak simgeli, x10, Komutan yap taçlı). Kahraman artık panelin üstünde tamamen görünür.
 - Çağırma: kaidenin üst yüzeyi portal modeline aşağı ışın atılarak bulunur (`heroBase`), kahraman ilk 0,6 sn ve 3B model gelince bounding box ile ayak hizasına oturtulur.
 
+### 5.27 Kahraman netliği (çözünürlük + 2048 dokular)
+- Kahraman görüntüleyici ve çağırma sahnesi açılırken çizim çözünürlüğü tam cihaz oranına çıkar (`scenes.js open({hiDpr:true})`, `HI_DPR = min(dpr, 3)`), kapanınca şehir oranına döner (`C.baseDpr`, telefonda 1,6). Kahraman dokularında anisotropi 8.
+- 23 kahraman GLB'sinin dokusu 768 → 2048: 21 tanesi Higgsfield `upscale_image` (bytedance, 4K → 2048'e indirildi, ~2 kredi/adet), ali ve defne yapay zekâda tekrar tekrar hata verdi → yerelde median + Lanczos + keskinleştirme. GLB başına ~0,7–1,1 MB, toplam `heroes3d` ~21 MB (isteğe bağlı yüklenir).
+- Araç: `scratchpad/hf/tools/ext.mjs get|set` (gltf-transform + meshopt ile tek dokuyu çıkar/değiştir), `scratchpad/tex/embed.sh <isim> <png>`. Scratchpad kalıcı değil.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

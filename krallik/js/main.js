@@ -1524,7 +1524,7 @@ async function boot() {
   setLoad(80, 'Askerler toplanıyor…'); await frame();
   buildPatrols();
   buildNight();
-  initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
+  initScenes({ baseDpr: renderer.getPixelRatio(), renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
   const onAttack = (id) => { worldSel = id; atk.init = false; modalKind = 'attack'; renderModal(); };
   window.__dsAttack = onAttack;
   initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack, onScoutReport: openScoutReport, onTeleport: () => syncNow() });
