@@ -8,13 +8,13 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611181911';
-import { createSkinFX, SKINS } from './skins.js?v=2611181911';
-import * as BLD from './buildings.js?v=2611181911';
-import * as G from './state.js?v=2611181911';
-import { SPEEDUPS } from './data.js?v=2611181911';
-import { createSoldier, animateUnit } from './units.js?v=2611181911';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611181911';
+import * as A from './assets.js?v=2611181935';
+import { createSkinFX, SKINS } from './skins.js?v=2611181935';
+import * as BLD from './buildings.js?v=2611181935';
+import * as G from './state.js?v=2611181935';
+import { SPEEDUPS } from './data.js?v=2611181935';
+import { createSoldier, animateUnit } from './units.js?v=2611181935';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611181935';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -271,7 +271,7 @@ export function openWorldMap(opts = {}) {
     const gg = groundGlow(0xffa040, 32, 0.6); gg.position.y = 0.3; g.add(gg);
     // belediye efekti (benim ya da efekti olan gerçek oyuncular)
     const sk = c.me ? G.S.skin : c.skin; let fx = null;
-    if (sk && SKINS[sk]) { fx = createSkinFX(sk, { R: c.me ? 8.5 : 7.5, H: c.me ? 13 : 11 }); fx.position.y = 0.8; g.add(fx); skinFxs.push(fx); }
+    if (sk && SKINS[sk]) { fx = createSkinFX(sk, { R: c.me ? 8.5 : 7.5, H: c.me ? 13 : 11, base: cm }); fx.position.y = 0.8; g.add(fx); skinFxs.push(fx); }
     { let h = 0; for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const hr = () => ((h = (h * 16807) % 2147483647) / 2147483647);
       const n = c.me ? 8 : 6;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + hr() * 0.4 + 0.3; if (Math.abs(Math.sin(a) - 1) < 0.25 && c.me) continue; const nm = HOUSES[Math.floor(hr() * HOUSES.length)], m = A.model(nm); if (!m) break; const rr = 14 + hr() * 3; m.scale.setScalar(3.3 + hr() * 0.6); m.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr); m.rotation.y = -a + Math.PI / 2; g.add(m); }

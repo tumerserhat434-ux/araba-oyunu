@@ -2,27 +2,27 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611181911';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181911';
-import * as ASSETS from './assets.js?v=2611181911';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181911';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181911';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181911';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181911';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181911';
-import * as G from './state.js?v=2611181911';
-import { getAvatar } from './scenes.js?v=2611181911';
-import { initCampaign, openCampaign } from './campui.js?v=2611181911';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611181911';
-import { campIdx, stageLabel } from './campaign.js?v=2611181911';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181911';
-import { createGrass } from './grass.js?v=2611181911';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181911';
-import { initTutorial, tutEvent } from './tut.js?v=2611181911';
-import { icon } from './icons.js?v=2611181911';
-import { paintCity } from './terrain.js?v=2611181911';
-import { createLife, createVillager, animVillager } from './life.js?v=2611181911';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181911';
+import * as BLD from './buildings.js?v=2611181935';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181935';
+import * as ASSETS from './assets.js?v=2611181935';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181935';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181935';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181935';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181935';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181935';
+import * as G from './state.js?v=2611181935';
+import { getAvatar } from './scenes.js?v=2611181935';
+import { initCampaign, openCampaign } from './campui.js?v=2611181935';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611181935';
+import { campIdx, stageLabel } from './campaign.js?v=2611181935';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181935';
+import { createGrass } from './grass.js?v=2611181935';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181935';
+import { initTutorial, tutEvent } from './tut.js?v=2611181935';
+import { icon } from './icons.js?v=2611181935';
+import { paintCity } from './terrain.js?v=2611181935';
+import { createLife, createVillager, animVillager } from './life.js?v=2611181935';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181935';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -238,12 +238,12 @@ function buildPlots() {
 let skinFX = null;
 function applySkin() {
   const h = holders.townhall; if (!h) return;
-  if (skinFX) { h.group.remove(skinFX); skinFX.traverse((o) => { o.geometry?.dispose(); if (o.material && !o.material.map?.isCanvasTexture) o.material.dispose?.(); }); skinFX = null; }
+  if (skinFX) { skinFX.userData.restore?.(); h.group.remove(skinFX); skinFX.traverse((o) => { o.geometry?.dispose(); if (o.material && !o.material.map?.isCanvasTexture) o.material.dispose?.(); }); skinFX = null; }
   const id = G.S.skin; if (!id || !SKINS[id] || plotState('townhall') === 'busy') return;
   // binanın gerçek ölçüsü (modelden)
   let R = (BLD.FOOTPRINT.townhall || 11) * 0.55, H = Math.max(8, h.height || 10);
   if (h.content) { const b = new THREE.Box3().setFromObject(h.content), sz = b.getSize(new THREE.Vector3()); if (sz.y > 1) { H = sz.y; R = Math.max(sz.x, sz.z) * 0.5; } }
-  skinFX = createSkinFX(id, { R, H }); h.group.add(skinFX);
+  skinFX = createSkinFX(id, { R, H, base: h.content }); h.group.add(skinFX);
 }
 function plotState(id) {
   const b = G.S.buildings[id];
@@ -767,7 +767,7 @@ function doCollect(id) {
 }
 $('sheet').addEventListener('click', (e) => {
   const sk = e.target.closest('[data-skin]');
-  if (sk) { const id = sk.dataset.skin; if (id && !G.S.skins[id]) { closeSheet(); navigate('offers'); return; } G.setSkin(id || null); sfx(id ? 'reveal' : 'click'); toast(id ? `✨ ${SKINS[id].name} etkin` : 'Efekt kapatıldı'); syncSoon(); return renderSheet(); }
+  if (sk) { const id = sk.dataset.skin; if (id && !G.S.skins[id]) { closeSheet(); navigate('offers'); return; } G.setSkin(id || null); sfx(id ? 'reveal' : 'click'); toast(id ? `✨ ${SKINS[id].name} etkin` : 'Kostüm çıkarıldı'); syncSoon(); return renderSheet(); }
   const tr = e.target.closest('[data-troop]');
   if (tr) { trainSel = tr.dataset.troop; renderSheet(); return; }
   const go = e.target.closest('[data-go]');
@@ -1392,10 +1392,10 @@ setInterval(() => {
 // ---- Teklif paketleri ----
 function skinSheetHtml() {
   const cur = G.S.skin;
-  return `<div class="sk-box"><div class="sk-h"><b>✨ Belediye Efektleri</b><small>Aktif efekt şehrinde ve dünya haritasında görünür</small></div>
+  return `<div class="sk-box"><div class="sk-h"><b>✨ Belediye Kostümleri</b><small>Belediye binan seçtiğin kostüme bürünür; şehrinde ve dünya haritasında görünür</small></div>
     <div class="sk-grid">${SKIN_ORDER.map((id) => { const s = SKINS[id], own = !!G.S.skins[id], on = cur === id;
-      return `<button class="sk-tile ${on ? 'on' : ''} ${own ? '' : 'lock'}" style="--sc:${s.color}" data-skin="${id}"><img src="${UI('sk_' + id)}" alt=""><b>${s.name}</b><em>${on ? '✓ Aktif' : own ? 'Kullan' : '🎁 Teklifte'}</em></button>`; }).join('')}</div>
-    ${cur ? '<button class="w-btn" style="width:100%;margin-top:6px" data-skin="">Efekti kapat</button>' : ''}</div>`;
+      return `<button class="sk-tile ${on ? 'on' : ''} ${own ? '' : 'lock'}" style="--sc:${s.color}" data-skin="${id}"><span class="sk-img" style="background-image:url(${UI('sk_' + id)})">${s.model ? `<img src="${UI('thc_' + id)}" alt="">` : ''}</span><b>${s.name}</b><em>${on ? '✓ Aktif' : own ? 'Kullan' : '🎁 Teklifte'}</em></button>`; }).join('')}</div>
+    ${cur ? '<button class="w-btn" style="width:100%;margin-top:6px" data-skin="">Kostümü çıkar</button>' : ''}</div>`;
 }
 function offersUI() {
   const chip = (img, txt, cls = '') => `<span class="of-it ${cls}">${img}<b>${txt}</b></span>`;
@@ -1406,7 +1406,7 @@ function offersUI() {
     for (const k of SPEED_ORDER.slice().reverse()) if (o.items?.[k]) items.push(chip(spIcon(k, 34), `${o.items[k]}× ${SPEEDUPS[k].short}`));
     if (o.gold) items.push(chip(resImg('gold', 30), G.fmt(o.gold)));
     for (const r in o.res || {}) items.push(chip(resImg(r, 30), G.fmt(o.res[r])));
-    if (o.skin) items.unshift(chip(`<img class="of-sk" src="${UI('sk_' + o.skin)}" alt="">`, 'Belediye efekti: ' + SKINS[o.skin].name, 'skin'));
+    if (o.skin) items.unshift(chip(`<img class="of-sk${SKINS[o.skin].model ? ' th' : ''}" src="${UI((SKINS[o.skin].model ? 'thc_' : 'sk_') + o.skin)}" alt="">`, (SKINS[o.skin].model ? 'Belediye kostümü: ' : 'Belediye efekti: ') + SKINS[o.skin].name, 'skin'));
     return `<div class="of-card t${o.tier} ${o.skin ? 'skin' : ''} ${left ? '' : 'done'}" ${o.skin ? `style="--sc:${SKINS[o.skin].color}"` : ''}>${o.tag ? `<span class="of-tag">${o.tag}</span>` : ''}
       ${o.skin ? `<div class="of-skin" style="background-image:url(${UI('sk_' + o.skin)})"><span>✨ ${SKINS[o.skin].name}</span><small>${SKINS[o.skin].desc}</small></div>` : ''}
       <div class="of-head"><b>${o.name}</b><small>${left ? `Kalan: ${left}/${o.limit}` : 'Satın alındı'}</small></div>

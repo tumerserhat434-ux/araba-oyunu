@@ -4,15 +4,15 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611181911';
+import * as A from './assets.js?v=2611181935';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
-  crown: { name: 'Altın Taç Aurası', desc: 'Dönen altın rün halkaları, yükselen altın tozları ve süzülen kraliyet tacı.', color: '#ffd060' },
-  xmas: { name: 'Yılbaşı Şenliği', desc: 'Yanıp sönen yılbaşı ışıkları, süslü çam ağacı ve yağan kar.', color: '#ff5a5a' },
-  aurora: { name: 'Kuzey Işıkları', desc: 'Binanın üstünde dalgalanan kuzey ışıkları ve süzülen buz kristalleri.', color: '#6affc8' },
-  dragon: { name: 'Ejder Alevi', desc: 'Binayı saran ateş girdabı, alev sütunları ve uçuşan korlar.', color: '#ff6a2a' },
-  shuttle: { name: 'Galaksi Mekiği', desc: 'Binanın etrafında dönen uzay mekiği, hologram halkaları ve yıldız tozu.', color: '#5ad8ff' },
+  crown: { name: 'Altın Taç Sarayı', desc: 'Belediye binan altın kubbeli, dev taçlı bir saraya dönüşür; dönen rün halkaları ve süzülen taç.', color: '#ffd060', model: 'th_crown', pulse: 0.1 },
+  xmas: { name: 'Yılbaşı Şatosu', desc: 'Belediye binan karlı, şeker kamışı sütunlu bir yılbaşı şatosuna dönüşür; yanıp sönen ışıklar ve yağan kar.', color: '#ff5a5a', model: 'th_xmas', pulse: 0.14 },
+  aurora: { name: 'Buz Sarayı', desc: 'Belediye binan parıldayan bir buz sarayına dönüşür; üstünde kuzey ışıkları, etrafında buz kristalleri.', color: '#6affc8', model: 'th_aurora' },
+  dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan ejderhanın sarıldığı volkanik bir kaleye dönüşür; ateş girdabı ve uçuşan korlar.', color: '#ff6a2a', model: 'th_dragon', pulse: 0.12 },
+  shuttle: { name: 'Galaksi Üssü', desc: 'Belediye binan fırlatma kuleli bir uzay üssüne dönüşür; etrafında dönen mekik ve hologram halkaları.', color: '#5ad8ff', model: 'th_shuttle' },
 };
 export const SKIN_ORDER = ['shuttle', 'dragon', 'aurora', 'xmas', 'crown', 'fireworks'];
 
@@ -38,8 +38,30 @@ function lateModel(key, onReady) {
 }
 function fitModel(m, h) { const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()); m.scale.setScalar(h / Math.max(0.01, s.y)); return m; }
 
-export function createSkinFX(id, { R = 6, H = 10 } = {}) {
+// Kostüm: binanın kendisi temalı modelle değişir (base gizlenir), malzemeler tema renginde nabız gibi parlar
+function costume(g, id, base, R, H) {
+  const sk = SKINS[id]; if (!sk?.model || !base) return () => {};
+  const glowCol = new THREE.Color(sk.color), mats = []; sk.pulse ??= 0.3;
+  const add = lateModel(sk.model, (m) => {
+    const b0 = new THREE.Box3().setFromObject(base), s0 = b0.getSize(new THREE.Vector3());
+    const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3());
+    const k = Math.min((Math.max(s0.x, s0.z) * 1.5) / Math.max(s.x, s.z), (s0.y * 1.35) / s.y);
+    m.scale.multiplyScalar(k);
+    m.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.emissive = glowCol.clone(); o.material.emissiveIntensity = 0.15; mats.push(o.material); o.castShadow = o.receiveShadow = true; } });
+    const wrap = new THREE.Group(); wrap.add(m); g.add(wrap); g.userData.costume = wrap;
+    base.visible = false; wrap.scale.setScalar(0.01); wrap.userData.pop = 0;
+  });
+  g.userData.restore = () => { base.visible = true; };
+  return (t, dt) => {
+    add();
+    const w = g.userData.costume; if (!w) return;
+    if (w.userData.pop < 1) { w.userData.pop = Math.min(1, w.userData.pop + dt * 2.2); const p = w.userData.pop, e = 1 + Math.sin(p * Math.PI) * 0.12; w.scale.setScalar(p * e); }
+    const pulse = sk.pulse * (0.35 + (Math.sin(t * 2.2) * 0.5 + 0.5) * 0.65); for (const m of mats) m.emissiveIntensity = pulse;
+  };
+}
+export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
   const g = new THREE.Group(); g.name = 'skinfx'; let tick = () => {};
+  const costumeTick = costume(g, id, base, R, H);
   if (id === 'fireworks') {
     // fırlayan roket → patlama (yerçekimi ve sönme)
     const N = 110, bursts = [], COLS = [0xff4a6a, 0xffd04a, 0x4affb0, 0x5ab0ff, 0xd070ff, 0xff8a2a];
@@ -81,17 +103,17 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     const rm = new THREE.MeshBasicMaterial({ map: rt, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
     const ring = new THREE.Mesh(new THREE.PlaneGeometry(R * 3, R * 3).rotateX(-Math.PI / 2), rm); ring.position.y = 0.15; g.add(ring);
     const ring2 = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.6, R * 1.6).rotateX(-Math.PI / 2), rm); ring2.position.y = H * 1.55; g.add(ring2);
-    const beamMat = new THREE.MeshBasicMaterial({ color: 0xffc840, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0xffc840, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.35, R * 0.9, H * 2.2, 24, 1, true), beamMat); beam.position.y = H * 1.1; g.add(beam);
     const ct = new THREE.TextureLoader().load('assets/ui/crown.webp'); ct.colorSpace = THREE.SRGBColorSpace;
-    const crown = new THREE.Sprite(new THREE.SpriteMaterial({ map: ct, transparent: true, depthWrite: false })); crown.scale.setScalar(H * 0.55); g.add(crown);
+    const crown = new THREE.Sprite(new THREE.SpriteMaterial({ map: ct, transparent: true, depthWrite: false })); crown.scale.setScalar(H * 0.55);
     const halo = spr(0xffd060, H * 1.1, 0.7); g.add(halo);
     const N = 70, dust = points(N, 0xffd870, H * 0.12); g.add(dust); const dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, seeds = [];
     for (let i = 0; i < N; i++) { seeds.push([rnd(0, 6.28), rnd(0.2, 1.3), rnd(0, 1)]); dc[i * 3] = 1; dc[i * 3 + 1] = rnd(0.7, 0.9); dc[i * 3 + 2] = 0.35; }
-    const L = new THREE.PointLight(0xffc040, 30, R * 5, 1.6); L.position.y = H * 1.2; g.add(L);
+    const L = new THREE.PointLight(0xffc040, 12, R * 5, 1.6); L.position.y = H * 1.2; g.add(L);
     tick = (t) => {
-      ring.rotation.y = t * 0.25; ring2.rotation.y = -t * 0.5; beamMat.opacity = 0.14 + Math.sin(t * 2) * 0.05;
-      crown.position.y = H * 1.75 + Math.sin(t * 1.6) * H * 0.06; halo.position.copy(crown.position); halo.material.opacity = 0.5 + Math.sin(t * 3) * 0.2;
+      ring.rotation.y = t * 0.25; ring2.rotation.y = -t * 0.5; beamMat.opacity = 0.09 + Math.sin(t * 2) * 0.04;
+      crown.position.y = H * 1.75 + Math.sin(t * 1.6) * H * 0.06; halo.position.set(0, H * 1.3, 0); halo.material.opacity = 0.5 + Math.sin(t * 3) * 0.2;
       for (let i = 0; i < N; i++) { const [a, r, o] = seeds[i], k = (t * 0.25 + o) % 1; dp[i * 3] = Math.cos(a + t * 0.3) * R * r; dp[i * 3 + 1] = k * H * 2; dp[i * 3 + 2] = Math.sin(a + t * 0.3) * R * r; }
       dust.geometry.attributes.position.needsUpdate = true; dust.material.opacity = 0.9;
     };
@@ -103,13 +125,11 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     for (let i = 0; i < N; i++) { const k = i / N, a = k * Math.PI * 2 * 5, r = R * (0.95 - k * 0.25); m4.makeTranslation(Math.cos(a) * r, 0.4 + k * H * 0.95, Math.sin(a) * r); bulbs.setMatrixAt(i, m4); bulbs.setColorAt(i, col.set(PAL[i % 5])); }
     g.add(bulbs);
     const glows = []; for (let i = 0; i < 12; i++) { const s = spr(PAL[i % 5], R * 0.45, 0.6); const k = i / 12, a = k * Math.PI * 2 * 5; s.position.set(Math.cos(a) * R * (0.95 - k * 0.25), 0.4 + k * H * 0.95, Math.sin(a) * R * (0.95 - k * 0.25)); g.add(s); glows.push(s); }
-    const star = spr(0xffe060, H * 0.45, 1); star.position.y = H * 1.15; g.add(star);
+    const star = spr(0xffe060, H * 0.45, 1); star.position.y = H * 1.32; g.add(star);
     const SN = 160, snow = points(SN, 0xffffff, H * 0.09, false); g.add(snow); const sp = snow.geometry.attributes.position.array, sc = snow.geometry.attributes.color.array;
     for (let i = 0; i < SN; i++) { sp[i * 3] = rnd(-R * 2.5, R * 2.5); sp[i * 3 + 1] = rnd(0, H * 2.2); sp[i * 3 + 2] = rnd(-R * 2.5, R * 2.5); sc[i * 3] = sc[i * 3 + 1] = sc[i * 3 + 2] = 1; }
     const L = new THREE.PointLight(0xff8a60, 18, R * 4, 1.6); L.position.y = H * 0.6; g.add(L);
-    const addTree = lateModel('fx_xmas', (m) => { fitModel(m, H * 0.75); m.position.set(R * 1.25, 0, R * 0.7); g.add(m); });
     tick = (t, dt) => {
-      addTree();
       const sh = Math.floor(t * 6);
       for (let i = 0; i < N; i++) bulbs.setColorAt(i, col.set(PAL[(i + sh) % 5]).multiplyScalar((i + sh) % 7 === 0 ? 0.25 : 1));
       bulbs.instanceColor.needsUpdate = true;
@@ -146,12 +166,12 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     const pillars = []; for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4, p = []; for (let j = 0; j < 5; j++) { const s = spr(j < 2 ? 0xffd060 : 0xff4a10, R * (0.55 - j * 0.07), 0.9); s.position.set(Math.cos(a) * R * 1.3, 0.4 + j * H * 0.14, Math.sin(a) * R * 1.3); g.add(s); p.push(s); } pillars.push(p); }
     const EN = 90, emb = points(EN, 0xffffff, H * 0.11); g.add(emb); const ep = emb.geometry.attributes.position.array, ec = emb.geometry.attributes.color.array, es = [];
     for (let i = 0; i < EN; i++) { es.push([rnd(0, 6.28), rnd(0.3, 1.5), rnd(0, 1)]); ec[i * 3] = 1; ec[i * 3 + 1] = rnd(0.3, 0.7); ec[i * 3 + 2] = 0.1; }
-    const L = new THREE.PointLight(0xff5a20, 40, R * 5, 1.6); L.position.y = H * 0.5; g.add(L);
+    const L = new THREE.PointLight(0xff5a20, 18, R * 5, 1.6); L.position.y = H * 0.5; g.add(L);
     tick = (t) => {
-      for (const f of flames) { const k = (f.o + t * 0.18) % 1, a = f.a + t * 2.2; const r = R * (1.25 - k * 0.55); f.s.position.set(Math.cos(a) * r, 0.3 + k * H * 1.3, Math.sin(a) * r); f.s.material.opacity = Math.sin(k * Math.PI) * 0.85; f.s.scale.setScalar(R * (0.75 - k * 0.4)); }
+      for (const f of flames) { const k = (f.o + t * 0.18) % 1, a = f.a + t * 2.2; const r = R * (1.25 - k * 0.55); f.s.position.set(Math.cos(a) * r, 0.3 + k * H * 1.3, Math.sin(a) * r); f.s.material.opacity = Math.sin(k * Math.PI) * 0.6; f.s.scale.setScalar(R * (0.75 - k * 0.4)); }
       pillars.forEach((p, k) => p.forEach((s, j) => { const q = 0.8 + Math.sin(t * 12 + k * 3 + j) * 0.2; s.scale.setScalar(R * (0.55 - j * 0.07) * q); s.position.y = 0.4 + j * H * 0.14 * (0.9 + Math.sin(t * 6 + k) * 0.15); }));
       for (let i = 0; i < EN; i++) { const [a, r, o] = es[i], k = (t * 0.3 + o) % 1; ep[i * 3] = Math.cos(a + k * 2) * R * r; ep[i * 3 + 1] = k * H * 2.2; ep[i * 3 + 2] = Math.sin(a + k * 2) * R * r; }
-      emb.geometry.attributes.position.needsUpdate = true; L.intensity = 32 + Math.sin(t * 17) * 8 + Math.sin(t * 7) * 6;
+      emb.geometry.attributes.position.needsUpdate = true; L.intensity = 14 + Math.sin(t * 17) * 4 + Math.sin(t * 7) * 3;
     };
   } else if (id === 'shuttle') {
     // binanın etrafında dönen uzay mekiği, motor alevi, hologram halkaları, yıldız tozu
@@ -183,6 +203,6 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
       stars.rotation.y = t * 0.08; stars.material.opacity = 0.7 + Math.sin(t * 2) * 0.3;
     };
   }
-  g.userData.update = tick;
+  g.userData.update = (t, dt) => { costumeTick(t, dt); tick(t, dt); };
   return g;
 }

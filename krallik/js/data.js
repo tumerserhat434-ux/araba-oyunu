@@ -301,11 +301,11 @@ export const FRAME_BY_ID = Object.fromEntries(FRAMES.map((f) => [f.id, f]));
 // içerik: gold, res {food,wood,stone}, items {sXX: adet}, hero5 (rastgele 5★ kahraman), frames [id]
 export const OFFERS = [
   // Belediye efekti paketleri: efekt + altın + kaynak + hızlandırma
-  { id: 'sk_shuttle', skin: 'shuttle', name: 'Galaksi Mekiği Paketi', price: '₺1.999,99', limit: 1, tag: 'Efsanevi', tier: 5, gold: 16000, res: { food: 2500000, wood: 2500000, stone: 1200000 }, items: { s3d: 5, s24h: 8, s1h: 40 } },
-  { id: 'sk_dragon', skin: 'dragon', name: 'Ejder Alevi Paketi', price: '₺1.499,99', limit: 1, tier: 5, gold: 12000, res: { food: 1600000, wood: 1600000, stone: 800000 }, items: { s3d: 3, s24h: 5, s1h: 30 } },
-  { id: 'sk_aurora', skin: 'aurora', name: 'Kuzey Işıkları Paketi', price: '₺1.249,99', limit: 1, tier: 5, gold: 9000, res: { food: 1200000, wood: 1200000, stone: 600000 }, items: { s3d: 2, s24h: 4, s1h: 20 } },
-  { id: 'sk_xmas', skin: 'xmas', name: 'Yılbaşı Şenliği Paketi', price: '₺999,99', limit: 1, tag: 'Yılbaşı Özel', tier: 5, gold: 7000, res: { food: 800000, wood: 800000, stone: 400000 }, items: { s3d: 1, s24h: 3, s1h: 20 } },
-  { id: 'sk_crown', skin: 'crown', name: 'Altın Taç Paketi', price: '₺749,99', limit: 1, tier: 5, gold: 5000, res: { food: 500000, wood: 500000, stone: 250000 }, items: { s24h: 3, s1h: 15, s5m: 30 } },
+  { id: 'sk_shuttle', skin: 'shuttle', name: 'Galaksi Üssü Paketi', price: '₺1.999,99', limit: 1, tag: 'Efsanevi', tier: 5, gold: 16000, res: { food: 2500000, wood: 2500000, stone: 1200000 }, items: { s3d: 5, s24h: 8, s1h: 40 } },
+  { id: 'sk_dragon', skin: 'dragon', name: 'Ejder Kalesi Paketi', price: '₺1.499,99', limit: 1, tier: 5, gold: 12000, res: { food: 1600000, wood: 1600000, stone: 800000 }, items: { s3d: 3, s24h: 5, s1h: 30 } },
+  { id: 'sk_aurora', skin: 'aurora', name: 'Buz Sarayı Paketi', price: '₺1.249,99', limit: 1, tier: 5, gold: 9000, res: { food: 1200000, wood: 1200000, stone: 600000 }, items: { s3d: 2, s24h: 4, s1h: 20 } },
+  { id: 'sk_xmas', skin: 'xmas', name: 'Yılbaşı Şatosu Paketi', price: '₺999,99', limit: 1, tag: 'Yılbaşı Özel', tier: 5, gold: 7000, res: { food: 800000, wood: 800000, stone: 400000 }, items: { s3d: 1, s24h: 3, s1h: 20 } },
+  { id: 'sk_crown', skin: 'crown', name: 'Altın Taç Sarayı Paketi', price: '₺749,99', limit: 1, tier: 5, gold: 5000, res: { food: 500000, wood: 500000, stone: 250000 }, items: { s24h: 3, s1h: 15, s5m: 30 } },
   { id: 'sk_fireworks', skin: 'fireworks', name: 'Havai Fişek Paketi', price: '₺499,99', limit: 1, tier: 5, gold: 3000, res: { food: 300000, wood: 300000, stone: 150000 }, items: { s24h: 2, s1h: 10, s5m: 30 } },
   { id: 'o1', name: 'Başlangıç Paketi', price: '₺49,99', limit: 1, tag: 'Bir kez', tier: 2, gold: 500, res: { food: 20000, wood: 20000, stone: 10000 }, items: { s5m: 10, s1m: 20 } },
   { id: 'o2', name: 'Hızlandırma Sandığı', price: '₺99,99', limit: 3, tier: 3, gold: 300, items: { s1h: 5, s5m: 30, s1m: 50 } },

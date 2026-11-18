@@ -1615,12 +1615,14 @@ header#top > .profile { margin-left: 8px; }
 .sk-h small { display: block; font-size: 11px; font-weight: 700; color: #c8c0e0; margin-bottom: 6px; }
 .sk-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .sk-tile { position: relative; border: 0; padding: 0 0 5px; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; align-items: center; color: #fff; font-family: inherit; background: #120c26; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sc) 60%, transparent); }
-.sk-tile img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.sk-img { position: relative; width: 100%; aspect-ratio: 16 / 11; background-size: cover; background-position: center; display: block; }
+.sk-img img { position: absolute; inset: 4% 12%; width: 76%; height: 92%; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(0,0,0,.7)); }
+.sk-img::before { content: ''; position: absolute; inset: 0; background: rgba(10,6,24,.45); }
 .sk-tile b { font-size: 11px; line-height: 1.1; margin: 4px 3px 2px; min-height: 24px; display: flex; align-items: center; text-align: center; }
 .sk-tile em { font-style: normal; font-size: 11px; font-weight: 900; padding: 1px 8px; border-radius: 8px; background: color-mix(in srgb, var(--sc) 45%, #000); }
 .sk-tile.on { box-shadow: inset 0 0 0 2.5px var(--sc), 0 0 12px color-mix(in srgb, var(--sc) 70%, transparent); }
 .sk-tile.on em { background: #2a9a4a; }
-.sk-tile.lock img { filter: grayscale(.5) brightness(.6); }
+.sk-tile.lock .sk-img { filter: grayscale(.5) brightness(.6); }
 .of-card.skin { box-shadow: 0 0 0 2px var(--sc), 0 0 18px color-mix(in srgb, var(--sc) 50%, transparent) !important; }
 .of-skin { position: relative; height: 128px; margin: -2px -2px 8px; border-radius: 12px 12px 8px 8px; background-size: cover; background-position: center; display: flex; flex-direction: column; justify-content: flex-end; padding: 8px 10px; overflow: hidden; }
 .of-skin::before { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,.85), rgba(0,0,0,0) 65%); }
@@ -1630,3 +1632,4 @@ header#top > .profile { margin-left: 8px; }
 .of-skin small { font-size: 11px; font-weight: 700; color: #e8e0f8; }
 .of-it.skin { background: color-mix(in srgb, var(--sc) 30%, rgba(0,0,0,.4)) !important; }
 .of-sk { width: 40px; height: 26px; object-fit: cover; border-radius: 4px; }
+.of-sk.th { width: 34px; height: 34px; object-fit: contain; }
