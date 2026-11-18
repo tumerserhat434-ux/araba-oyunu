@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import * as A from './assets.js';
 import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js';
-import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL } from './data.js';
+import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js';
 import * as G from './state.js';
 import { setTheme, playVoice } from './audio.js';
 
@@ -17,6 +17,8 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = (t) => t * t * (3 - 2 * t);
 const stars = (n) => '★'.repeat(n);
+// kahramanın yıldızları: altın yıldızlar, Yüce seviyede onların yerine parlayan Yüce yıldızlar
+export const starsHtml = (h, ups = 0, sz = 18) => { const st = heroStars(h, ups); return st.asc ? `<span class="st-asc" style="--z:${sz}px">${'<img src="assets/ui/st_asc.webp" alt="">'.repeat(st.asc)}</span>` : `<span class="st-gold" style="color:${RARITY[st.gold].color}">${stars(st.gold)}</span>`; };
 const ov = () => $('overlay');
 
 export function initScenes(ctx) { C = ctx; }
@@ -456,11 +458,22 @@ function buildSummonScene() {
   const parts = new THREE.Points(pg, new THREE.PointsMaterial({ map: glow(), color: new THREE.Color(1.2, 0.8, 2.4), size: 0.12, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
   scene.add(parts);
   // ışık sütunu
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.3, 14, 32, 1, true), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  beam.position.y = 7; scene.add(beam);
+  const beamTex = canvasTex(128, 512, (x, w, h) => {
+    x.fillStyle = '#000'; x.fillRect(0, 0, w, h);
+    for (let i = 0; i < 70; i++) { const px = rand(0, w), len = rand(40, 220), py = rand(-len, h), g = x.createLinearGradient(0, py, 0, py + len); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, `rgba(255,255,255,${rand(0.25, 0.9)})`); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(px, py, rand(1, 4), len); }
+    const v = x.createLinearGradient(0, 0, 0, h); v.addColorStop(0, 'rgba(0,0,0,1)'); v.addColorStop(0.35, 'rgba(0,0,0,0)'); v.addColorStop(0.85, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)'); x.fillStyle = v; x.fillRect(0, 0, w, h);
+  }, true);
+  beamTex.colorSpace = THREE.NoColorSpace;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 1.15, 12, 40, 1, true), new THREE.MeshBasicMaterial({ map: beamTex, color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.set(0, 6, -0.6); scene.add(beam);
+  const beam2 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 12, 32, 1, true), beam.material.clone()); beam2.position.copy(beam.position); scene.add(beam2);
+  // dönen arcane girdap (yapay zekâ dokusu, siyah zemin → toplamsal karışım)
+  const vxTex = new THREE.TextureLoader().load('assets/ui/fx_vortex.webp'); vxTex.colorSpace = THREE.SRGBColorSpace;
+  const vortex = new THREE.Sprite(new THREE.SpriteMaterial({ map: vxTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); vortex.position.set(0, P.ringY, -0.5); vortex.scale.set(3.2, 5.7, 1); scene.add(vortex);
+  const vortex2 = new THREE.Sprite(vortex.material.clone()); vortex2.position.copy(vortex.position); vortex2.scale.set(2.2, 3.9, 1); scene.add(vortex2);
   const flash = sprite(0xffffff, 0.1, 0); flash.position.set(0, 1.5, 0); scene.add(flash);
   const aura = sprite(0xffffff, 4, 0); aura.position.set(0, 1.2, -0.3); scene.add(aura);
-  return { scene, camera, portal, ring, ring2, disc, crystals, parts, beam, flash, aura, runeMesh, rim, bg, heroBase, face, heroSlot: null, spin: 0 };
+  return { scene, camera, portal, ring, ring2, disc, crystals, parts, beam, beam2, vortex, vortex2, flash, aura, runeMesh, rim, bg, heroBase, face, heroSlot: null, spin: 0 };
 }
 export function openSummon() {
   if (!summonCtx) summonCtx = buildSummonScene();
@@ -509,7 +522,7 @@ export function openSummon() {
     ov().innerHTML = `<div class="rv-top" style="--rc:${RC}">
         <div class="rv-plate"><div class="rv-stars">${'★'.repeat(r.rarity)}</div><div class="rv-name">${h.name}</div>
         <div class="rv-sub"><span class="rv-rar">${RARITY[r.rarity].name}</span><span>${h.title}</span></div></div>
-        ${r.isNew ? '<div class="rv-tag new">YENİ KAHRAMAN!</div>' : '<div class="rv-tag dup">Kopya • yetenek gücü +1</div>'}
+        ${r.isNew ? '<div class="rv-tag new">YENİ KAHRAMAN!</div>' : `<div class="rv-tag dup">Kopya • ${G.S.heroes[h.id]?.copies || 0} kopya</div>`}
       </div>
       <div class="ov-bottom"><div class="rv-info" style="--rc:${RC}"><div class="rv-role">${roleTxt} komutanı • ⚔ ${h.atk} • 🛡 ${h.def}</div><div class="rv-skill">✨ ${h.skill}</div></div>
         <button class="btn gold" id="sNext">${idx < queue.length - 1 || results.length > 1 ? 'Devam ▶' : 'Tamam'}</button></div>`;
@@ -518,7 +531,7 @@ export function openSummon() {
   const showGrid = () => {
     phase = 'grid';
     if (S.heroSlot) { S.scene.remove(S.heroSlot); S.heroSlot = null; }
-    S.aura.material.opacity = 0; S.beam.material.opacity = 0;
+    S.aura.material.opacity = 0; S.beam.material.opacity = 0; S.beam2.material.opacity = 0;
     const cards = results.map((r, i) => { const h = HERO_BY_ID[r.id]; return `<div class="hcard" style="--rc:${RARITY[r.rarity].color};animation-delay:${i * 0.08}s"><div class="ph" data-portrait="${r.id}">⏳</div><span class="st">${stars(r.rarity)}</span>${r.isNew ? '<span class="lv" style="background:#c0302a">YENİ</span>' : ''}<div class="hn">${h.name}</div></div>`; }).join('');
     ov().innerHTML = `<div class="res10"><div class="hgrid">${cards}</div></div><div class="ov-bottom"><button class="btn gold" id="sOk">Tamam</button></div>`;
     C.fillPortraits(ov());
@@ -530,6 +543,7 @@ export function openSummon() {
     const speed = phase === 'charge' ? 1 + pT * 8 : 1;
     S.spin += dt * speed;
     S.ring.rotation.z = -S.spin * 0.9; S.ring2.rotation.z = S.spin * 1.4; S.runeMesh.rotation.y = S.spin * 0.2;
+    S.vortex.material.rotation = -S.spin * 1.1; S.vortex2.material.rotation = S.spin * 1.7; S.beam.material.map.offset.y = -t * 0.35; S.beam2.material.map.offset.y = -t * 0.6; S.beam.rotation.y = t * 0.4;
     const dim = S.heroSlot ? 0.35 : 1; S.disc.material.opacity = (0.22 + Math.sin(t * 2) * 0.08) * dim + (phase === 'charge' ? pT * 0.3 : 0); S.ring.material.opacity = 0.7 * dim; S.ring2.material.opacity = 0.5 * dim;
     S.crystals.forEach((c) => { c.m.material.opacity = 0.35 + Math.sin(t * 2.2 + c.ph) * 0.2 + (phase === 'charge' ? pT * 0.3 : 0); });
     if (innerWidth !== S.lw || innerHeight !== S.lh) { S.lw = innerWidth; S.lh = innerHeight; fitCover(S.bg, 768 / 1366); }
@@ -537,15 +551,21 @@ export function openSummon() {
     for (let i = 0; i < pa.length; i += 3) { pa[i + 1] += dt * (0.3 + (phase === 'charge' ? pT * 3 : 0)); if (pa[i + 1] > 7) pa[i + 1] = 0; }
     S.parts.geometry.attributes.position.needsUpdate = true;
     if (phase === 'charge') {
-      if (pT > 1.0) { S.beam.material.color.copy(S.bestColor); S.beam.material.opacity = Math.min(0.7, (pT - 1) * 1.5); }
+      const k2 = Math.min(1, pT / 1.6);
+      S.vortex.material.opacity = Math.min(0.95, pT * 0.8); S.vortex2.material.opacity = Math.min(0.7, pT * 0.6);
+      S.vortex.scale.set(3.2 + k2 * 2.2, 5.7 + k2 * 3.6, 1); S.vortex2.scale.set(2.2 + k2 * 1.4, 3.9 + k2 * 2.2, 1);
+      S.vortex2.material.color.copy(S.bestColor).lerp(new THREE.Color(1, 1, 1), 0.4);
+      if (pT > 0.9) { S.beam.material.color.copy(S.bestColor).multiplyScalar(0.9); S.beam.material.opacity = Math.min(0.55, (pT - 0.9) * 0.9); S.beam2.material.color.copy(S.bestColor).lerp(new THREE.Color(1, 1, 1), 0.5); S.beam2.material.opacity = Math.min(0.45, (pT - 0.9) * 0.8); }
       S.rim.color.lerp(S.bestColor, dt * 2);
       if (pT > 2.0) {
-        S.flash.material.color.copy(S.bestColor); S.flash.material.opacity = 1; S.flash.scale.setScalar(14);
+        S.flash.material.color.copy(S.bestColor); S.flash.material.opacity = 0.75; S.flash.scale.setScalar(9);
         phase = 'reveal'; pT = 0;
         if (queue.length) showHero(queue[0]); else showGrid();
       }
     } else {
-      S.beam.material.opacity = Math.max(0, S.beam.material.opacity - dt * 0.8);
+      S.beam.material.opacity = Math.max(0, S.beam.material.opacity - dt * 0.8); S.beam2.material.opacity = Math.max(0, S.beam2.material.opacity - dt * 0.8);
+      S.vortex.material.opacity = Math.max(S.heroSlot ? 0 : 0.18, S.vortex.material.opacity - dt * 0.9); S.vortex2.material.opacity = Math.max(0, S.vortex2.material.opacity - dt * 0.9);
+      if (!S.heroSlot) { S.vortex.scale.set(3.2, 5.7, 1); }
       S.rim.color.lerp(new THREE.Color(0xb06bff), dt);
     }
     if (S.flash.material.opacity > 0) { S.flash.material.opacity = Math.max(0, S.flash.material.opacity - dt * 1.5); S.flash.scale.setScalar(14 + (1 - S.flash.material.opacity) * 6); }
@@ -617,24 +637,27 @@ export function openHeroViewer(id) {
   };
   const renderUI = () => {
     const h = list[cur], o = G.S.heroes[h.id];
-    const bonus = o ? heroBonus(h, o.level, o.copies) : heroBonus(h, 1, 0);
+    const ups = o?.ups || 0, st = heroStars(h, ups), effR = st.gold, RC = st.asc ? '#ff7ae0' : RARITY[effR].color;
+    const bonus = o ? heroBonus(h, o.level, o.copies, ups) : heroBonus(h, 1, 0);
+    const sc = o ? nextStarCost(h, ups) : null, canUp = o && sc != null && o.copies >= sc;
     const cost = o ? heroLevelCost(o.level) : null;
     const maxed = o && o.level >= G.heroMaxLevel();
     const roleTxt = { infantry: '🗡️ Piyade komutanı', archer: '🏹 Okçu komutanı', cavalry: '🐎 Süvari komutanı', tank: '⚙️ Tank komutanı' }[h.role];
     ov().innerHTML = `<div class="ov-top"><button class="x" id="hPrev" style="margin:0">◀</button>
-      <div style="text-align:center"><div class="rs" style="color:${RARITY[h.rarity].color};font-size:18px;text-shadow:0 0 12px currentColor">${stars(h.rarity)}</div>
-      <div class="ov-title" style="color:${RARITY[h.rarity].color};font-size:19px">${h.name}</div><div style="font-weight:800;font-size:12px;color:#e8d6b0;text-shadow:0 1px 3px #000">${h.title} • ${roleTxt}</div><div style="font-size:11px;font-weight:800;color:#ffe7a0;opacity:.85;margin-top:2px">👆 Kahramana dokun: özel hareket</div></div>
+      <div style="text-align:center"><div class="rs" style="font-size:18px;text-shadow:0 0 12px currentColor">${starsHtml(h, ups, 26)}</div>
+      <div class="ov-title" style="color:${RC};font-size:19px">${h.name}</div>${st.asc ? `<div class="asc-tag">✦ Yüce ${st.asc}</div>` : ''}<div style="font-weight:800;font-size:12px;color:#e8d6b0;text-shadow:0 1px 3px #000">${h.title} • ${roleTxt}</div><div style="font-size:11px;font-weight:800;color:#ffe7a0;opacity:.85;margin-top:2px">👆 Kahramana dokun: özel hareket</div></div>
       <div class="row"><button class="x" id="hNext" style="margin:0">▶</button><button class="x" id="hClose" style="margin:0">✕</button></div></div>
       <div class="ov-bottom"><div class="modal-box" style="max-width:none;padding:12px;animation:none">
         <div class="stats" style="grid-template-columns:repeat(3,1fr)">
           <div class="stat"><small>Seviye</small><b>${o ? o.level : '-'} <small style="display:inline">/ ${G.heroMaxLevel()}</small></b></div>
           <div class="stat"><small>Birlik bonusu</small><b>+${bonus.toFixed(0)}%</b></div>
-          <div class="stat"><small>Kopya</small><b>${o ? o.copies : 0} / 5</b></div>
-          <div class="stat"><small>⚔ Saldırı</small><b>${heroAtk(h, o ? o.level : 1)}${o && !maxed ? ` <span class="up">→ ${heroAtk(h, o.level + 1)}</span>` : ''}</b></div>
-          <div class="stat"><small>🛡 Savunma</small><b>${heroDef(h, o ? o.level : 1)}</b></div>
+          <div class="stat"><small>Kopya</small><b>${o ? o.copies : 0} <small style="display:inline">/ ${sc ?? 'MAX'}</small></b></div>
+          <div class="stat"><small>⚔ Saldırı</small><b>${heroAtk(h, o ? o.level : 1, ups)}${o && !maxed ? ` <span class="up">→ ${heroAtk(h, o.level + 1, ups)}</span>` : ''}</b></div>
+          <div class="stat"><small>🛡 Savunma</small><b>${heroDef(h, o ? o.level : 1, ups)}</b></div>
           <div class="stat"><small>En yüksek</small><b>Sv.${HERO_MAX_LEVEL}</b></div></div>
         ${o && maxed && o.level < HERO_MAX_LEVEL ? '<p class="desc" style="margin:0 0 8px;color:#ffcf8a">Daha yüksek seviye için Karakter Deposu\'nu yükselt (her seviye +15).</p>' : ''}
         <p class="desc" style="margin:0 0 10px">✨ <b>${h.skill}</b></p>
+        ${o ? `<div class="asc-box ${canUp ? 'ready' : ''}"><div class="asc-info"><b>${sc == null ? '✦ En yüksek yıldız!' : st.gold < 5 ? `⭐ ${st.gold + 1}★ yükseltme` : `✦ Yüce ${st.asc + 1}`}</b><small>${sc == null ? 'Bu kahraman zirvede' : `Kopya ${o.copies}/${sc} • tüm güç +%15`}</small><div class="asc-bar"><i style="width:${sc ? Math.min(100, o.copies / sc * 100) : 100}%"></i></div></div><button class="btn ${canUp ? 'asc-go' : 'gray'}" id="hAsc" ${canUp ? '' : 'disabled'}>${st.gold < 5 ? '⭐' : '✦'} Yıldız yükselt</button></div>` : ''}
         ${o ? `<div class="row">
           <button class="btn" id="hLvl" ${maxed ? 'disabled' : ''}>${maxed ? 'Sınırda' : `⬆ Seviye • 🌾${G.fmt(cost.food)} 🪨${G.fmt(cost.stone)}`}</button>
           ${maxed ? '' : '<button class="btn blue" id="hLvl10" style="flex:0 0 auto;padding:0 12px">x10</button>'}
@@ -646,6 +669,7 @@ export function openHeroViewer(id) {
     $('hNext').onclick = () => { cur = (cur + 1) % list.length; setHero(); };
     if ($('hLvl')) $('hLvl').onclick = () => { const r = G.levelUpHero(h.id); if (!r.ok) C.toast(r.why, true); else { C.toast('⬆ Seviye atladı!'); C.sfx('reveal'); want = true; } renderUI(); };
     if ($('hLvl10')) $('hLvl10').onclick = () => { let n = 0; while (n < 10 && G.levelUpHero(h.id).ok) n++; if (!n) C.toast('Yetersiz kaynak', true); else { C.toast(`⬆ ${n} seviye atladı!`); C.sfx('reveal'); want = true; } renderUI(); };
+    if ($('hAsc')) $('hAsc').onclick = () => { const r = G.ascendHero(h.id); if (!r.ok) return C.toast(r.why, true); const s2 = heroStars(h, r.ups); C.sfx('reveal5'); C.toast(s2.asc ? `✦ ${h.name} Yüce ${s2.asc} oldu! Güç +%15` : `⭐ ${h.name} ${s2.gold}★ oldu! Güç +%15`); want = true; renderUI(); };
     if ($('hCmd')) $('hCmd').onclick = () => { G.setCommander(h.id); C.toast('👑 Yeni komutan: ' + h.name); renderUI(); };
     if ($('hGo')) $('hGo').onclick = () => { close(); openSummon(); };
   };

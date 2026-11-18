@@ -471,6 +471,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - Sol çipler (`#side .hchip`): Higgsfield simgeleri `assets/ui/ic_troops.webp` (miğfer + kalkan) ve `ic_builder.webp` (çekiç + mala + baret), iki satır (Ordu / İnşaatçı + sayı).
 - Zombi sayısı 36 → 14, maden 24 → 16; zombiler şehirden 70–450 birim uzakta, aralarında en az 40 birim; eski kayıtlarda fazlası açılışta azaltılır (sıradaki seviye ve seferdekiler korunur).
 
+### 5.25 Yıldız yükseltme, yeni çağırma oranları, portal girdabı
+- Çağırma: 5★ %9, 4★ %21, 3★ %35, 2★ %35; 5★ garantisi 30 çağırmada (`SUMMON.pity5 = 30`), 4★ her 10'da. 3000 çağırma simülasyonu: %9,1, en uzun aralık 30.
+- Kopyalar artık sınırsız birikir (birlik bonusuna en fazla 5 kopya etki eder). `data.js → STAR_PATH`: 5★ [10,15,20,25,30] → Yüce 1–5; 4★ [25 (→5★), 30…50]; 3★ [50 (→4★), 60 (→5★), 70…110]; 2★ [60,75,90, 100…140]. `S.heroes[id].ups` yükseltme sayısı; `heroStars(h, ups)` → {gold, asc}; `starMul(ups)` = 1 + 0,15×ups saldırı/savunma/bonus. `G.ascendHero(id)` kopya harcar.
+- Gösterim `scenes.js → starsHtml(h, ups, size)`: altın yıldızlar, Yüce seviyede yerlerine `assets/ui/st_asc.webp` (pembe-mor kristal yıldız, nabız animasyonu). Kahraman ekranında "✦ Yüce N" etiketi, ilerleme çubuğu ve "Yıldız yükselt" düğmesi; kahraman kartlarında hazırsa ⬆ rozeti.
+- Çağırma portalı: beyaz düz sütun yerine dokulu akan enerji sütunları (`beamTex`, iki katman) ve dönen arcane girdap (`assets/ui/fx_vortex.webp`, iki sprite, toplamsal), patlama ışığı yumuşatıldı.
+- Harita küreleri: `assets/ui/ic_castle.webp` (Şehrim), `ic_throne.webp` (Taht).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

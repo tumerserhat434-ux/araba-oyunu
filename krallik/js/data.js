@@ -111,10 +111,10 @@ export const COUNTER = {
 
 // Kahramanlar — tamamen özgün karakterler
 export const RARITY = {
-  2: { name: 'Sıradan', color: '#9fb4c2', rate: 0.68 },
-  3: { name: 'Nadir', color: '#4aa8ff', rate: 0.26 },
-  4: { name: 'Destansı', color: '#b06bff', rate: 0.054 },
-  5: { name: 'Efsanevi', color: '#ffc84a', rate: 0.006 },
+  2: { name: 'Sıradan', color: '#9fb4c2', rate: 0.35 },
+  3: { name: 'Nadir', color: '#4aa8ff', rate: 0.35 },
+  4: { name: 'Destansı', color: '#b06bff', rate: 0.21 },
+  5: { name: 'Efsanevi', color: '#ffc84a', rate: 0.09 },
 };
 export const HEROES = [
   // 5★
@@ -147,19 +147,25 @@ export const HEROES = [
 ];
 export const HERO_BY_ID = Object.fromEntries(HEROES.map((h) => [h.id, h]));
 // Kahraman birlik bonusu (yüzde) — nadirlik + seviye + kopya
-export function heroBonus(h, level, copies) {
+export function heroBonus(h, level, copies, ups = 0) {
   const base = { 2: 5, 3: 12, 4: 22, 5: 35 }[h.rarity];
-  return base + level * (h.rarity * 0.16) + (copies || 0) * h.rarity * 0.8;
+  return (base + level * (h.rarity * 0.16) + Math.min(5, copies || 0) * h.rarity * 0.8) * starMul(ups);
 }
+// ---- Yıldız yükseltme: kopyalarla yıldız artar; 5★'tan sonra Yüce yıldızlar (en fazla 5) ----
+// her yükseltme saldırı, savunma ve birlik bonusunu +%15 artırır
+export const starMul = (ups) => 1 + (ups || 0) * 0.15;
+export const STAR_PATH = { 5: [10, 15, 20, 25, 30], 4: [25, 30, 35, 40, 45, 50], 3: [50, 60, 70, 80, 90, 100, 110], 2: [60, 75, 90, 100, 110, 120, 130, 140] };
+export const heroStars = (h, ups = 0) => { const t = h.rarity + (ups || 0); return { gold: Math.min(5, t), asc: Math.max(0, t - 5) }; };
+export const nextStarCost = (h, ups = 0) => STAR_PATH[h.rarity][ups || 0] ?? null;
 export const HERO_MAX_LEVEL = 150;
 // Kahraman saldırısı: her seviyede %4 artar
-export function heroAtk(h, level) { return Math.round(h.atk * (1 + (Math.max(1, level) - 1) * 0.04)); }
-export function heroDef(h, level) { return Math.round(h.def * (1 + (Math.max(1, level) - 1) * 0.035)); }
+export function heroAtk(h, level, ups = 0) { return Math.round(h.atk * (1 + (Math.max(1, level) - 1) * 0.04) * starMul(ups)); }
+export function heroDef(h, level, ups = 0) { return Math.round(h.def * (1 + (Math.max(1, level) - 1) * 0.035) * starMul(ups)); }
 // Yükseltme maliyeti seviyeyle birlikte artar (Sv.1 ≈ 330 buğday, Sv.149 ≈ 100 bin buğday)
 export function heroLevelCost(level) { const f = Math.round(220 * (1 + level * 0.45) * (1 + level / 25) / 10) * 10; return { food: f, stone: Math.round(f * 0.35 / 10) * 10 }; }
 
 // Çağırma
-export const SUMMON = { cost1: 100, cost10: 900, pity5: 150, pity4: 10 };
+export const SUMMON = { cost1: 100, cost10: 900, pity5: 30, pity4: 10 };
 
 // Altın mağazası (demo — gerçek ödeme yok)
 export const SHOP = [

@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
+import { starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -61,6 +61,7 @@ export function load() {
   S.marches ||= [];
   S.scouts ||= []; S.scoutReports ||= [];
   S.items ||= {};
+  if (S.pity5 >= 30) S.pity5 = 29;
   S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {};
   S.alliance ??= null;
   S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
@@ -144,7 +145,7 @@ export function buyOffer(id) {
   const heroes = [];
   for (let i = 0; i < (o.hero5 || 0); i++) {
     const pool = HEROES.filter((h) => h.rarity === 5), fresh = pool.filter((h) => !S.heroes[h.id] && !heroes.includes(h.id)), h = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
-    if (!S.heroes[h.id]) S.heroes[h.id] = { level: 1, copies: 0 }; else S.heroes[h.id].copies = Math.min(5, S.heroes[h.id].copies + 1);
+    if (!S.heroes[h.id]) S.heroes[h.id] = { level: 1, copies: 0 }; else S.heroes[h.id].copies++;
     heroes.push(h.id);
   }
   for (const f of o.frames || []) S.frames[f] = true;
@@ -386,7 +387,9 @@ export function usePotion() {
 //  Kahramanlar ve çağırma
 // ---------------------------------------------------------------------
 export const heroMaxLevel = () => Math.min(HERO_MAX_LEVEL, Math.max(1, maxLevelOf('heroes')) * 15);
-export function heroPower(id) { const h = HERO_BY_ID[id], o = S.heroes[id]; return o ? Math.round(heroBonus(h, o.level, o.copies) * 10 + (h.atk + h.def) * o.level) : 0; }
+export function heroPower(id) { const h = HERO_BY_ID[id], o = S.heroes[id]; return o ? Math.round(heroBonus(h, o.level, o.copies, o.ups) * 10 + (h.atk + h.def) * o.level * starMul(o.ups)) : 0; }
+// yıldız yükselt: kopya harcar
+export function ascendHero(id) { const h = HERO_BY_ID[id], o = S.heroes[id]; if (!o) return { ok: false, why: 'Kahraman yok' }; const c = nextStarCost(h, o.ups); if (c == null) return { ok: false, why: 'En yüksek yıldızda' }; if (o.copies < c) return { ok: false, why: `${c} kopya gerekli (${o.copies})` }; o.copies -= c; o.ups = (o.ups || 0) + 1; save(); emit('heroes'); return { ok: true, ups: o.ups }; }
 export function levelUpHero(id) {
   const o = S.heroes[id]; if (!o) return { ok: false };
   if (o.level >= heroMaxLevel()) return { ok: false, why: 'Karakter Deposu seviyesini yükselt' };
@@ -425,7 +428,7 @@ export function summon(count, free = false) {
     const pool = HEROES.filter((h) => h.rarity === rar);
     const h = pool[Math.floor(Math.random() * pool.length)];
     const isNew = !S.heroes[h.id];
-    if (isNew) S.heroes[h.id] = { level: 1, copies: 0 }; else S.heroes[h.id].copies = Math.min(5, S.heroes[h.id].copies + 1);
+    if (isNew) S.heroes[h.id] = { level: 1, copies: 0 }; else S.heroes[h.id].copies++;
     out.push({ id: h.id, rarity: rar, isNew });
   }
   S.totalPulls += count;
@@ -584,7 +587,7 @@ export function armyPowerMulti(troops, ids) {
   let p = 0; for (const t in troops) { const d = TROOPS[t]; p += troops[t] * (d.atk + d.def + d.hp * 0.4); }
   return Math.round(p * (1 + combinedBonus(heroesOf(ids)) / 100));
 }
-function heroOf(id) { const h = id && HERO_BY_ID[id], o = id && S.heroes[id]; return h && o ? { bonus: heroBonus(h, o.level, o.copies), role: h.role, id } : null; }
+function heroOf(id) { const h = id && HERO_BY_ID[id], o = id && S.heroes[id]; return h && o ? { bonus: heroBonus(h, o.level, o.copies, o.ups), role: h.role, id } : null; }
 // Kayıpları yaralı/ölü olarak ayır (hastane kapasitesi)
 function applyLosses(loss) {
   let free = Math.max(0, hospitalCap() - totalWounded() - (S.healing ? totalTroops(S.healing.counts) : 0));

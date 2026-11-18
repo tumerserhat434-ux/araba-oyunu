@@ -9,10 +9,10 @@ import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldma
 import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
-import { campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
+import { STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { getAvatar } from './scenes.js';
-import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
 import { createGrass } from './grass.js';
 import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js';
 import { initTutorial, tutEvent } from './tut.js';
@@ -618,7 +618,7 @@ function renderSheet() {
     if (key === 'archery') body += `<div class="stats">${stat('Kule hasarı', G.fmt(L * 260), L < maxLevel(key) ? G.fmt((L + 1) * 260) : '')}${stat('Toplam savunma', G.fmt(G.towerPower()))}</div>`;
     if (key === 'warehouse') body += `<div class="stats">${stat('Depo sınırı', G.fmt(G.storageCap()))}${stat('Yağmadan korunan', Math.round((0.3 + L * 0.05) * 100) + '%')}</div>`;
     if (key === 'heroes') body += `<div class="stats">${stat('Kahraman sayısı', Object.keys(G.S.heroes).length + ' / ' + HEROES.length)}${stat('Kahraman seviye sınırı', G.heroMaxLevel())}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="heroes">🛡️ Kahramanları göster</button>`;
-    if (key === 'summon') body += `<div class="stats">${stat('5★ şansı', '%0,6')}${stat('5★ garanti', `${G.S.pity5} / ${SUMMON.pity5}`)}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="summon">🔮 Çağırma ekranını aç</button>`;
+    if (key === 'summon') body += `<div class="stats">${stat('5★ şansı', '%9')}${stat('5★ garanti', `${G.S.pity5} / ${SUMMON.pity5}`)}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="summon">🔮 Çağırma ekranını aç</button>`;
     if (key === 'barracks') body += barracksUI();
     if (key === 'tankyard') body += tankyardUI();
     if (key === 'camp') body += campUI(L);
@@ -1033,7 +1033,7 @@ function heroesUI() {
   const cards = list.map((h) => {
     const o = G.S.heroes[h.id];
     return `<div class="hcard ${o ? '' : 'locked'} ${G.S.commander === h.id ? 'cmd' : ''}" style="--rc:${RARITY[h.rarity].color}" data-hero="${h.id}">
-      <img src="assets/heroes/${h.id}.webp" alt="" loading="lazy"><span class="st">${stars(h.rarity)}</span>${o ? `<span class="lv">Sv.${o.level}</span>` : ''}<div class="hn">${h.name}</div></div>`;
+      <img src="assets/heroes/${h.id}.webp" alt="" loading="lazy"><span class="st">${starsHtml(h, o?.ups, 13)}</span>${o ? `<span class="lv">Sv.${o.level}</span>` : ''}${o && h.rarity + (o.ups || 0) < 10 && o.copies >= (STAR_PATH[h.rarity][o.ups || 0] ?? 1e9) ? '<em class="hc-up">⬆</em>' : ''}<div class="hn">${h.name}</div></div>`;
   }).join('');
   const own = Object.keys(G.S.heroes).length;
   return head('Kahramanlar', 'nav_heroes', [{ id: 'mine', label: `Benimkiler (${own})`, icon: 'nav_heroes' }, { id: 'all', label: `Koleksiyon (${HEROES.length})`, icon: 'ic_trophy' }], heroTab) +
@@ -1548,4 +1548,4 @@ async function boot() {
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
 window.__dsShowDrop = (it) => showItemDrop(it);
-window.__ds = { openBattle, online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };
+window.__ds = { openHeroViewer, openSummon, openBattle, online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };
