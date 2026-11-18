@@ -523,6 +523,11 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Yeni ana sayfa (Top War tarzı, koyu):** üstte asılı sancak üzerinde arma + bilgiler (`bg_alliance.webp`), [Duyuru] satırı (lider ▼ ile düzenler), altında büyük afiş butonları: İttifak Yardımı (`ic_alhelp`), Ralliler (`ic_rally`), Üyeler (`ic_almembers`), İttifak Sohbeti (`ic_alchat`). Sol sekmelere "Yardım" eklendi.
 - Test: `online.js` yerine sahte modül (scratchpad `mock_online.js`) ile, gerçek Firebase'e bağlanmadan.
 
+### 5.32 Yayın ve önbellek
+- GitHub Pages **`claude/selam-naber-ilicoo`** dalından yayınlanıyor (kullanıcının ekran görüntüsüyle doğrulandı). Yayın durumu `mcp__github__actions_list` → "pages build and deployment" çalışmalarından görülebilir.
+- Şu an tüm dallar (`main`, `claude/selam-naber-ilicoo`, `claude/laughing-hamilton-eaghgm`, `claude/forest-parkour-mobile-game-9oxplw`, çalışma dalı) aynı commit'te tutuluyor; yayın için en az `claude/selam-naber-ilicoo`'ya gönder.
+- **Önbellek kırıcı:** her yayından önce `python3 krallik/surum.py` çalıştır; tüm `./x.js` içe aktarmalarına ve `index.html`'deki `main.js`/`style.css`'e `?v=<zaman>` ekler. Yoksa iPhone Safari eski dosyaları kullanır (kullanıcı "yaptıkların gözükmüyor" dedi).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

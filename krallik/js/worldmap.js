@@ -8,12 +8,12 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js';
-import * as BLD from './buildings.js';
-import * as G from './state.js';
-import { SPEEDUPS } from './data.js';
-import { createSoldier, animateUnit } from './units.js';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js';
+import * as A from './assets.js?v=2611181621';
+import * as BLD from './buildings.js?v=2611181621';
+import * as G from './state.js?v=2611181621';
+import { SPEEDUPS } from './data.js?v=2611181621';
+import { createSoldier, animateUnit } from './units.js?v=2611181621';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611181621';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;

@@ -1,10 +1,10 @@
 // =====================================================================
 //  DEMİR SANCAK — Fetih Görevleri ekranı (bölüm haritası + görev kartı)
 // =====================================================================
-import * as G from './state.js';
-import { HERO_BY_ID, RARITY } from './data.js';
-import * as CP from './campaign.js';
-import { rewardsHtml } from './scenes.js';
+import * as G from './state.js?v=2611181621';
+import { HERO_BY_ID, RARITY } from './data.js?v=2611181621';
+import * as CP from './campaign.js?v=2611181621';
+import { rewardsHtml } from './scenes.js?v=2611181621';
 
 let C = null, viewCh = 1, sel = 0, busy = false;
 const $ = (id) => document.getElementById(id);

@@ -2,26 +2,26 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
-import * as ASSETS from './assets.js';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
-import { STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
-import * as G from './state.js';
-import { getAvatar } from './scenes.js';
-import { initCampaign, openCampaign } from './campui.js';
-import { campIdx, stageLabel } from './campaign.js';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
-import { createGrass } from './grass.js';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js';
-import { initTutorial, tutEvent } from './tut.js';
-import { icon } from './icons.js';
-import { paintCity } from './terrain.js';
-import { createLife, createVillager, animVillager } from './life.js';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js';
+import * as BLD from './buildings.js?v=2611181621';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181621';
+import * as ASSETS from './assets.js?v=2611181621';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181621';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181621';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181621';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181621';
+import { STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181621';
+import * as G from './state.js?v=2611181621';
+import { getAvatar } from './scenes.js?v=2611181621';
+import { initCampaign, openCampaign } from './campui.js?v=2611181621';
+import { campIdx, stageLabel } from './campaign.js?v=2611181621';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181621';
+import { createGrass } from './grass.js?v=2611181621';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181621';
+import { initTutorial, tutEvent } from './tut.js?v=2611181621';
+import { icon } from './icons.js?v=2611181621';
+import { paintCity } from './terrain.js?v=2611181621';
+import { createLife, createVillager, animVillager } from './life.js?v=2611181621';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181621';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
