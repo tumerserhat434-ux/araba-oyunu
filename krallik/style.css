@@ -1582,3 +1582,29 @@ header#top > .profile { margin-left: 8px; }
 .rk-opts b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 15px; }
 .rk-opts small { font-size: 10px; font-weight: 800; color: #c8c0e0; }
 .rk-opts em { position: absolute; top: 2px; right: 5px; font-style: normal; font-size: 11px; color: #5ad07a; } .rk-opts .down em { color: #ff7a6a; }
+
+/* Rütbe listesi daha kompakt; pencere panelin dışında */
+#rkLayer:empty { display: none; }
+.rk-pop { position: fixed !important; inset: 0 !important; z-index: 80 !important; padding: 20px !important; border-radius: 0 !important; }
+.rk-box { max-width: 300px !important; padding: 12px !important; }
+.rk-ph { margin: 2px 0 12px 2px !important; }
+.rk-ph b { font-size: 16px !important; }
+.rk-opts { grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)) !important; }
+.rk-opts img { width: 30px !important; height: 30px !important; }
+.rk-opts b { font-size: 13px !important; }
+.rk-kick, .rk-close { width: 100%; margin-top: 6px; padding: 7px !important; font-size: 14px !important; }
+.rk-sec { margin-bottom: 6px !important; }
+.rk-h { padding: 4px 8px !important; gap: 6px !important; }
+.rk-h img { width: 26px !important; height: 26px !important; }
+.rk-h b { font-size: 14px !important; }
+.rk-h small { font-size: 10px !important; }
+.rk-h span { font-size: 13px !important; min-width: 22px !important; }
+.rk-sec .al-mem { padding: 4px !important; gap: 4px !important; }
+.rk-row { padding: 4px 6px !important; min-height: 0 !important; }
+.rk-row .fav { --s: 34px !important; }
+.rk-row .al-mi b { font-size: 13px !important; }
+.rk-row .al-mi small { font-size: 11px !important; }
+.rk-empty { padding: 5px 10px !important; font-size: 11px !important; }
+.rk-more { font-size: 16px !important; }
+.rk-row { gap: 8px !important; padding: 4px 8px 4px 10px !important; border-radius: 10px !important; }
+.rk-row .fav { margin: 3px 4px 3px 0 !important; }
