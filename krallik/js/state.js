@@ -74,6 +74,7 @@ export function load() {
   ensureMapKingdoms();
   S.tankTraining ??= null;
   S.camp ||= { done: 0, tries: 0 };
+  S.helpReq ||= {};
   dailyReset();
   catchUp();
   save();
@@ -156,6 +157,29 @@ export function buyOffer(id) {
 // ---- İttifak ----
 export const ALLIANCE_COST = 300;
 export const myMember = () => ({ name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), hero: S.commander || null, frame: S.frame || 'bronze' });
+// ---- İttifak yardımı: her yardım yükseltmeyi toplam sürenin %2,5'i kadar kısaltır (en az 1 dk), en fazla 20 yardım ----
+export const HELP_MAX = 20;
+export const helpPer = (dur) => Math.max(60, Math.round(dur * 0.025));
+// yardım istenebilecek bina yükseltmesi: { plot, level (hedef), dur, per, hid }
+export function helpable(plot) {
+  const b = S.buildings[plot]; if (!b || !(b.busyUntil > now())) return null;
+  const dur = Math.max(1, b.busyUntil - b.busyStart), level = b.level + 1;
+  return { plot, level, dur, per: helpPer(dur), requested: S.helpReq[plot]?.level === level ? S.helpReq[plot] : null };
+}
+export function markHelp(plot, level, hid, per) { S.helpReq[plot] = { hid, level, per, applied: 0 }; save(); }
+// yükseltme bitti/iptal olduysa istek geçersiz
+export function helpStale(plot, level) { const b = S.buildings[plot]; return !b || b.level >= level || !(b.busyUntil > now()); }
+// gelen yardımları uygula; kısaltılan saniyeyi döndürür
+export function applyHelps(plot, level, n) {
+  const r = S.helpReq[plot], b = S.buildings[plot];
+  if (!r || r.level !== level || !b) return 0;
+  const d = Math.min(n, HELP_MAX) - r.applied; if (d <= 0) return 0;
+  const cut = Math.min(d * r.per, Math.max(0, b.busyUntil - now()));
+  b.busyUntil -= cut; r.applied += d;
+  tick(); save(); emit('helped', { plot, cut });
+  return cut;
+}
+export function dropHelp(plot) { if (S.helpReq[plot]) { delete S.helpReq[plot]; save(); } }
 export function setAlliance(a) { S.alliance = a ? { id: a.id, tag: a.tag, name: a.name, emblem: a.emblem, color: a.color } : null; save(); emit('alliance'); }
 export function payAlliance() { if (S.res.gold < ALLIANCE_COST) return false; S.res.gold -= ALLIANCE_COST; save(); return true; }
 export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }

@@ -48,6 +48,26 @@ service cloud.firestore {
             && request.time.toMillis() < resource.data.endsAt
             && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members));
       }
+      // İttifak yardımı: isteyen kendi isteğini açar/siler; diğer üyeler yalnızca kendilerini yardımcı olarak ekler (en fazla 20)
+      match /helps/{hid} {
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.helpers.size() == 0
+          && request.resource.data.per is number && request.resource.data.per <= 86400
+          && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;
+        allow update: if request.auth != null
+          && resource.data.uid != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['helpers'])
+          && request.resource.data.helpers.diff(resource.data.helpers).affectedKeys().hasOnly([request.auth.uid])
+          && !(request.auth.uid in resource.data.helpers)
+          && request.resource.data.helpers.size() <= 20
+          && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;
+        allow delete: if request.auth != null
+          && (resource.data.uid == request.auth.uid
+            || get(/databases/$(database)/documents/alliances/$(aid)).data.leader == request.auth.uid);
+      }
       match /chat/{mid} {
         allow read: if request.auth != null
           && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;

@@ -514,6 +514,15 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Savaş (`scenes.js → openBattle`)** yeni seçenekler: `theme` (diyar arka planı, zemin dokusu, ışık), `enemyAva`, `plaque`, `powers`, `onClose`; rapor türü `campaign` için ayrı sonuç penceresi (`campResultHtml`). `warDecor()`: yanan enkaz yığınları ve duman sütunları, düşman kampı (çadır, kırmızı sancak, silah rafı), yere saplı mızraklar, düşmüş kalkanlar, yanık izleri, diyar parçacıkları (kar, kor, toz, sis). Klasik arena (çit, mangal) yalnızca tema yokken kurulur.
 - `fmt()` artık milyarı `Mr` ile yazar (4,1Mr).
 
+### 5.31 İttifak Yardımı ve yeni ittifak ana sayfası
+- **Yardım:** Bina yükseltilirken bina panelinde "🤝 Yardım iste" (`helpBtnHtml`, `askHelp`). Firestore `alliances/{aid}/helps/{hid}` (hid = `uid_plot_hedefSeviye`): { uid, name, hero, frame, plot, bname, level, per, max: 20, ends, created, helpers{uid: ms} }.
+- Her yardım toplam sürenin %2,5'i kadar kısaltır, en az 1 dk (`state.js → helpPer`; 1 saat → 1,5 dk). En fazla 20 yardım (`HELP_MAX`), 20 olunca istek silinir.
+- İsteyenin oyunu `watchHelps` dinler, `onHelps()` gelen yardım sayısı kadar `S.buildings[plot].busyUntil` düşürür (`applyHelps`, yerel kayıt `S.helpReq[plot] = { hid, level, per, applied }`). Yükseltme bitince/altınla bitirilince istek silinir (`helpCleanup` 10 sn'de bir).
+- Diğer üyeler: şehirde İttifak butonunda kırmızı **+N** rozeti (`#alDot`), İttifak › Yardım sekmesinde liste, tek tek "Yardım et" ve "Hepsine yardım et".
+- **Kurallar:** `firestore.rules` içine `helps` bölümü eklendi — **kullanıcı Firebase konsolunda yeniden yayınlamalı**, yoksa "Sunucu izni yok" hatası çıkar.
+- **Yeni ana sayfa (Top War tarzı, koyu):** üstte asılı sancak üzerinde arma + bilgiler (`bg_alliance.webp`), [Duyuru] satırı (lider ▼ ile düzenler), altında büyük afiş butonları: İttifak Yardımı (`ic_alhelp`), Ralliler (`ic_rally`), Üyeler (`ic_almembers`), İttifak Sohbeti (`ic_alchat`). Sol sekmelere "Yardım" eklendi.
+- Test: `online.js` yerine sahte modül (scratchpad `mock_online.js`) ile, gerçek Firebase'e bağlanmadan.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

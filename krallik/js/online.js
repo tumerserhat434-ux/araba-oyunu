@@ -242,3 +242,19 @@ export function watchRallies(aid, cb) {
   if (!ready || !aid) return () => {};
   try { return FS.onSnapshot(FS.query(FS.collection(db, 'alliances', aid, 'rallies'), FS.where('status', '==', 'open'), FS.limit(20)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
 }
+
+// ---- İttifak yardımı (alliances/{aid}/helps/{hid}) ----
+// { uid, name, hero, frame, plot, bname, level (hedef seviye), per (yardım başına saniye), max (20), ends (ms), created, helpers{uid: ms} }
+export async function requestHelp(aid, hid, data) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try { await FS.setDoc(FS.doc(db, 'alliances', aid, 'helps', hid), { ...data, uid: user.uid, helpers: {}, created: Date.now() }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function giveHelp(aid, hid) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try { await FS.updateDoc(FS.doc(db, 'alliances', aid, 'helps', hid), { [`helpers.${user.uid}`]: Date.now() }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function deleteHelp(aid, hid) { try { await FS.deleteDoc(FS.doc(db, 'alliances', aid, 'helps', hid)); } catch (e) { lastErr = errOf(e); } }
+export function watchHelps(aid, cb) {
+  if (!ready || !aid) return () => {};
+  try { return FS.onSnapshot(FS.query(FS.collection(db, 'alliances', aid, 'helps'), FS.limit(100)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}
