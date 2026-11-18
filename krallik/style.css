@@ -1184,3 +1184,20 @@ header#top > .profile { margin-left: 8px; }
 .wm-zrw small { display: block; font-size: 11px; font-weight: 800; color: #b8ffa0; margin-bottom: 4px; }
 .wm-zrw div { display: flex; flex-wrap: wrap; gap: 5px; } .wm-zrw span { padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.08); font-family: 'Lilita One', sans-serif; font-size: 13px; } .wm-zrw i { font-style: normal; font-size: 11px; color: #ffe08a; }
 .wm-shield.zl { background: rgba(120, 120, 120, .3); border-color: #b8b8b888; }
+/* ---- Haritada Ara ---- */
+.wm-orb.emerald { background: radial-gradient(circle at 40% 28%, #8affa0, #1a9a4a 50%, #0a4a1a) padding-box, var(--wm-gold) border-box !important; }
+.wm-orb.emerald.on { box-shadow: 0 0 0 3px #fff, 0 0 18px rgba(140, 255, 140, .9), inset 0 3px 0 rgba(255,255,255,.35) !important; }
+.wm-orb > img { width: 44px; height: 44px; object-fit: contain; margin-top: -6px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+.zs-pick { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.zs-step { flex-shrink: 0; width: 50px; height: 50px; border: 0; cursor: pointer; font-family: 'Lilita One', sans-serif; font-size: 28px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.5);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+  background: linear-gradient(180deg, #7ae07a, #2a9a3a 55%, #135a1a); box-shadow: inset 0 0 0 2.5px #e8b040, inset 0 -5px 0 rgba(0,0,0,.25); }
+.zs-step:active { transform: scale(.94); }
+.zs-lv { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; height: 62px; border-radius: 16px; border: 2px solid transparent;
+  background: linear-gradient(180deg, #16301a, #08140a) padding-box, var(--wm-gold) border-box; box-shadow: inset 0 0 18px rgba(120, 255, 100, .2); }
+.zs-lv img { width: 46px; height: 46px; object-fit: contain; }
+.zs-lv small { display: block; font-size: 11px; font-weight: 800; color: #b8ffa0; } .zs-lv b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 28px; line-height: 1; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.6); }
+.zs-range { width: 100%; margin: 2px 0 8px; accent-color: #6aff5a; }
+.zs-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.zs-chip { padding: 5px 11px; border-radius: 10px; border: 1.5px solid rgba(160, 255, 120, .35); background: rgba(0,0,0,.35); color: #e8ffe0; font-family: 'Lilita One', sans-serif; font-size: 13px; cursor: pointer; }
+.zs-chip.on { background: linear-gradient(180deg, #ffe07a, #e0a020); color: #3a1e00; border-color: #fff0b0; }

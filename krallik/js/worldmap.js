@@ -15,6 +15,7 @@ import { createSoldier, animateUnit } from './units.js';
 import { openScene, closeScene, sceneOverlay as ov } from './scenes.js';
 
 const $ = (id) => document.getElementById(id);
+const UI = (n) => `assets/ui/${n}.webp`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
@@ -446,7 +447,7 @@ export function openWorldMap(opts = {}) {
   // =====================================================================
   //  Arayüz
   // =====================================================================
-  let sel = null;
+  let sel = null, search = null; // search: { lv } arama penceresi açıkken
   const render = () => {
     const c = sel;
     let card = '';
@@ -483,13 +484,35 @@ export function openWorldMap(opts = {}) {
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('sapphire', 'wmTpHere', '📍', 'Buraya Işınlan', cost('🪙', G.TELEPORT_COST), !okSpot)}</div>`);
     } else if (c && c.me) card = win(`🏰 ${G.S.name}`, `🏛️ Belediye Sv.${G.thLevel()}`, `<div class="wm-cs">${stat('⚔️', 'Güç', G.fmt(G.cityPower()))}${stat('📍', 'Konum', `X:${G.S.mapX} Y:${G.S.mapY}`)}</div>
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('gold', 'wmCity', '🏰', 'Şehre Gir')}</div>`, 'mine');
+    if (search && home) {
+      const mx = Math.min(G.ZOMBIE_MAX_LEVEL, (G.S.zombieMax || 0) + 1), L = search.lv = Math.max(1, Math.min(mx, search.lv));
+      const here = G.S.zombies.filter((z) => z.level === L).length, need = G.zombiePower(L), mine = G.armyPower(G.S.troops);
+      const chips = [...new Set([1, Math.max(1, mx - 5), Math.max(1, mx - 2), Math.max(1, mx - 1), mx])].map((v) => `<button class="zs-chip ${v === L ? 'on' : ''}" data-zlv="${v}">Sv.${v}${v === mx ? ' ★' : ''}</button>`).join('');
+      card = win('🔍 Haritada Ara', `En yüksek: Sv.${G.S.zombieMax || 0}`, `
+        <div class="zs-pick"><button class="zs-step" id="zsMinus">−</button><div class="zs-lv"><img src="${UI('ic_search')}" alt=""><div><small>Zombi seviyesi</small><b>Sv.${L}</b></div></div><button class="zs-step" id="zsPlus">+</button></div>
+        <input class="zs-range" id="zsRange" type="range" min="1" max="${mx}" value="${L}">
+        <div class="zs-chips">${chips}</div>
+        <div class="wm-cs">${stat('💀', 'Gereken güç', G.fmt(need))}${stat('📍', 'Haritada', here ? `${here} zombi` : 'Yok (oluşur)')}</div>
+        <div class="wm-cb">${B('steel', 'wmZsClose', '✖', 'Kapat')}${B('gold', 'wmZsGo', '🔍', 'Ara')}</div>`, 'zombie search');
+    }
     const marches = G.S.marches.map((m) => `<div class="wm-mr" data-mid="${m.id}"><i>${m.phase === 'go' ? '⚔' : '↩'}</i><span>${m.tname}</span><b data-mt="${m.id}">${fmtT(m.arrive - Date.now() / 1000)}</b>${m.phase === 'go' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
     const scoutsRows = G.S.scouts.map((q) => `<div class="wm-mr sc"><i>🚁</i><span>${q.phase === 'go' ? 'Gözetleme' : 'Dönüyor'} • ${q.tname}</span><b data-st="${q.id}">${fmtT(q.arrive - Date.now() / 1000)}</b></div>`).join('');
     ov().innerHTML = `<div class="wm-vig"></div><div class="wm-top"><button class="wm-srv" id="wmSrv"><i>🌐</i><span>Sunucu #${server}${home ? '' : ' <small>(yabancı)</small>'}</span><em>⇄</em></button><span class="wm-xy"><i>📍</i><b id="wmXY">X:${Math.round(cam.tx)} Y:${Math.round(cam.tz)}</b></span><button class="wm-x" id="wmX">✕</button></div>
       ${home ? '' : '<div class="wm-war">⚔ Krallıklar arası savaş: bu sunucudaki krallıklara saldırabilirsin (yürüyüş uzun sürer).</div>'}
-      <div class="wm-side"><button id="wmHome" class="wm-orb sapphire"><i>🏰</i><span>Şehrim</span></button><button id="wmThrone" class="wm-orb ruby"><i>👑</i><span>Taht</span></button></div>
+      <div class="wm-side">${home ? `<button id="wmSearch" class="wm-orb emerald ${search ? 'on' : ''}"><img src="${UI('ic_search')}" alt=""><span>Ara</span></button>` : ''}<button id="wmHome" class="wm-orb sapphire"><i>🏰</i><span>Şehrim</span></button><button id="wmThrone" class="wm-orb ruby"><i>👑</i><span>Taht</span></button></div>
       <div class="wm-bottom">${marches || scoutsRows ? `<div class="wm-ms">${scoutsRows}${marches}</div>` : ''}${card}</div>`;
     $('wmX').onclick = closeWorld;
+    if ($('wmSearch')) $('wmSearch').onclick = () => { if (search) search = null; else { search = { lv: Math.min(G.ZOMBIE_MAX_LEVEL, (G.S.zombieMax || 0) + 1) }; sel = null; } C.sfx('click'); render(); };
+    if (search) {
+      const setLv = (v) => { search.lv = v; render(); };
+      if ($('zsMinus')) $('zsMinus').onclick = () => setLv(search.lv - 1);
+      if ($('zsPlus')) $('zsPlus').onclick = () => setLv(search.lv + 1);
+      if ($('zsRange')) $('zsRange').oninput = (e) => { search.lv = +e.target.value; const b = ov().querySelector('.zs-lv b'); if (b) b.textContent = 'Sv.' + search.lv; };
+      if ($('zsRange')) $('zsRange').onchange = () => render();
+      ov().querySelectorAll('[data-zlv]').forEach((b) => (b.onclick = () => setLv(+b.dataset.zlv)));
+      $('wmZsClose').onclick = () => { search = null; render(); };
+      $('wmZsGo').onclick = () => { const r = G.findZombie(search.lv); if (!r.ok) return C.toast(r.why, true); search = null; syncZombies(); C.sfx(r.created ? 'reveal' : 'click'); C.toast(r.created ? `🧟 Sv.${r.zombie.level} zombi bulundu! (yakınında belirdi)` : `🧟 Sv.${r.zombie.level} zombi bulundu!`); flyTo(r.zombie.mapX, r.zombie.mapY + 14, Math.min(cam.d, 150)); select(r.zombie); };
+    }
     $('wmHome').onclick = () => { const me = list.find((q) => q.me); if (me) flyTo(me.mapX, me.mapY, 230); else closeWorld(); };
     $('wmThrone').onclick = () => { flyTo(TH.x, TH.y + 10, 300); select(throneCity); };
     $('wmSrv').onclick = () => { const next = server === myServer ? myServer + 1 : myServer; closeWorld(true); openWorldMap({ server: next }); C.toast(next === myServer ? '🏠 Kendi sunucuna döndün' : `🌐 Sunucu #${next} görüntüleniyor`); };
@@ -503,7 +526,7 @@ export function openWorldMap(opts = {}) {
     if ($('wmCity')) $('wmCity').onclick = closeWorld;
     ov().querySelectorAll('[data-recall]').forEach((b) => (b.onclick = () => { G.recallMarch(b.dataset.recall); render(); }));
   };
-  const select = (c) => { sel = c; zombieObjs.forEach((o) => o.el.classList.toggle('sel', o.z === c)); if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
+  const select = (c) => { sel = c; if (c) search = null; zombieObjs.forEach((o) => o.el.classList.toggle('sel', o.z === c)); if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
   W = { scene, render, select, syncMarches, syncScouts, cities, list, server, home };
   window.__wmSelect = select; window.__wmCam = cam;
   render();

@@ -452,6 +452,11 @@ cd araba-oyunu && python3 -m http.server 8000
 - Harita (`worldmap.js` zombi bölümü): `assets/hf/zombie.glb` (Higgsfield Tripo, 6000 yüz, 117 KB, `ensureHF('zombie')`), yeşil halka + ışık, sallanma animasyonu, yeşil seviye rozeti (kilitliyse gri + 🔒), kart: gereken güç, ordu gücü, zorluk, ödüller, Saldır → Sefer Kampı. `attackUI` artık `G.findEnemy` kullanır.
 - Bu adımda ~12 kredi (11 görsel + 1 Tripo).
 
+### 5.22 Haritada Ara (zombi arama)
+- Haritada yeşil "Ara" küresi (`#wmSearch`, simge `assets/ui/ic_search.webp`, Higgsfield). Pencere: −/+ ve kaydırıcıyla seviye (1 … zombieMax+1), hızlı seçim çipleri, gereken güç, haritadaki sayı, "Ara".
+- `G.findZombie(L)`: en yakın o seviyedeki zombi; yoksa oyuncunun yakınında hemen oluşturur (`created`). Kamera süzülür ve zombi kartı açılır.
+- `ensureNextZombie()`: zombi öldürülünce ve yenilenme anında sıradaki seviye haritada yoksa yakına ekler (Sv.4 bulunamama sorunu).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

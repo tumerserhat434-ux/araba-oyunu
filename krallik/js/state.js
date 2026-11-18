@@ -732,7 +732,7 @@ export function attackEnemy(enemyId, sent, heroIds) {
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {}, items = null;
   if (e.zombie) {
-    if (res.win) { loot = zombieLoot(e.level); items = zombieItems(e.level); gainRes(loot); for (const it of items) addItem(it.id, it.n); S.zombieMax = Math.max(S.zombieMax, e.level); S.zombieKills++; S.stats.wins++; count('wins'); S.zombies = S.zombies.filter((z) => z !== e); }
+    if (res.win) { loot = zombieLoot(e.level); items = zombieItems(e.level); gainRes(loot); for (const it of items) addItem(it.id, it.n); S.zombieMax = Math.max(S.zombieMax, e.level); S.zombieKills++; S.stats.wins++; count('wins'); S.zombies = S.zombies.filter((z) => z !== e); ensureNextZombie(); }
     else { S.stats.losses++; for (const t in e.troops) e.troops[t] = res.D[t]; e.power = armyPower(e.troops); }
     S.stats.kills += totalTroops(res.dLoss);
     if (res.win) for (const id of heroIds) if (S.heroes[id].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[id].level++;
@@ -799,6 +799,18 @@ export function tickZombies(force) {
   const t = now();
   if (!S.zombies.length || force) { spawnZombies(ZOMBIE_COUNT - S.zombies.length); S.zombieNext = t + rand(600, 1200); emit('zombies'); return; }
   if (t >= S.zombieNext) { spawnZombies(Math.max(1, ZOMBIE_COUNT - S.zombies.length)); S.zombieNext = t + rand(600, 1200); emit('zombies'); }
+  ensureNextZombie();
+}
+// sıradaki seviye her zaman haritada olsun
+function ensureNextZombie() { const next = Math.min(ZOMBIE_MAX_LEVEL, (S.zombieMax || 0) + 1); if (!S.zombies.some((z) => z.level === next)) { const z = makeZombie(next, true); if (z) { S.zombies.push(z); emit('zombies'); } } }
+// Haritada ara: seçilen seviyedeki en yakın zombi; yoksa oyuncunun yakınında hemen oluştur
+export function findZombie(L) {
+  L = Math.max(1, Math.min(ZOMBIE_MAX_LEVEL, Math.round(L)));
+  if (!zombieUnlocked(L)) return { ok: false, why: `🔒 Önce Sv.${L - 1} zombiyi öldür` };
+  const d = (z) => Math.hypot(z.mapX - S.mapX, z.mapY - S.mapY);
+  let z = S.zombies.filter((q) => q.level === L).sort((a, b) => d(a) - d(b))[0], created = false;
+  if (!z) { z = makeZombie(L, true); if (!z) return { ok: false, why: 'Yakında boş yer bulunamadı' }; S.zombies.push(z); created = true; save(); emit('zombies'); }
+  return { ok: true, zombie: z, created };
 }
 export const zombieRespawnIn = () => Math.max(0, (S.zombieNext || 0) - now());
 
