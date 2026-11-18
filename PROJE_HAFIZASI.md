@@ -533,6 +533,12 @@ cd araba-oyunu && python3 -m http.server 8000
 - Sunucu tarafı: `online.js → setRank`, `kickMember` işlem hedefini `lastOp { by, target, t }` alanına yazar; `firestore.rules` içindeki `officerEdit()` bu hedefe göre yetkiyi denetler, `selfEdit()` üyenin kendi rütbesini/rolünü değiştirmesini engeller. **Kurallar yeniden yayınlanmalı.**
 - Arayüz: Üyeler sekmesi rütbe gruplarına ayrılmış (rozetler `rk_1..5.webp`), yetkili olunan üyeye dokununca rütbe ver / çıkar penceresi; işlemler ittifak sohbetine duyurulur. Ana sayfada "Rütben".
 
+### 5.31d Belediye binası efektleri (teklif paketleri)
+- `js/skins.js`: `SKINS` (shuttle Galaksi Mekiği, dragon Ejder Alevi, aurora Kuzey Işıkları, xmas Yılbaşı Şenliği, crown Altın Taç Aurası, fireworks Havai Fişek Şöleni), `createSkinFX(id, { R, H })` → grup + `userData.update(t, dt)`. Mekik ve çam ağacı Higgsfield Tripo 3D (`assets/hf/fx_shuttle.glb`, `fx_xmas.glb`, dokular 1024 JPEG'e küçültüldü, gerektiğinde yüklenir); diğerleri sprite/Points/shader.
+- Satış: `data.js → OFFERS` başında `sk_*` paketleri (₺499,99–₺1.999,99): efekt + altın + kaynak + hızlandırma. **Avatar çerçevesi yok** (kullanıcı istemedi; üretilen çerçeve görselleri silindi). Kart üstünde tanıtım görseli `sk_<id>.webp`.
+- Durum: `S.skins {id:true}`, `S.skin`; `buyOffer` efekti açar ve takar; `setSkin`. Belediye binası panelinde "✨ Belediye Efektleri" seçimi (sahip değilse Teklifler'e yönlendirir).
+- Şehirde `main.js → applySkin()` efekti `holders.townhall.group`'a ekler (ölçü modelin kutusundan); dünya haritasında `worldmap.js → makeCity` kendi şehrine ve `skin` alanı olan gerçek oyunculara ekler (`publicProfile.skin`).
+
 ### 5.32 Yayın ve önbellek
 - GitHub Pages **`claude/selam-naber-ilicoo`** dalından yayınlanıyor (kullanıcının ekran görüntüsüyle doğrulandı). Yayın durumu `mcp__github__actions_list` → "pages build and deployment" çalışmalarından görülebilir.
 - Şu an tüm dallar (`main`, `claude/selam-naber-ilicoo`, `claude/laughing-hamilton-eaghgm`, `claude/forest-parkour-mobile-game-9oxplw`, çalışma dalı) aynı commit'te tutuluyor; yayın için en az `claude/selam-naber-ilicoo`'ya gönder.

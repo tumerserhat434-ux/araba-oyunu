@@ -8,12 +8,13 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611181804';
-import * as BLD from './buildings.js?v=2611181804';
-import * as G from './state.js?v=2611181804';
-import { SPEEDUPS } from './data.js?v=2611181804';
-import { createSoldier, animateUnit } from './units.js?v=2611181804';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611181804';
+import * as A from './assets.js?v=2611181911';
+import { createSkinFX, SKINS } from './skins.js?v=2611181911';
+import * as BLD from './buildings.js?v=2611181911';
+import * as G from './state.js?v=2611181911';
+import { SPEEDUPS } from './data.js?v=2611181911';
+import { createSoldier, animateUnit } from './units.js?v=2611181911';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611181911';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -259,6 +260,7 @@ export function openWorldMap(opts = {}) {
   const labels = $('wmLabels') || (() => { const d = document.createElement('div'); d.id = 'wmLabels'; document.body.appendChild(d); return d; })();
   labels.innerHTML = ''; labels.classList.remove('hidden');
   const kind = (c) => (c.me ? 'me' : isAlly(c) ? 'ally' : c.real ? 'real' : 'bot');
+  const skinFxs = [];
   const makeCity = (c) => {
     if (inThrone(c.mapX, c.mapY, 10)) { const a = Math.atan2(c.mapY - TH.y, c.mapX - TH.x) || 1; c.mapX = TH.x + Math.cos(a) * (TH.r + 24); c.mapY = TH.y + Math.sin(a) * (TH.r + 24); }
     const col = COL[kind(c)];
@@ -267,6 +269,9 @@ export function openWorldMap(opts = {}) {
     const base = new THREE.Mesh(baseGeo, baseMat); base.position.y = 0.4; g.add(base);
     const cm = cityModel(c.th || 1); cm.position.y = 0.8; if (c.me) cm.scale.multiplyScalar(1.2); g.add(cm);
     const gg = groundGlow(0xffa040, 32, 0.6); gg.position.y = 0.3; g.add(gg);
+    // belediye efekti (benim ya da efekti olan gerçek oyuncular)
+    const sk = c.me ? G.S.skin : c.skin; let fx = null;
+    if (sk && SKINS[sk]) { fx = createSkinFX(sk, { R: c.me ? 8.5 : 7.5, H: c.me ? 13 : 11 }); fx.position.y = 0.8; g.add(fx); skinFxs.push(fx); }
     { let h = 0; for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const hr = () => ((h = (h * 16807) % 2147483647) / 2147483647);
       const n = c.me ? 8 : 6;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + hr() * 0.4 + 0.3; if (Math.abs(Math.sin(a) - 1) < 0.25 && c.me) continue; const nm = HOUSES[Math.floor(hr() * HOUSES.length)], m = A.model(nm); if (!m) break; const rr = 14 + hr() * 3; m.scale.setScalar(3.3 + hr() * 0.6); m.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr); m.rotation.y = -a + Math.PI / 2; g.add(m); }
@@ -656,6 +661,7 @@ export function openWorldMap(opts = {}) {
     labels.classList.toggle('far', cam.d > 420);
     labels.style.setProperty('--wm-s', (0.82 + near * 0.3).toFixed(3));
     const lod = 1 + clamp((cam.d - 200) / 320, 0, 1) * 1.1; // uzakta şehirler ~2 kat büyük görünür
+    for (const fx of skinFxs) if (fx.parent?.visible) fx.userData.update(t, dt);
     for (const o of cities) {
       const d = Math.hypot(o.c.mapX - cam.tx, o.c.mapY - cam.tz); o.g.visible = d < cam.d * 2.6 + 120;
       if (o.g.scale.x !== lod) o.g.scale.setScalar(lod);

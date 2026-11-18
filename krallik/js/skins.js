@@ -4,7 +4,7 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js';
+import * as A from './assets.js?v=2611181911';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -42,15 +42,15 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
   const g = new THREE.Group(); g.name = 'skinfx'; let tick = () => {};
   if (id === 'fireworks') {
     // fırlayan roket → patlama (yerçekimi ve sönme)
-    const N = 90, bursts = [], COLS = [0xff4a6a, 0xffd04a, 0x4affb0, 0x5ab0ff, 0xd070ff, 0xff8a2a];
-    for (let k = 0; k < 4; k++) { const p = points(N, 0xffffff, H * 0.09); g.add(p); bursts.push({ p, v: new Float32Array(N * 3), life: 0, rocket: null, cd: k * 0.7 }); }
-    const sparkle = points(40, 0xffe8a0, H * 0.05); g.add(sparkle);
+    const N = 110, bursts = [], COLS = [0xff4a6a, 0xffd04a, 0x4affb0, 0x5ab0ff, 0xd070ff, 0xff8a2a];
+    for (let k = 0; k < 5; k++) { const p = points(N, 0xffffff, H * 0.22); g.add(p); bursts.push({ p, v: new Float32Array(N * 3), life: 0, rocket: null, cd: k * 0.45 }); }
+    const sparkle = points(40, 0xffe8a0, H * 0.12); g.add(sparkle);
     const sp = sparkle.geometry.attributes.position.array, sc = sparkle.geometry.attributes.color.array;
     for (let i = 0; i < 40; i++) { sc[i * 3] = 1; sc[i * 3 + 1] = 0.85; sc[i * 3 + 2] = 0.5; }
     tick = (t, dt) => {
       for (const b of bursts) {
         const pos = b.p.geometry.attributes.position.array, col = b.p.geometry.attributes.color.array;
-        if (b.life <= 0 && !b.rocket) { b.cd -= dt; if (b.cd <= 0) b.rocket = { x: rnd(-R, R) * 0.6, z: rnd(-R, R) * 0.6, y: H * 0.6, top: H * rnd(1.8, 2.6), s: spr(0xffe0a0, H * 0.12) }, g.add(b.rocket.s); }
+        if (b.life <= 0 && !b.rocket) { b.cd -= dt; if (b.cd <= 0) b.rocket = { x: rnd(-R, R) * 0.6, z: rnd(-R, R) * 0.6, y: H * 0.6, top: H * rnd(1.1, 1.7), s: spr(0xffe0a0, H * 0.25) }, g.add(b.rocket.s); }
         if (b.rocket) {
           const r = b.rocket; r.y += dt * H * 2.2; r.s.position.set(r.x, r.y, r.z);
           if (r.y >= r.top) {
@@ -63,7 +63,7 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
           b.life -= dt; const k = Math.max(0, b.life / 1.6);
           for (let i = 0; i < N; i++) { b.v[i * 3 + 1] -= H * 0.5 * dt; b.v[i * 3] *= 0.985; b.v[i * 3 + 2] *= 0.985; pos[i * 3] += b.v[i * 3] * dt; pos[i * 3 + 1] += b.v[i * 3 + 1] * dt; pos[i * 3 + 2] += b.v[i * 3 + 2] * dt; }
           b.p.material.opacity = k; b.p.geometry.attributes.position.needsUpdate = true; b.p.geometry.attributes.color.needsUpdate = true;
-          if (b.life <= 0) { b.cd = rnd(0.3, 1.4); for (let i = 0; i < N * 3; i++) pos[i] = 0; b.p.material.opacity = 0; }
+          if (b.life <= 0) { b.cd = rnd(0.1, 0.8); for (let i = 0; i < N * 3; i++) pos[i] = 0; b.p.material.opacity = 0; }
         }
       }
       for (let i = 0; i < 40; i++) { const a = i * 2.4 + t * 0.6, rr = R * (0.9 + (i % 5) * 0.08); sp[i * 3] = Math.cos(a) * rr; sp[i * 3 + 1] = H * 0.2 + ((t * 0.4 + i * 0.37) % 1) * H * 0.9; sp[i * 3 + 2] = Math.sin(a) * rr; }
@@ -86,7 +86,7 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     const ct = new THREE.TextureLoader().load('assets/ui/crown.webp'); ct.colorSpace = THREE.SRGBColorSpace;
     const crown = new THREE.Sprite(new THREE.SpriteMaterial({ map: ct, transparent: true, depthWrite: false })); crown.scale.setScalar(H * 0.55); g.add(crown);
     const halo = spr(0xffd060, H * 1.1, 0.7); g.add(halo);
-    const N = 70, dust = points(N, 0xffd870, H * 0.06); g.add(dust); const dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, seeds = [];
+    const N = 70, dust = points(N, 0xffd870, H * 0.12); g.add(dust); const dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array, seeds = [];
     for (let i = 0; i < N; i++) { seeds.push([rnd(0, 6.28), rnd(0.2, 1.3), rnd(0, 1)]); dc[i * 3] = 1; dc[i * 3 + 1] = rnd(0.7, 0.9); dc[i * 3 + 2] = 0.35; }
     const L = new THREE.PointLight(0xffc040, 30, R * 5, 1.6); L.position.y = H * 1.2; g.add(L);
     tick = (t) => {
@@ -104,7 +104,7 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     g.add(bulbs);
     const glows = []; for (let i = 0; i < 12; i++) { const s = spr(PAL[i % 5], R * 0.45, 0.6); const k = i / 12, a = k * Math.PI * 2 * 5; s.position.set(Math.cos(a) * R * (0.95 - k * 0.25), 0.4 + k * H * 0.95, Math.sin(a) * R * (0.95 - k * 0.25)); g.add(s); glows.push(s); }
     const star = spr(0xffe060, H * 0.45, 1); star.position.y = H * 1.15; g.add(star);
-    const SN = 160, snow = points(SN, 0xffffff, H * 0.05, false); g.add(snow); const sp = snow.geometry.attributes.position.array, sc = snow.geometry.attributes.color.array;
+    const SN = 160, snow = points(SN, 0xffffff, H * 0.09, false); g.add(snow); const sp = snow.geometry.attributes.position.array, sc = snow.geometry.attributes.color.array;
     for (let i = 0; i < SN; i++) { sp[i * 3] = rnd(-R * 2.5, R * 2.5); sp[i * 3 + 1] = rnd(0, H * 2.2); sp[i * 3 + 2] = rnd(-R * 2.5, R * 2.5); sc[i * 3] = sc[i * 3 + 1] = sc[i * 3 + 2] = 1; }
     const L = new THREE.PointLight(0xff8a60, 18, R * 4, 1.6); L.position.y = H * 0.6; g.add(L);
     const addTree = lateModel('fx_xmas', (m) => { fitModel(m, H * 0.75); m.position.set(R * 1.25, 0, R * 0.7); g.add(m); });
@@ -124,13 +124,13 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       uniforms: { t: { value: 0 } },
       vertexShader: 'uniform float t; varying vec2 vUv; void main(){ vUv=uv; vec3 p=position; p.z+=sin(p.x*0.35+t*0.9)*1.6+sin(p.x*0.8-t*1.3)*0.6; gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.0); }',
-      fragmentShader: 'uniform float t; varying vec2 vUv; void main(){ float band=sin(vUv.x*18.0+t*1.5)*0.5+0.5; float f=smoothstep(0.0,0.25,vUv.y)*(1.0-smoothstep(0.55,1.0,vUv.y)); vec3 c=mix(vec3(0.2,1.0,0.6),vec3(0.65,0.3,1.0),vUv.y+sin(t*0.3+vUv.x*3.0)*0.2); gl_FragColor=vec4(c,(0.35+band*0.45)*f); }',
+      fragmentShader: 'uniform float t; varying vec2 vUv; void main(){ float band=sin(vUv.x*18.0+t*1.5)*0.5+0.5; float f=smoothstep(0.0,0.25,vUv.y)*(1.0-smoothstep(0.55,1.0,vUv.y)); vec3 c=mix(vec3(0.2,1.0,0.6),vec3(0.65,0.3,1.0),vUv.y+sin(t*0.3+vUv.x*3.0)*0.2); gl_FragColor=vec4(c,(0.18+band*0.3)*f); }',
     });
     const curtains = [];
-    for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(R * 4.2, H * 1.1, 48, 1), mat); m.position.set(0, H * (1.6 + k * 0.25), (k - 1) * R * 0.7); m.rotation.y = (k - 1) * 0.5; g.add(m); curtains.push(m); }
+    for (let k = 0; k < 3; k++) { const m = new THREE.Mesh(new THREE.PlaneGeometry(R * 3.4, H * 0.9, 48, 1), mat); m.position.set(0, H * (1.5 + k * 0.22), (k - 1) * R * 0.7); m.rotation.y = (k - 1) * 0.5; g.add(m); curtains.push(m); }
     const crysMat = new THREE.MeshStandardMaterial({ color: 0xbff4ff, emissive: 0x3ac8ff, emissiveIntensity: 1.2, roughness: 0.2, metalness: 0.1, transparent: true, opacity: 0.9 });
     const crys = []; for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(R * 0.16, 0), crysMat); m.scale.y = 1.8; g.add(m); crys.push(m); const s = spr(0x6ae8ff, R * 0.7, 0.5); m.add(s); }
-    const SN = 60, dust = points(SN, 0xc8fff0, H * 0.05); g.add(dust); const dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array;
+    const SN = 60, dust = points(SN, 0xc8fff0, H * 0.1); g.add(dust); const dp = dust.geometry.attributes.position.array, dc = dust.geometry.attributes.color.array;
     for (let i = 0; i < SN; i++) { dc[i * 3] = 0.6; dc[i * 3 + 1] = 1; dc[i * 3 + 2] = 0.9; }
     const L = new THREE.PointLight(0x5affc0, 20, R * 5, 1.6); L.position.y = H * 1.3; g.add(L);
     tick = (t) => {
@@ -144,7 +144,7 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     const N = 54, flames = [];
     for (let i = 0; i < N; i++) { const s = spr(i % 3 ? 0xff6a20 : 0xffc040, R * rnd(0.4, 0.75), 0.8); g.add(s); flames.push({ s, a: i / N * Math.PI * 2 * 3, o: i / N }); }
     const pillars = []; for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4, p = []; for (let j = 0; j < 5; j++) { const s = spr(j < 2 ? 0xffd060 : 0xff4a10, R * (0.55 - j * 0.07), 0.9); s.position.set(Math.cos(a) * R * 1.3, 0.4 + j * H * 0.14, Math.sin(a) * R * 1.3); g.add(s); p.push(s); } pillars.push(p); }
-    const EN = 90, emb = points(EN, 0xffffff, H * 0.05); g.add(emb); const ep = emb.geometry.attributes.position.array, ec = emb.geometry.attributes.color.array, es = [];
+    const EN = 90, emb = points(EN, 0xffffff, H * 0.11); g.add(emb); const ep = emb.geometry.attributes.position.array, ec = emb.geometry.attributes.color.array, es = [];
     for (let i = 0; i < EN; i++) { es.push([rnd(0, 6.28), rnd(0.3, 1.5), rnd(0, 1)]); ec[i * 3] = 1; ec[i * 3 + 1] = rnd(0.3, 0.7); ec[i * 3 + 2] = 0.1; }
     const L = new THREE.PointLight(0xff5a20, 40, R * 5, 1.6); L.position.y = H * 0.5; g.add(L);
     tick = (t) => {
@@ -163,7 +163,7 @@ export function createSkinFX(id, { R = 6, H = 10 } = {}) {
     const ringMat = new THREE.MeshBasicMaterial({ color: 0x5ad8ff, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
     const rings = [1.5, 1.15].map((k, i) => { const m = new THREE.Mesh(new THREE.TorusGeometry(R * k, R * 0.03, 6, 64), ringMat); m.rotation.x = Math.PI / 2; m.position.y = H * (0.25 + i * 0.75); g.add(m); return m; });
     const pad = new THREE.Mesh(new THREE.RingGeometry(R * 1.2, R * 1.45, 48).rotateX(-Math.PI / 2), ringMat); pad.position.y = 0.12; g.add(pad);
-    const SN = 80, stars = points(SN, 0xffffff, H * 0.05); g.add(stars); const sp = stars.geometry.attributes.position.array, sc = stars.geometry.attributes.color.array;
+    const SN = 80, stars = points(SN, 0xffffff, H * 0.1); g.add(stars); const sp = stars.geometry.attributes.position.array, sc = stars.geometry.attributes.color.array;
     for (let i = 0; i < SN; i++) { const a = rnd(0, 6.28), r = R * rnd(1, 2.2); sp[i * 3] = Math.cos(a) * r; sp[i * 3 + 1] = rnd(H * 0.3, H * 2.3); sp[i * 3 + 2] = Math.sin(a) * r; const c = new THREE.Color().setHSL(rnd(0.5, 0.7), 0.8, 0.75); sc[i * 3] = c.r; sc[i * 3 + 1] = c.g; sc[i * 3 + 2] = c.b; }
     const L = new THREE.PointLight(0x5ad8ff, 24, R * 5, 1.6); g.add(L);
     const hist = [];
