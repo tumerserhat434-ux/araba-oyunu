@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182146';
+import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182221';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -541,6 +541,9 @@ export const PYRAMIDS = (() => {
   }
   return out;
 })();
+// Demir Taht: Sv.5 piramidi en az 5 gündür elinde tutan ittifak savaş açabilir (350M can)
+export const THRONE_HOLD = 5 * 86400;
+export const THRONE_TARGET = { id: 'throne', pyr: true, throne: true, level: 6, name: 'Demir Taht', lord: 'Taht Muhafızları', th: 30, power: 350e6, r: 62, mapX: THRONE.x, mapY: THRONE.y, troops: {}, tower: 0, res: {}, shieldUntil: 0 };
 export const nearPyramid = (x, y, pad = 0) => PYRAMIDS.some((p) => Math.hypot(x - p.mapX, y - p.mapY) < p.r + pad);
 export const spotFree = (x, y, r = 24) => x > 30 && x < MAP_SIZE - 30 && y > 30 && y < MAP_SIZE - 30 && !nearThrone(x, y, 12) && !nearPyramid(x, y, 14) && occupied().every(([a, b]) => Math.hypot(a - x, b - y) > r);
 export const TELEPORT_COST = 200;
@@ -687,19 +690,31 @@ export function pyrState(p) {
   const d = ONLINE.pyr[p.id] || {}, stale = !d.lastHit || Date.now() - d.lastHit > PYR_RESET * 1000;
   return { owner: d.owner || null, ownedAt: d.ownedAt || 0, hp: stale ? p.power : Math.max(0, d.hp ?? p.power), dmg: stale ? {} : d.dmg || {}, names: d.names || {}, lastHit: d.lastHit || 0 };
 }
+// taht kalkanı: hiçbir ittifak Sv.5 piramidi 5 gündür tutmuyorsa kalkan herkese karşı açık
+export function throneShield() {
+  const nowMs = Date.now();
+  return !PYRAMIDS.some((q) => { if (q.level !== 5) return false; const st = pyrState(q); return st.owner && st.ownedAt && nowMs - st.ownedAt >= THRONE_HOLD * 1000; });
+}
 // ittifakımın bu piramide saldırma hakkı var mı?
 export function pyrAccess(p) {
   if (!S.alliance) return { ok: false, why: 'Piramitler için bir ittifaka katılmalısın' };
   const st = pyrState(p);
   if (st.owner?.aid === S.alliance.id) return { ok: false, why: 'Bu piramit zaten ittifakının', own: true };
   if (p.level === 1) return { ok: true };
+  if (p.throne) {
+    const mine = PYRAMIDS.filter((q) => q.level === 5).map((q) => pyrState(q)).filter((q) => q.owner?.aid === S.alliance.id);
+    if (!mine.length) return { ok: false, why: 'Demir Taht\'a yalnızca Sv.5 piramide sahip ittifak saldırabilir' };
+    const wait = Math.min(...mine.map((q) => q.ownedAt)) + THRONE_HOLD * 1000 - Date.now();
+    if (wait > 0) return { ok: false, why: `Taht kalkanı: Sv.5 piramit 5 gündür sizde olmalı • ${fmtTime(wait / 1000)} kaldı`, wait };
+    return { ok: true };
+  }
   const nowMs = Date.now(), held = PYRAMIDS.filter((q) => q.level === p.level - 1).map((q) => pyrState(q)).filter((q) => q.owner?.aid === S.alliance.id);
   if (!held.length) return { ok: false, why: `Önce ittifakın bir Sv.${p.level - 1} piramide sahip olmalı` };
   const best = Math.min(...held.map((q) => q.ownedAt)), wait = best + PYR_HOLD * 1000 - nowMs;
   if (wait > 0) return { ok: false, why: `Sv.${p.level - 1} piramit 2 gündür sizde olmalı • ${fmtTime(wait / 1000)} kaldı`, wait };
   return { ok: true };
 }
-export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || PYRAMIDS.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || (S.giants || []).find((q) => q.id === id) || ONLINE.rallyGiants.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
+export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || PYRAMIDS.find((q) => q.id === id) || (id === 'throne' ? THRONE_TARGET : null) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || (S.giants || []).find((q) => q.id === id) || ONLINE.rallyGiants.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
 // Başka sunucunun bilgisayar krallıkları (görüntülenirken üretilir, kalıcı değil)
 export function foreignBots(server) {
   let seed = server * 9973; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);

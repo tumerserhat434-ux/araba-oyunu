@@ -2,27 +2,27 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611182146';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182146';
-import * as ASSETS from './assets.js?v=2611182146';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182146';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid } from './online.js?v=2611182146';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182146';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182146';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182146';
-import * as G from './state.js?v=2611182146';
-import { getAvatar } from './scenes.js?v=2611182146';
-import { initCampaign, openCampaign } from './campui.js?v=2611182146';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182146';
-import { campIdx, stageLabel } from './campaign.js?v=2611182146';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182146';
-import { createGrass } from './grass.js?v=2611182146';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182146';
-import { initTutorial, tutEvent } from './tut.js?v=2611182146';
-import { icon } from './icons.js?v=2611182146';
-import { paintCity } from './terrain.js?v=2611182146';
-import { createLife, createVillager, animVillager } from './life.js?v=2611182146';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182146';
+import * as BLD from './buildings.js?v=2611182221';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182221';
+import * as ASSETS from './assets.js?v=2611182221';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182221';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm } from './online.js?v=2611182221';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182221';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182221';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182221';
+import * as G from './state.js?v=2611182221';
+import { getAvatar } from './scenes.js?v=2611182221';
+import { initCampaign, openCampaign } from './campui.js?v=2611182221';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182221';
+import { campIdx, stageLabel } from './campaign.js?v=2611182221';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182221';
+import { createGrass } from './grass.js?v=2611182221';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182221';
+import { initTutorial, tutEvent } from './tut.js?v=2611182221';
+import { icon } from './icons.js?v=2611182221';
+import { paintCity } from './terrain.js?v=2611182221';
+import { createLife, createVillager, animVillager } from './life.js?v=2611182221';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182221';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -866,6 +866,7 @@ function renderModalInner() {
   if (k === 'scout') return openModal(scoutUI(scoutRep));
   if (k === 'speed') return openModal(speedUI());
   if (k === 'offers') return openModal(offersUI());
+  if (k === 'chat') return openModal(chatUI());
   if (k === 'alliance') return openModal(allianceUI());
 }
 const allEnemies = () => G.S.enemies.concat(G.ONLINE.enemies);
@@ -1357,7 +1358,7 @@ async function doRally() {
   try {
     if (R.mode === 'create') {
       const g = G.findEnemy(R.gid); if (!g) return toast('Hedef bulunamadı', true);
-      if (g.pyr) { const acc = G.pyrAccess(g); if (!acc.ok) return toast('🔺 ' + acc.why, true); }
+      if (g.pyr) { const acc = G.pyrAccess(g); if (!acc.ok) return toast((g.throne ? '👑 ' : '🔺 ') + acc.why, true); }
       else if (!G.giantUnlocked(g.level)) return toast(`🔒 Önce Sv.${g.level - 1} devi kesmelisiniz`, true);
       const endsAt = Date.now() + G.RALLY_WAIT * 1000, giant = { id: g.id, level: g.level, power: g.pyr ? G.pyrState(g).hp : g.power, mapX: Math.round(g.mapX), mapY: Math.round(g.mapY), ...(g.pyr ? { pyr: true } : {}) };
       const r = await createRally(G.S.alliance.id, { leaderName: G.S.name, giant, lx: G.S.mapX, ly: G.S.mapY, created: Date.now(), endsAt, members: { [online.uid]: me } });
@@ -1366,7 +1367,7 @@ async function doRally() {
       const sm = G.startRallyMarch({ rid: r.id, aid: G.S.alliance.id, leader: online.uid, giant, lx: G.S.mapX, ly: G.S.mapY, endsAt: endsAt / 1000 }, tr, heroes);
       if (!sm.ok) return toast(sm.why, true);
       toast(`📯 Ralli açıldı! İttifakın ${G.RALLY_WAIT / 60} dk içinde katılabilir`); sfx('horn');
-      sendChat(G.S.alliance.id, g.pyr ? `📯 🔺 Piramit Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli` : `📯 Dev Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli`, me);
+      sendChat(G.S.alliance.id, g.throne ? `📯 👑 DEMİR TAHT için ralli açtım! Herkes katılsın: İttifak › Ralli` : g.pyr ? `📯 🔺 Piramit Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli` : `📯 Dev Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli`, me);
     } else {
       const r = R.r, jr = await joinRally(G.S.alliance.id, r.id, me);
       if (!jr.ok) return toast(jr.why, true);
@@ -1535,6 +1536,7 @@ $('modalBox').addEventListener('input', (e) => {
 });
 $('modalBox').addEventListener('click', (e) => {
   const wt = e.target.closest('[data-wtab]');
+  if (wt && modalKind === 'chat') { CH.tab = wt.dataset.wtab; if (CH.tab !== 'friends' && CH.dmUnsub) { CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; } chatMarkSeen(); renderModal(); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; chatUpdate('tab'); return; }
   if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; else if (modalKind === 'alliance') { if (v !== 'chat' && v !== 'rally') alStopChat(); else if (AL.tab !== v) alStopChat(); AL.tab = v; AL.err = ''; if (v === 'find') alRefresh(); } return renderModal(); }
   const gq = e.target.closest('[data-goq]');
   if (gq) { const v = gq.dataset.goq; const q = QUESTS.find((x) => x.id === v); closeModal();
@@ -1573,6 +1575,14 @@ $('modalBox').addEventListener('click', (e) => {
   if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
   const ta = e.target.closest('[data-tall]');
   if (ta) { const m2 = ta.dataset.tall; for (const t in TROOPS) atk.troops[t] = m2 === 'all' ? G.S.troops[t] : m2 === 'half' ? Math.floor(G.S.troops[t] / 2) : 0; return renderModal(); }
+  if (modalKind === 'chat') {
+    if (e.target.closest('[data-chsend]')) return chatSend();
+    if (e.target.closest('[data-chadd]')) return chatAddById();
+    if (e.target.closest('[data-chcopy]')) { const id = shortId(online.uid); navigator.clipboard?.writeText(id).then(() => toast('📋 ID kopyalandı: ' + id), () => toast('ID: ' + id)); return; }
+    if (e.target.closest('[data-chback]')) { if (CH.dmUnsub) CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; return renderModal(); }
+    const fb = e.target.closest('[data-chfriend]'); if (fb) { const f = friendOf(fb.dataset.chfriend); if (f) { sfx('click'); openDm(f); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; } return; }
+    const au = e.target.closest('[data-chaddu]'); if (au) { const uid = au.dataset.chaddu; if (friendOf(uid)) return toast('Zaten arkadaşın'); addFriendLocal({ uid, name: au.dataset.chname || 'Oyuncu' }); sfx('reveal'); return toast(`🤝 ${au.dataset.chname} arkadaş listene eklendi`); }
+  }
   if (modalKind === 'alliance') {
     const em = e.target.closest('[data-alem]'), co = e.target.closest('[data-alcol]');
     const keepForm = () => { const f = AL.form; f.name = $('alName')?.value ?? f.name; f.tag = ($('alTag')?.value ?? f.tag).toUpperCase().replace(/[^A-Z0-9ÇĞİÖŞÜ]/g, ''); f.desc = $('alDesc')?.value ?? f.desc; f.open = $('alOpen') ? $('alOpen').checked : f.open; };
@@ -1754,7 +1764,7 @@ const frame = () => new Promise((r) => setTimeout(r, 16));
 //  Çevrimiçi: giriş, bulut kayıt, rakipler, gelen saldırılar
 // ---------------------------------------------------------------------
 let lastSync = 0, syncTimer = 0;
-async function syncNow() { if (!online.ready) return false; lastSync = Date.now(); return saveCloud(G.exportSave(), G.publicProfile()); }
+async function syncNow() { if (!online.ready) return false; lastSync = Date.now(); return saveCloud(G.exportSave(), { ...G.publicProfile(), pid: shortId(online.uid) }); }
 // ---- Mısır piramitleri: sunucu durumu ve vuruşlar ----
 let pyrUnsub = null, pyrServer = 0;
 function pyrWatch() {
@@ -1763,17 +1773,110 @@ function pyrWatch() {
   pyrUnsub = watchPyramids(G.S.server, (o) => { if (!o) return; G.ONLINE.pyr = o; refreshPyramids(); });
 }
 async function pyrApply(ev, data) {
-  const q = G.PYRAMIDS.find((x) => x.id === data.pid), rep = data.rep;
+  const q = data.pid === 'throne' ? G.THRONE_TARGET : G.PYRAMIDS.find((x) => x.id === data.pid), rep = data.rep;
   if (ev === 'pyrRally' && data.m.leader !== online.uid) { toast(`🔺 Ralli Piramit Sv.${data.level}'e ⚔ ${G.fmt(data.dmg)} hasar verdi`); $('repDot').classList.remove('hidden'); return; }
   if (!q || !G.S.alliance || !online.ready) { rep.why = 'Sunucuya bağlı değilsin, hasar işlenemedi'; G.save(); toast('🔺 ' + rep.why, true); return; }
   const a = G.S.alliance, r = await hitPyramid(G.S.server, q.id, q.power, { aid: a.id, tag: a.tag, name: a.name, color: a.color ?? 1 }, data.dmg, G.PYR_RESET * 1000);
   if (!r.ok) { rep.why = r.why; G.save(); toast('🔺 ' + r.why, true); return; }
   rep.hp = r.hp; rep.captured = !!(r.captured && r.captured.aid === a.id); if (r.captured && !rep.captured) rep.why = `[${r.captured.tag}] en çok hasarı verdiği için piramidi aldı`;
   G.save(); $('repDot').classList.remove('hidden');
-  if (rep.captured) { sfx('win'); toast(`🏆 [${a.tag}] Piramit Sv.${q.level}'i ele geçirdi!`); sendChat(a.id, `🏆 🔺 Piramit Sv.${q.level} artık [${a.tag}] ittifakının!`, G.myMember()); }
-  else if (r.captured) { sfx('lose'); toast(`🔺 Piramit Sv.${q.level}'i [${r.captured.tag}] aldı (en çok hasar onlarda)`, true); }
-  else toast(`🔺 Piramit Sv.${q.level}'e ⚔ ${G.fmt(data.dmg)} hasar! Kalan can ${G.fmt(r.hp)}`);
+  const nm = q.throne ? 'DEMİR TAHT' : `Piramit Sv.${q.level}`;
+  if (rep.captured) { sfx('win'); toast(`🏆 [${a.tag}] ${nm}'i ele geçirdi!`); sendChat(a.id, `🏆 ${q.throne ? '👑' : '🔺'} ${nm} artık [${a.tag}] ittifakının!`, G.myMember()); }
+  else if (r.captured) { sfx('lose'); toast(`${nm}'i [${r.captured.tag}] aldı (en çok hasar onlarda)`, true); }
+  else toast(`${q.throne ? '👑' : '🔺'} ${nm}'e ⚔ ${G.fmt(data.dmg)} hasar! Kalan can ${G.fmt(r.hp)}`);
 }
+// =====================================================================
+//  Sohbet: Dünya (tüm sunucular), Sunucu, Arkadaşlar (oyuncu kimliği ile)
+// =====================================================================
+const CH = { tab: 'global', global: null, server: null, dmList: [], dm: null, dmMsgs: null, dmUnsub: null, started: false, err: '', busy: false };
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function chatSeen() { G.S.chatSeen ||= { global: 0, server: 0, dm: {} }; G.S.chatSeen.dm ||= {}; return G.S.chatSeen; }
+function chatStart() {
+  if (CH.started || !online.ready) return; CH.started = true;
+  watchWorldChat('global', 0, (m, e) => { if (m) CH.global = m; else CH.err = e; chatUpdate('global'); });
+  watchWorldChat('server', G.S.server || 1, (m, e) => { if (m) CH.server = m; else CH.err = e; chatUpdate('server'); });
+  watchDmList((l, e) => { if (l) CH.dmList = l; else CH.err = e; for (const d of CH.dmList) { const fu = d.members.find((u) => u !== online.uid); if (fu && !friendOf(fu)) addFriendLocal({ uid: fu, name: d.names?.[fu] || 'Oyuncu' }); } chatUpdate('dm'); });
+  $('chatBar').classList.remove('hidden');
+}
+const friendOf = (uid) => (G.S.friends || []).find((f) => f.uid === uid);
+function addFriendLocal(f) { G.S.friends ||= []; if (!friendOf(f.uid)) { G.S.friends.push({ uid: f.uid, name: f.name, pid: f.pid || '', hero: f.hero || null, frame: f.frame || null }); G.save(); } }
+const dmUnread = () => CH.dmList.filter((d) => d.lastBy && d.lastBy !== online.uid && (d.lastAt || 0) > (chatSeen().dm[d.id] || 0)).length;
+function chatUnread() { const s = chatSeen(), mine = (l) => (l || []).filter((m) => m.uid !== online.uid && m.t > 0); return { global: mine(CH.global).filter((m) => m.t > s.global).length, server: mine(CH.server).filter((m) => m.t > s.server).length, dm: dmUnread() }; }
+function chatUpdate(src) {
+  // şerit: en yeni mesaj
+  const cands = [];
+  const lg = CH.global?.[CH.global.length - 1], ls = CH.server?.[CH.server.length - 1], ld = CH.dmList[0];
+  if (lg) cands.push({ t: lg.t, html: `<b class="cb-k g">Dünya</b> <u>${esc(lg.name)}:</u> ${esc(lg.text)}` });
+  if (ls) cands.push({ t: ls.t, html: `<b class="cb-k s">Sunucu</b> <u>${esc(ls.name)}:</u> ${esc(ls.text)}` });
+  if (ld && ld.lastAt) cands.push({ t: ld.lastAt, html: `<b class="cb-k f">Arkadaş</b> <u>${esc(ld.names?.[ld.lastBy] || '')}:</u> ${esc(ld.last)}` });
+  cands.sort((a, b) => b.t - a.t);
+  $('chatBarTxt').innerHTML = cands[0]?.html || 'Sohbete katıl: dünya, sunucu ve arkadaşlar';
+  const u = chatUnread(); $('chatDot').classList.toggle('hidden', !(u.global + u.server + u.dm));
+  if (modalKind === 'chat' && $('modal').classList.contains('open')) chatRerender(src);
+}
+function chatRerender(src) {
+  const inp = $('chIn'), v = inp?.value, add = $('chAddIn')?.value;
+  const box = $('chList'), atBottom = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 60;
+  renderModal();
+  if (v && $('chIn')) $('chIn').value = v; if (add && $('chAddIn')) $('chAddIn').value = add;
+  const nb = $('chList'); if (nb && (atBottom || src === 'open')) nb.scrollTop = nb.scrollHeight;
+}
+function chatMarkSeen() {
+  const s = chatSeen(), now = Date.now();
+  if (CH.tab === 'global') s.global = now; else if (CH.tab === 'server') s.server = now; else if (CH.dm) s.dm[pairId(online.uid, CH.dm.uid)] = now;
+  G.save();
+}
+function openChat(tab) { CH.tab = tab || CH.tab; modalKind = 'chat'; setNav(''); chatMarkSeen(); renderModal(); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; chatUpdate('open'); }
+$('chatBar').addEventListener('click', () => { sfx('open'); closeSheet(); openChat(); });
+function chatMsgs(list, opts = {}) {
+  const tm = (t) => { const d = new Date(t), today = new Date().toDateString() === d.toDateString(); return today ? d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }); };
+  if (list === null) return '<div class="al-off">Yükleniyor…</div>';
+  if (!list.length) return `<div class="al-off">${opts.empty || 'Henüz mesaj yok. İlk mesajı sen yaz! 👋'}</div>`;
+  return list.map((m) => `<div class="al-msg ${m.uid === online.uid ? 'me' : ''}">${frameHtml(m.hero, m.frame, 32)}<div class="al-bub"><b>${m.tag ? `<em class="ch-tag">[${esc(m.tag)}]</em> ` : ''}${esc(m.name)}${opts.server && m.server ? ` <i class="ch-srv">#${m.server}</i>` : ''} <small>${tm(m.t)}</small>${m.uid !== online.uid && !opts.dm ? `<button class="ch-add" data-chaddu="${m.uid}" data-chname="${esc(m.name)}" title="Arkadaş ekle">＋</button>` : ''}</b><span>${esc(m.text)}</span></div></div>`).join('');
+}
+function chatUI() {
+  const u = chatUnread();
+  const H = (b) => head('Sohbet', 'nav_quest', [{ id: 'global', label: 'Dünya', icon: 'nav_world', dot: u.global > 0 && CH.tab !== 'global' }, { id: 'server', label: 'Sunucu', icon: 'ic_castle', dot: u.server > 0 && CH.tab !== 'server' }, { id: 'friends', label: 'Arkadaş', icon: 'nav_heroes', dot: u.dm > 0 }], CH.tab) + b;
+  if (!online.ready) return H('<div class="al-off">🌐 Sohbet için çevrimiçi olmalısın.</div>');
+  const input = (ph) => `<div class="al-send"><input id="chIn" maxlength="200" placeholder="${ph}" autocomplete="off"><button class="w-btn gold" data-chsend>Gönder</button></div>`;
+  if (CH.tab === 'global') return H(`<div class="ch-h">🌍 <b>Dünya sohbeti</b><small>Tüm sunuculardaki oyuncular</small></div><div class="al-chat ch-list" id="chList">${chatMsgs(CH.global, { server: true })}</div>${input('Dünyaya yaz…')}`);
+  if (CH.tab === 'server') return H(`<div class="ch-h">🏰 <b>Sunucu #${G.S.server || 1} sohbeti</b><small>Yalnızca bu sunucudaki oyuncular</small></div><div class="al-chat ch-list" id="chList">${chatMsgs(CH.server)}</div>${input('Sunucuya yaz…')}`);
+  // arkadaşlar
+  if (CH.dm) {
+    const f = CH.dm;
+    return H(`<div class="ch-dmh"><button class="w-btn" data-chback>‹ Geri</button>${frameHtml(f.hero, f.frame, 34)}<div><b>${esc(f.name)}</b><small>ID: ${esc(f.pid || '—')}</small></div></div>
+      <div class="al-chat ch-list" id="chList">${chatMsgs(CH.dmMsgs, { dm: true, empty: 'Henüz mesaj yok. Selam ver! 👋' })}</div>${input(`${esc(f.name)} kişisine yaz…`)}`);
+  }
+  const fr = (G.S.friends || []).map((f) => { const d = CH.dmList.find((x) => x.id === pairId(online.uid, f.uid)), unread = d && d.lastBy && d.lastBy !== online.uid && (d.lastAt || 0) > (chatSeen().dm[d.id] || 0); return { f, d, unread }; }).sort((a, b) => (b.d?.lastAt || 0) - (a.d?.lastAt || 0));
+  return H(`<div class="ch-me"><div><small>Senin oyuncu ID'n</small><b id="chMyId">${shortId(online.uid)}</b></div><button class="w-btn" data-chcopy>📋 Kopyala</button></div>
+    <div class="ch-addrow"><input id="chAddIn" maxlength="8" placeholder="Oyuncu ID'si (8 hane)" autocomplete="off" style="text-transform:uppercase"><button class="w-btn green" data-chadd ${CH.busy ? 'disabled' : ''}>＋ Ekle</button></div>
+    ${CH.err ? `<div class="why">${esc(CH.err)}</div>` : ''}
+    <h4 class="rl-h">Arkadaşların (${fr.length})</h4>
+    ${fr.length ? `<div class="ch-fr">${fr.map(({ f, d, unread }) => `<button class="ch-frow ${unread ? 'new' : ''}" data-chfriend="${f.uid}">${frameHtml(f.hero, f.frame, 40)}<div><b>${esc(f.name)}</b><small>${d?.last ? esc((d.lastBy === online.uid ? 'Sen: ' : '') + d.last) : 'ID: ' + esc(f.pid || '—')}</small></div>${unread ? '<em class="ch-new">Yeni</em>' : '<i>›</i>'}</button>`).join('')}</div>` : '<div class="al-off">Henüz arkadaşın yok. Bir oyuncunun ID\'sini yazıp ekle ya da sohbette adının yanındaki ＋ butonuna bas.</div>'}`);
+}
+function openDm(f) {
+  CH.dm = f; CH.dmMsgs = null; if (CH.dmUnsub) CH.dmUnsub();
+  CH.dmUnsub = watchDm(pairId(online.uid, f.uid), (m, e) => { if (m) CH.dmMsgs = m; else CH.err = e; if (CH.dm === f) { chatMarkSeen(); chatRerender('dm'); } });
+  chatMarkSeen(); renderModal();
+}
+async function chatSend() {
+  const inp = $('chIn'), t = inp?.value.trim(); if (!t) return; inp.value = '';
+  const me = { ...G.myMember(), tag: G.S.alliance?.tag || null };
+  const r = CH.tab === 'friends' && CH.dm ? await sendDm(CH.dm, t, me) : await sendWorldChat(CH.tab === 'global' ? 'global' : 'server', G.S.server || 1, t, me);
+  if (!r.ok) { toast(r.why, true); if ($('chIn')) $('chIn').value = t; }
+}
+async function chatAddById() {
+  const id = ($('chAddIn')?.value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (id.length !== 8) return toast('Oyuncu ID\'si 8 hane olmalı', true);
+  if (id === shortId(online.uid)) return toast('Kendini ekleyemezsin 🙂', true);
+  CH.busy = true; renderModal();
+  const p = await findPlayerById(id); CH.busy = false;
+  if (!p) { toast('Bu ID ile oyuncu bulunamadı', true); return renderModal(); }
+  if (friendOf(p.uid)) { toast(`${p.name} zaten arkadaşın`); return renderModal(); }
+  addFriendLocal({ uid: p.uid, name: p.name || 'Oyuncu', pid: id, hero: p.hero?.id || null, frame: p.frame || null }); sfx('reveal'); toast(`🤝 ${p.name} arkadaş listene eklendi`);
+  if ($('chAddIn')) $('chAddIn').value = ''; renderModal();
+}
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'chIn') chatSend(); if (e.key === 'Enter' && e.target.id === 'chAddIn') chatAddById(); });
 function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 3000); }
 async function refreshRivals(force) {
   if (!online.ready || (!force && Date.now() - G.ONLINE.rivalsAt < 90000)) return;
@@ -1807,7 +1910,7 @@ async function startOnline() {
   let cTh = 0; try { cTh = JSON.parse(cloud?.data || '{}').buildings?.townhall?.level || 0; } catch (e) { /* bozuk */ }
   if (cloud && (fresh ? cTh > G.thLevel() : cloud.updated > G.S.lastSeen * 1000 + 120000)) { if (await adoptCloud(cloud, true)) return; }
   if (!G.S.server) { const n = await assignServer(); G.placeOnServer(n); toast(`🌐 Sunucu #${n}'e katıldın!`); }
-  pyrWatch();
+  pyrWatch(); chatStart();
   await syncNow();
   processInbox(); refreshRivals(true);
   if (G.S.alliance) alRefresh(); // üyeliği doğrula, gücü güncelle

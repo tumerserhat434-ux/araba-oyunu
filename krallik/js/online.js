@@ -293,3 +293,40 @@ export async function hitPyramid(server, pid, maxHp, ally, dmg, resetMs) {
     });
   } catch (e) { return { ok: false, why: errOf(e) }; }
 }
+
+// ---- Sohbet: dünya (tüm sunucular), sunucu ve arkadaş (özel) ----
+// chat_global/{mid}, servers/{s}/chat/{mid}: { uid, name, hero, frame, tag, server, text, t }
+// dms/{a_b}: { members: [a, b], names: { uid: ad }, last, lastAt, lastBy } ; dms/{a_b}/msgs/{mid}: { uid, name, text, t }
+const chatCol = (kind, server) => (kind === 'global' ? FS.collection(db, 'chat_global') : FS.collection(db, 'servers', String(server), 'chat'));
+export function watchWorldChat(kind, server, cb) {
+  if (!ready) return () => {};
+  try { return FS.onSnapshot(FS.query(chatCol(kind, server), FS.orderBy('t', 'desc'), FS.limit(40)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).reverse()), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}
+export async function sendWorldChat(kind, server, text, me) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try { await FS.addDoc(chatCol(kind, server), { uid: user.uid, name: me.name, hero: me.hero || null, frame: me.frame || null, tag: me.tag || null, server: server || 1, text: String(text).slice(0, 200), t: Date.now() }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+// kısa oyuncu kimliği (uid'den türetilir, profilde saklanır)
+export function shortId(uid = user?.uid) { if (!uid) return ''; let h = 2166136261; for (const c of uid) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } let h2 = 5381; for (const c of uid) h2 = ((h2 * 33) ^ c.charCodeAt(0)) >>> 0; return (h.toString(36) + h2.toString(36)).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8).padEnd(8, '7'); }
+export async function findPlayerById(pid) {
+  if (!ready) return null;
+  try { const s = await FS.getDocs(FS.query(FS.collection(db, 'players'), FS.where('pid', '==', String(pid).toUpperCase().trim()), FS.limit(1))); if (s.empty) return null; const d = s.docs[0]; return { uid: d.id, ...d.data() }; } catch (e) { lastErr = errOf(e); return null; }
+}
+export const pairId = (a, b) => [a, b].sort().join('_');
+export function watchDmList(cb) {
+  if (!ready) return () => {};
+  try { return FS.onSnapshot(FS.query(FS.collection(db, 'dms'), FS.where('members', 'array-contains', user.uid), FS.limit(60)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((x, y) => (y.lastAt || 0) - (x.lastAt || 0))), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}
+export function watchDm(pid, cb) {
+  if (!ready) return () => {};
+  try { return FS.onSnapshot(FS.query(FS.collection(db, 'dms', pid, 'msgs'), FS.orderBy('t', 'desc'), FS.limit(50)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).reverse()), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}
+export async function sendDm(friend, text, me) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try {
+    const id = pairId(user.uid, friend.uid), t = Date.now(), msg = String(text).slice(0, 300);
+    await FS.setDoc(FS.doc(db, 'dms', id), { members: [user.uid, friend.uid].sort(), names: { [user.uid]: me.name, [friend.uid]: friend.name || 'Oyuncu' }, last: msg.slice(0, 80), lastAt: t, lastBy: user.uid }, { merge: true });
+    await FS.addDoc(FS.collection(db, 'dms', id, 'msgs'), { uid: user.uid, name: me.name, text: msg, t });
+    return { ok: true };
+  } catch (e) { return { ok: false, why: errOf(e) }; }
+}

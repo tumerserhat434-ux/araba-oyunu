@@ -558,6 +558,11 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Sunucu:** Firestore `servers/{server}/pyramids/{pid}` { owner{aid,tag,name,color}, ownedAt, hp, dmg{aid}, names, lastHit }; `online.js → watchPyramids`, `hitPyramid` (transaction). Kural basit (alanlar sınırlı); hasar miktarı istemcide hesaplandığı için hileye açık.
 - Test: sahte `online.js` ile (pyramid izleme/vuruş taklidi).
 
+### 5.34 Demir Taht savaşı, sohbet ve arkadaşlar, yeni zemin
+- **Demir Taht:** `state.js → THRONE_TARGET` (id `throne`, 350M can, piramit mekaniğiyle aynı: `servers/{s}/pyramids/throne`). Saldırı hakkı: ittifak bir Sv.5 piramidi en az 5 gündür (`THRONE_HOLD`) tutmalı (`pyrAccess`). `throneShield()`: hiçbir ittifak Sv.5'i 5 gündür tutmuyorsa haritada tahtın çevresinde mavi kalkan kubbesi. Sahibi olunca taht bölgesi ittifak renginde ve üstünde [ETİKET]. Firestore kuralında can sınırı 400M.
+- **Sohbet (`main.js → CH`, `chatUI`):** şehirde ve dünya haritasında altta ince `#chatBar` (en son mesaj + okunmamış noktası; `body[data-scene]` ile savaş/çağırmada gizli). Sekmeler: Dünya (`chat_global`), Sunucu (`servers/{s}/chat`), Arkadaş (`dms/{a_b}` + `msgs`). Oyuncu kimliği `online.js → shortId(uid)` (8 hane), profil kaydına `pid` olarak yazılır; `findPlayerById` ile ID'den ekleme; sohbetteki ＋ ile de eklenir. Arkadaş listesi yerelde `S.friends`; gelen özel mesajlar listeye kendiliğinden eklenir. Okunma `S.chatSeen`.
+- **Zemin:** eski bulanık 2048 boyalı doku yerine `worldmap.js → groundMaterial()`: Higgsfield ile üretilen dikişsiz çim/toprak/kum dokuları (`assets/ui/gt_*.webp`, kenarları kaydırmalı karışımla dikişsiz yapıldı) ~90 kez tekrar eder; 1024 karışım haritası (R yol/toprak, G piramit kumu, B taht meydanı) ve 256 büyük ölçek leke haritası ile shader'da (onBeforeCompile) karıştırılır. Yollar yalnızca tahta yakın şehirlerden tahta çizilir. 1400 küçük çalı.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

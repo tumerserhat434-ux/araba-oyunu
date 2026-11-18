@@ -8,13 +8,13 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611182146';
-import { createSkinFX, SKINS } from './skins.js?v=2611182146';
-import * as BLD from './buildings.js?v=2611182146';
-import * as G from './state.js?v=2611182146';
-import { SPEEDUPS } from './data.js?v=2611182146';
-import { createSoldier, animateUnit } from './units.js?v=2611182146';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611182146';
+import * as A from './assets.js?v=2611182221';
+import { createSkinFX, SKINS } from './skins.js?v=2611182221';
+import * as BLD from './buildings.js?v=2611182221';
+import * as G from './state.js?v=2611182221';
+import { SPEEDUPS } from './data.js?v=2611182221';
+import { createSoldier, animateUnit } from './units.js?v=2611182221';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611182221';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -113,6 +113,80 @@ function paintGround(list, lakes, seed) {
   });
 }
 
+// ---------------------------------------------------------------------
+// Zemin: keskin, tekrar eden çim/toprak/kum dokuları + karışım haritası (splat)
+//  - splat (R: toprak/yol, G: kum, B: taş meydan) haritadaki yerlerini belirler
+//  - macro: büyük ölçekli açık/koyu lekeler (doğallık)
+// ---------------------------------------------------------------------
+const GT = {};
+function groundTex(name) {
+  if (GT[name]) return GT[name];
+  const t = new THREE.TextureLoader().load('assets/ui/gt_' + name + '.webp');
+  t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  return (GT[name] = t);
+}
+function paintSplat(list, lakes, seed) {
+  const N = 1024, k = N / MAP;
+  let sd = seed; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  const splat = canvasTex(N, N, (x) => {
+    x.fillStyle = '#000'; x.fillRect(0, 0, N, N);
+    x.globalCompositeOperation = 'lighter';
+    // toprak lekeleri (doğallık)
+    for (let i = 0; i < 90; i++) { const cx = rnd() * N, cy = rnd() * N, r = (8 + rnd() * 26) * k * 2; const g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, 'rgba(150,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); }
+    // yollar: her şehirden tahta ve en yakın komşuya
+    const road = (ax, ay, bx, by, w) => {
+      const mx = (ax + bx) / 2 + (rnd() - 0.5) * 70, my = (ay + by) / 2 + (rnd() - 0.5) * 70;
+      x.strokeStyle = 'rgba(255,0,0,1)'; x.lineWidth = w * k; x.lineCap = 'round'; x.beginPath(); x.moveTo(ax * k, ay * k); x.quadraticCurveTo(mx * k, my * k, bx * k, by * k); x.stroke();
+    };
+    const pts = list.map((c) => [c.mapX, c.mapY]);
+    pts.forEach((p, i) => {
+      const nn = pts.map((q, j) => [Math.hypot(q[0] - p[0], q[1] - p[1]), j]).filter((d) => d[1] !== i).sort((a, b) => a[0] - b[0]);
+      nn.slice(0, 1).forEach(([, j]) => road(p[0], p[1], pts[j][0], pts[j][1], 5));
+      const d = Math.hypot(p[0] - TH.x, p[1] - TH.y); if (d < 420) { const a = Math.atan2(p[1] - TH.y, p[0] - TH.x); road(p[0], p[1], TH.x + Math.cos(a) * TH.r, TH.y + Math.sin(a) * TH.r, 5); }
+    });
+    // şehir meydanları ve göl kıyıları
+    for (const c of list) { const g = x.createRadialGradient(c.mapX * k, c.mapY * k, 0, c.mapX * k, c.mapY * k, 17 * k); g.addColorStop(0, 'rgba(255,0,0,1)'); g.addColorStop(0.7, 'rgba(200,0,0,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.mapX * k, c.mapY * k, 17 * k, 0, 7); x.fill(); }
+    for (const l of lakes) { x.fillStyle = 'rgba(255,0,0,1)'; x.beginPath(); x.ellipse(l.x * k, l.z * k, (l.r + 5) * k, (l.r * 0.7 + 5) * k, l.a, 0, 7); x.fill(); }
+    // piramit çölleri (G)
+    for (const q of G.PYRAMIDS) { const R2 = q.r * 2.4 * k, g = x.createRadialGradient(q.mapX * k, q.mapY * k, 0, q.mapX * k, q.mapY * k, R2); g.addColorStop(0, 'rgba(0,255,0,1)'); g.addColorStop(0.65, 'rgba(0,255,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.beginPath(); x.arc(q.mapX * k, q.mapY * k, R2, 0, 7); x.fill(); }
+    // taht meydanı (B)
+    const g = x.createRadialGradient(TH.x * k, TH.y * k, 0, TH.x * k, TH.y * k, (TH.r + 12) * k); g.addColorStop(0, 'rgba(0,0,255,1)'); g.addColorStop(0.85, 'rgba(0,0,255,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.beginPath(); x.arc(TH.x * k, TH.y * k, (TH.r + 12) * k, 0, 7); x.fill();
+    x.globalCompositeOperation = 'source-over';
+  }, false);
+  // büyük ölçekli açık/koyu lekeler
+  const macro = canvasTex(256, 256, (x) => {
+    x.fillStyle = '#808080'; x.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 260; i++) { const cx = rnd() * 256, cy = rnd() * 256, r = 6 + rnd() * 30, v = rnd() < 0.5 ? 255 : 0, g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, `rgba(${v},${v},${v},.22)`); g.addColorStop(1, `rgba(${v},${v},${v},0)`); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); }
+    // kenarlara doğru koyulaşma
+    const v = x.createRadialGradient(128, 128, 60, 128, 128, 182); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.35)'); x.fillStyle = v; x.fillRect(0, 0, 256, 256);
+  }, false);
+  splat.colorSpace = THREE.NoColorSpace; macro.colorSpace = THREE.NoColorSpace;
+  return { splat, macro };
+}
+function groundMaterial(list, lakes, seed) {
+  const { splat, macro } = paintSplat(list, lakes, seed);
+  const mat = new THREE.MeshLambertMaterial({ map: splat });
+  const U = { tGrass: { value: groundTex('grass') }, tDirt: { value: groundTex('dirt') }, tSand: { value: groundTex('sand') }, tMacro: { value: macro }, rep: { value: MAP / 22 } };
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, U);
+    sh.fragmentShader = 'uniform sampler2D tGrass, tDirt, tSand, tMacro; uniform float rep;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+      vec4 sp = texture2D(map, vMapUv);
+      vec2 tu = vMapUv * rep;
+      // dokunun tekrarı göze batmasın: iki ölçeği karıştır
+      vec3 gC = mix(texture2D(tGrass, tu).rgb, texture2D(tGrass, tu * 0.37 + 0.23).rgb, 0.35);
+      vec3 dC = texture2D(tDirt, tu * 1.4).rgb, sC = texture2D(tSand, tu * 0.9).rgb;
+      vec3 c = mix(gC, dC, smoothstep(0.15, 0.85, sp.r));
+      c = mix(c, sC, smoothstep(0.1, 0.9, sp.g));
+      c = mix(c, dC * vec3(0.55, 0.56, 0.62), smoothstep(0.1, 0.9, sp.b));
+      float m = texture2D(tMacro, vMapUv).r;
+      c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.2) * 0.8; // gece haritasıyla uyum: biraz soluk ve koyu
+      diffuseColor.rgb *= c * (0.45 + m * 1.1);
+    `);
+  };
+  mat.customProgramCacheKey = () => 'groundSplat';
+  return mat;
+}
+
 // bölge dokusu: kenarı belirgin, içi hafif dolu daire
 let terrT = null;
 const terrTex = () => terrT || (terrT = canvasTex(256, 256, (x) => {
@@ -199,8 +273,8 @@ export function openWorldMap(opts = {}) {
 
   // göller
   const lakes = []; for (let i = 0; i < 12; i++) { const l = { x: 80 + rnd() * (MAP - 160), z: 80 + rnd() * (MAP - 160), r: 16 + rnd() * 22, a: rnd() * 3 }; if (free(l.x, l.z, l.r + 26)) lakes.push(l); }
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: paintGround(list, lakes, server * 977 + 3) }));
-  ground.material.map.anisotropy = 8; ground.position.set(MAP / 2, 0, MAP / 2); scene.add(ground);
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP).rotateX(-Math.PI / 2), groundMaterial(list, lakes, server * 977 + 3));
+  ground.material.map.anisotropy = 4; ground.position.set(MAP / 2, 0, MAP / 2); scene.add(ground);
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x1c3024 })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x2a5a9a, roughness: 0.1, metalness: 0.4, emissive: 0x0e2a6a, emissiveIntensity: 0.9 });
   for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
@@ -215,6 +289,8 @@ export function openWorldMap(opts = {}) {
     }
     instancify(BLD.createTree(v === 2 ? 3 : v), ms, scene);
   }
+  // küçük çalılar: zemine derinlik (tek seferde çizilir)
+  { const ms = []; for (let i = 0; i < 1400; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!free(x, z, 12) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 3)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(BLD.createTree(1), ms, scene); }
   // dağlar: haritayı çevreleyen sıra + içeride birkaç tane
   const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees'];
   for (let i = 0; i < 80; i++) {
@@ -262,7 +338,18 @@ export function openWorldMap(opts = {}) {
   };
   A.ensureHF('townhall4'); setThroneModel();
   const crown = glow(0xffc040, 40, 0.5); crown.position.y = 34; throne.add(crown);
-  const throneCity = { id: 'throne', throne: true, name: 'Demir Taht', mapX: TH.x, mapY: TH.y };
+  const tagTex = (tag, color) => canvasTex(256, 128, (x) => {
+    x.fillStyle = 'rgba(10,8,20,.72)'; x.strokeStyle = color; x.lineWidth = 8; x.beginPath(); x.roundRect(10, 18, 236, 92, 22); x.fill(); x.stroke();
+    x.font = '900 64px Lilita One, Arial Black, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.shadowColor = color; x.shadowBlur = 18; x.fillStyle = '#fff'; x.fillText(tag, 128, 66);
+  });
+  const throneCity = G.THRONE_TARGET;
+  // taht kalkanı (kubbe) ve sahip ittifak sancağı
+  const tShieldMat = new THREE.MeshStandardMaterial({ color: 0x7ac8ff, transparent: true, opacity: 0.2, emissive: 0x2a6aff, emissiveIntensity: 0.8, depthWrite: false, side: THREE.DoubleSide });
+  const tShield = new THREE.Mesh(new THREE.SphereGeometry(TH.r - 6, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), tShieldMat); throne.add(tShield);
+  const tRingMat = new THREE.MeshBasicMaterial({ color: 0x8ad8ff, transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  const tRing = new THREE.Mesh(new THREE.TorusGeometry(TH.r - 6, 0.6, 6, 80), tRingMat); tRing.rotation.x = Math.PI / 2; tRing.position.y = 0.6; throne.add(tRing);
+  const tBanner = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false })); tBanner.scale.set(34, 17, 1); tBanner.position.y = 52; tBanner.visible = false; throne.add(tBanner);
+  let tKey = '';
 
 
   // ---- şehirler ----
@@ -307,10 +394,7 @@ export function openWorldMap(opts = {}) {
 
   // ---- Mısır piramitleri: Sv.1 dışta → Sv.5 tahta yakın; sahibi ittifakın renginde, üstünde [ETİKET] ----
   A.ensureHF('pyramid');
-  const tagTex = (tag, color) => canvasTex(256, 128, (x) => {
-    x.fillStyle = 'rgba(10,8,20,.72)'; x.strokeStyle = color; x.lineWidth = 8; x.beginPath(); x.roundRect(10, 18, 236, 92, 22); x.fill(); x.stroke();
-    x.font = '900 64px Lilita One, Arial Black, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.shadowColor = color; x.shadowBlur = 18; x.fillStyle = '#fff'; x.fillText(tag, 128, 66);
-  });
+
   const pyrMesh = (q) => { if (!A.hasHF('pyramid')) { const m = new THREE.Mesh(new THREE.ConeGeometry(q.r * 0.95, q.r * 1.2, 4), new THREE.MeshStandardMaterial({ color: 0xd8b070, roughness: 0.8 })); m.position.y = q.r * 0.6; m.rotation.y = Math.PI / 4; return m; } const m = A.hfModel('pyramid'), sz = A.hfSize('pyramid'); m.scale.setScalar((26 + q.level * 3) / Math.max(sz.x, sz.z)); return m; }; // Demir Taht (~36) boyunda: Sv.1 29 → Sv.5 41
   const pyrObjs = new Map();
   const buildPyr = (q) => {
@@ -325,6 +409,9 @@ export function openWorldMap(opts = {}) {
     return { c: q, g, body, terr, cap, banner, el, hf: A.hasHF('pyramid'), key: '', y: q.r * 1.9 };
   };
   const syncPyr = () => {
+    { const st = G.pyrState(throneCity), own = st.owner, col = own ? ALLY_COLORS[own.color] || ALLY_COLORS[1] : null, up = G.throneShield(), key = (own ? own.aid + own.tag + own.color : '-') + up;
+      if (key !== tKey) { tKey = key; tShield.visible = tRing.visible = up; zone.material.color.set(own ? col : COL.throne); if (own) { tBanner.material.map?.dispose(); tBanner.material.map = tagTex(own.tag || '???', col); tBanner.material.needsUpdate = true; tBanner.visible = true; } else tBanner.visible = false; }
+      tEl.innerHTML = `<b>👑</b><span>${own ? `<em class="wm-tag" style="color:${col}">[${own.tag}]</em> ` : ''}Demir Taht</span><small>${up ? '🛡️ Kalkanlı' : own ? 'Sahipli' : 'Tarafsız'}</small>`; }
     for (const q of G.PYRAMIDS) {
       let o = pyrObjs.get(q.id); if (!o) { o = buildPyr(q); pyrObjs.set(q.id, o); }
       if (!o.hf && A.hasHF('pyramid')) { o.body.clear(); o.body.add(pyrMesh(q)); o.hf = true; o.key = ''; }
@@ -570,12 +657,14 @@ export function openWorldMap(opts = {}) {
       const st = G.pyrState(c), acc = G.pyrAccess(c), own = st.owner, col = own ? ALLY_COLORS[own.color] || ALLY_COLORS[1] : '#d8b070', full = G.S.marches.length >= G.MAX_MARCHES;
       const pct = st.hp / c.power * 100, top = Object.entries(st.dmg).sort((a, b) => b[1] - a[1]).slice(0, 3);
       const hs = own && st.ownedAt ? (Date.now() - st.ownedAt) / 1000 : 0, held = hs >= 86400 ? `${Math.floor(hs / 86400)} gün ${Math.floor(hs % 86400 / 3600)} sa` : hs ? G.fmtTime(hs) : '';
-      card = win(`🔺 Piramit Sv.${c.level}`, own ? `<span style="color:${col}">[${own.tag}]</span>` : 'Sahipsiz', `
-        <div class="pyr-own" style="--pc:${col}">${own ? `<b>[${own.tag}] ${String(own.name || '').replace(/</g, '')}</b><small>${held} süredir elinde</small>` : '<b>Sahipsiz piramit</b><small>Canını ilk eriten değil, en çok hasar veren ittifak sahip olur</small>'}</div>
+      const shieldUp = c.throne && G.throneShield();
+      card = win(c.throne ? '👑 Demir Taht' : `🔺 Piramit Sv.${c.level}`, own ? `<span style="color:${col}">[${own.tag}]</span>` : 'Sahipsiz', `
+        ${c.throne ? `<div class="wm-shield ${shieldUp ? '' : 'ok'}">${shieldUp ? '🛡️ Taht kalkanı açık: bir ittifak Sv.5 piramidi 5 gün elinde tutunca kalkan iner' : '⚔️ Taht kalkanı indi! Sv.5 piramidi 5 gündür tutan ittifaklar saldırabilir'}</div>` : ''}
+        <div class="pyr-own" style="--pc:${col}">${own ? `<b>[${own.tag}] ${String(own.name || '').replace(/</g, '')}</b><small>${held} süredir elinde</small>` : (c.throne ? '<b>Tarafsız taht</b><small>Canını eriten ittifaklar arasında en çok hasar veren tahtın sahibi olur</small>' : '<b>Sahipsiz piramit</b><small>Canını ilk eriten değil, en çok hasar veren ittifak sahip olur</small>')}</div>
         <div class="pyr-hpbar"><i style="width:${pct.toFixed(1)}%"></i><span>❤️ ${G.fmt(st.hp)} / ${G.fmt(c.power)}</span></div>
         ${top.length ? `<div class="pyr-dmg"><small>Savaştaki ittifaklar (hasar)</small>${top.map(([aid, d], i) => { const n = st.names[aid] || {}; return `<div><em>${i + 1}.</em><b style="color:${ALLY_COLORS[n.color] || '#fff'}">[${n.tag || '?'}]</b><span>${G.fmt(d)}</span></div>`; }).join('')}</div>` : ''}
-        <div class="wm-cs">${stat('🔺', 'Piramit gücü', G.fmt(c.power))}${stat('⚔️', 'Ordu gücün', G.fmt(G.armyPower(G.S.troops)))}</div>
-        ${acc.ok ? '<div class="wm-shield ok">⚔️ İttifakın bu piramide savaş açabilir. Saldır ya da ralli aç!</div>' : `<div class="wm-shield zl">🔒 ${acc.why}</div>`}
+        <div class="wm-cs">${stat(c.throne ? '👑' : '🔺', c.throne ? 'Taht gücü' : 'Piramit gücü', G.fmt(c.power))}${stat('⚔️', 'Ordu gücün', G.fmt(G.armyPower(G.S.troops)))}</div>
+        ${acc.ok ? `<div class="wm-shield ok">⚔️ İttifakın ${c.throne ? 'Demir Taht\'a' : 'bu piramide'} savaş açabilir. Saldır ya da ralli aç!</div>` : `<div class="wm-shield zl">🔒 ${acc.why}</div>`}
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('gold', 'wmAtk', '⚔', 'Saldır', '', !acc.ok || full)}${B('crimson', 'wmRally', '📯', 'Ralli aç', '', !acc.ok || full)}</div>`, 'pyr');
     } else if (c && c.giant) {
       const L = c.level, lock = !G.giantUnlocked(L), rw = G.giantRewards(L), full = G.S.marches.length >= G.MAX_MARCHES, ally = !!G.S.alliance;
@@ -599,10 +688,6 @@ export function openWorldMap(opts = {}) {
         <div class="wm-zrw"><small>Ödüller</small><div><span>🌾🪵🪨 ${G.fmt(lo)}–${G.fmt(hi)}</span><span>⏩ 1dk${L >= 20 ? ' ×' + (1 + Math.floor(L / 20)) : ''}</span><span>⏩ 5dk <i>şans</i></span></div></div>
         ${lock ? `<div class="wm-shield zl">🔒 Önce <b>Sv.${L - 1}</b> zombiyi öldürmelisin. En yüksek: Sv.${G.S.zombieMax || 0}</div>` : ''}
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('crimson', 'wmAtk', going ? '🚩' : '⚔', going ? 'Yolda…' : 'Saldır', '', lock || going)}</div>`, 'zombie');
-    } else if (c && c.throne) {
-      card = win('👑 Demir Taht', `Sunucu #${server}`, `<p class="wm-desc">Krallıkların ortasındaki kadim kale. Şu an <b>tarafsız</b>. Çevresine şehir kurulamaz.</p>
-        <div class="wm-cs">${stat('🏳️', 'Durum', 'Tarafsız')}${stat('📍', 'Konum', `X:${TH.x} Y:${TH.y}`)}</div>
-        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}</div>`, 'throne');
     } else if (c && !c.me && !c.ground) {
       const scouting = G.S.scouts.some((q) => q.target === c.id), last = G.lastScout(c.id), st = G.scoutTime(c);
       const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, ratio = c.power / Math.max(1, G.cityPower());
@@ -751,6 +836,7 @@ export function openWorldMap(opts = {}) {
       putLabel(o, -2 * lod);
     }
     zone.material.opacity = sel === throneCity ? 0.75 + Math.sin(t * 6) * 0.2 : 0.85;
+    if (tShield.visible) { tShieldMat.opacity = 0.16 + Math.sin(t * 1.6) * 0.05; tRing.rotation.z = t * 0.3; tRingMat.opacity = 0.35 + Math.sin(t * 3) * 0.15; }
     // dolaşan ordular
     for (const a of ambient) {
       const k = ((t / a.dur + a.t0) % 1), from = a.a, to = a.b;
@@ -809,7 +895,7 @@ export function openWorldMap(opts = {}) {
     cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); removeEventListener('pointercancel', pu); cv.removeEventListener('wheel', wh);
     labels.innerHTML = ''; labels.classList.add('hidden'); labels.classList.remove('far'); W = null;
   };
-  openScene({ scene, camera, update, dispose, freeOnClose: true }, 'city');
+  openScene({ scene, camera, update, dispose, freeOnClose: true, world: true }, 'city');
 }
 function closeWorld() { if (!W) return; closeScene(); }
 export function closeWorldMap() { closeWorld(); }
