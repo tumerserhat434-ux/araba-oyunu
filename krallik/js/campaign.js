@@ -109,10 +109,12 @@ export function chance(idx) {
 export function stageRewards(idx) {
   const P = stagePower(idx), ch = chapterOf(idx), r100 = (v) => Math.round(v / 100) * 100;
   const mul = isBoss(idx) ? 3 : isElite(idx) ? 1.8 : 1;
-  const res = { food: r100(P * 0.8 * mul), wood: r100(P * 0.8 * mul), stone: r100(P * 0.4 * mul), gold: Math.round((25 + ch * 10) * mul) };
-  const items = [{ id: 's1m', n: 1 + Math.floor(idx / 4) }];
-  if (isElite(idx)) items.push({ id: 's5m', n: 2 + Math.floor(idx / 15) });
-  if (isBoss(idx)) { items.push({ id: 's15m', n: 2 + ch }); if (ch >= 2) items.push({ id: 's1h', n: ch - 1 }); }
+  // her görevde kaynak ödülü (altın yok)
+  const res = { food: r100(P * 0.8 * mul), wood: r100(P * 0.8 * mul), stone: r100(P * 0.4 * mul) };
+  // 5 dk hızlandırma: her 3. görevde, seçkin komutanlarda ve patronda (bölüm ilerledikçe artar)
+  const s = stageOf(idx), items = [];
+  const n5 = isBoss(idx) ? 3 + ch : isElite(idx) ? 2 + (ch - 1) : s % 3 === 0 ? 1 + Math.floor((ch - 1) / 2) : 0;
+  if (n5) items.push({ id: 's5m', n: n5 });
   return { res, items };
 }
 
