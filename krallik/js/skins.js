@@ -4,7 +4,7 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611182221';
+import * as A from './assets.js?v=2611182229';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },

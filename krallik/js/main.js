@@ -2,27 +2,27 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611182221';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182221';
-import * as ASSETS from './assets.js?v=2611182221';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182221';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm } from './online.js?v=2611182221';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182221';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182221';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182221';
-import * as G from './state.js?v=2611182221';
-import { getAvatar } from './scenes.js?v=2611182221';
-import { initCampaign, openCampaign } from './campui.js?v=2611182221';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182221';
-import { campIdx, stageLabel } from './campaign.js?v=2611182221';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182221';
-import { createGrass } from './grass.js?v=2611182221';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182221';
-import { initTutorial, tutEvent } from './tut.js?v=2611182221';
-import { icon } from './icons.js?v=2611182221';
-import { paintCity } from './terrain.js?v=2611182221';
-import { createLife, createVillager, animVillager } from './life.js?v=2611182221';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182221';
+import * as BLD from './buildings.js?v=2611182229';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182229';
+import * as ASSETS from './assets.js?v=2611182229';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182229';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer } from './online.js?v=2611182229';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182229';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182229';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182229';
+import * as G from './state.js?v=2611182229';
+import { getAvatar } from './scenes.js?v=2611182229';
+import { initCampaign, openCampaign } from './campui.js?v=2611182229';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182229';
+import { campIdx, stageLabel } from './campaign.js?v=2611182229';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182229';
+import { createGrass } from './grass.js?v=2611182229';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182229';
+import { initTutorial, tutEvent } from './tut.js?v=2611182229';
+import { icon } from './icons.js?v=2611182229';
+import { paintCity } from './terrain.js?v=2611182229';
+import { createLife, createVillager, animVillager } from './life.js?v=2611182229';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182229';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1536,7 +1536,7 @@ $('modalBox').addEventListener('input', (e) => {
 });
 $('modalBox').addEventListener('click', (e) => {
   const wt = e.target.closest('[data-wtab]');
-  if (wt && modalKind === 'chat') { CH.tab = wt.dataset.wtab; if (CH.tab !== 'friends' && CH.dmUnsub) { CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; } chatMarkSeen(); renderModal(); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; chatUpdate('tab'); return; }
+  if (wt && modalKind === 'chat') { CH.tab = wt.dataset.wtab; if (CH.tab === 'friends') refreshFriends(); if (CH.tab !== 'friends' && CH.dmUnsub) { CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; } chatMarkSeen(); renderModal(); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; chatUpdate('tab'); return; }
   if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; else if (modalKind === 'alliance') { if (v !== 'chat' && v !== 'rally') alStopChat(); else if (AL.tab !== v) alStopChat(); AL.tab = v; AL.err = ''; if (v === 'find') alRefresh(); } return renderModal(); }
   const gq = e.target.closest('[data-goq]');
   if (gq) { const v = gq.dataset.goq; const q = QUESTS.find((x) => x.id === v); closeModal();
@@ -1581,7 +1581,7 @@ $('modalBox').addEventListener('click', (e) => {
     if (e.target.closest('[data-chcopy]')) { const id = shortId(online.uid); navigator.clipboard?.writeText(id).then(() => toast('📋 ID kopyalandı: ' + id), () => toast('ID: ' + id)); return; }
     if (e.target.closest('[data-chback]')) { if (CH.dmUnsub) CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; return renderModal(); }
     const fb = e.target.closest('[data-chfriend]'); if (fb) { const f = friendOf(fb.dataset.chfriend); if (f) { sfx('click'); openDm(f); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; } return; }
-    const au = e.target.closest('[data-chaddu]'); if (au) { const uid = au.dataset.chaddu; if (friendOf(uid)) return toast('Zaten arkadaşın'); addFriendLocal({ uid, name: au.dataset.chname || 'Oyuncu' }); sfx('reveal'); return toast(`🤝 ${au.dataset.chname} arkadaş listene eklendi`); }
+    const au = e.target.closest('[data-chaddu]'); if (au) { const uid = au.dataset.chaddu; if (uid === online.uid) return; if (friendOf(uid)) return toast('Zaten arkadaşın'); const src = [...(CH.global || []), ...(CH.server || [])].reverse().find((m) => m.uid === uid) || {}; addFriendLocal({ uid, name: au.dataset.chname || 'Oyuncu', hero: src.hero, frame: src.frame }); sfx('reveal'); return toast(`🤝 ${au.dataset.chname} arkadaş listene eklendi`); }
   }
   if (modalKind === 'alliance') {
     const em = e.target.closest('[data-alem]'), co = e.target.closest('[data-alcol]');
@@ -1788,18 +1788,32 @@ async function pyrApply(ev, data) {
 // =====================================================================
 //  Sohbet: Dünya (tüm sunucular), Sunucu, Arkadaşlar (oyuncu kimliği ile)
 // =====================================================================
-const CH = { tab: 'global', global: null, server: null, dmList: [], dm: null, dmMsgs: null, dmUnsub: null, started: false, err: '', busy: false };
+const CH = { tab: 'global', global: null, server: null, dmList: [], dm: null, dmMsgs: null, dmUnsub: null, started: false, errs: {}, busy: false, fresh: {} };
+const CH_SRC = { global: 'Dünya sohbeti', server: 'Sunucu sohbeti', dm: 'Arkadaş sohbeti', dmMsgs: 'Özel mesajlar' };
+const chErr = (src, e) => { CH.errs[src] = e ? `${CH_SRC[src]}: ${/izni yok|permission/i.test(e) ? 'Firebase izin vermiyor. Son mesajdaki kuralların TAMAMINI Firebase › Firestore › Kurallar sayfasına yapıştırıp Yayınla\'ya bas.' : e}` : ''; };
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function chatSeen() { G.S.chatSeen ||= { global: 0, server: 0, dm: {} }; G.S.chatSeen.dm ||= {}; return G.S.chatSeen; }
 function chatStart() {
   if (CH.started || !online.ready) return; CH.started = true;
-  watchWorldChat('global', 0, (m, e) => { if (m) CH.global = m; else CH.err = e; chatUpdate('global'); });
-  watchWorldChat('server', G.S.server || 1, (m, e) => { if (m) CH.server = m; else CH.err = e; chatUpdate('server'); });
-  watchDmList((l, e) => { if (l) CH.dmList = l; else CH.err = e; for (const d of CH.dmList) { const fu = d.members.find((u) => u !== online.uid); if (fu && !friendOf(fu)) addFriendLocal({ uid: fu, name: d.names?.[fu] || 'Oyuncu' }); } chatUpdate('dm'); });
+  if (G.S.friends) G.S.friends = G.S.friends.filter((f) => f.uid !== online.uid);
+  watchWorldChat('global', 0, (m, e) => { if (m) { CH.global = m; chErr('global'); } else chErr('global', e); chatUpdate('global'); });
+  watchWorldChat('server', G.S.server || 1, (m, e) => { if (m) { CH.server = m; chErr('server'); } else chErr('server', e); chatUpdate('server'); });
+  watchDmList((l, e) => { if (l) { CH.dmList = l; chErr('dm'); } else chErr('dm', e); for (const d of CH.dmList) { const fu = d.members.find((u) => u !== online.uid); if (fu && !friendOf(fu)) addFriendLocal({ uid: fu, name: d.names?.[fu] || 'Oyuncu' }); } chatUpdate('dm'); });
   $('chatBar').classList.remove('hidden');
 }
 const friendOf = (uid) => (G.S.friends || []).find((f) => f.uid === uid);
-function addFriendLocal(f) { G.S.friends ||= []; if (!friendOf(f.uid)) { G.S.friends.push({ uid: f.uid, name: f.name, pid: f.pid || '', hero: f.hero || null, frame: f.frame || null }); G.save(); } }
+// arkadaşın güncel adını, avatarını, çerçevesini ve ID'sini oyuncu profilinden çek (10 dk'da bir)
+async function refreshFriends(force) {
+  const now = Date.now(); let changed = false;
+  for (const f of G.S.friends || []) {
+    if (!force && CH.fresh[f.uid] && now - CH.fresh[f.uid] < 600000) continue; CH.fresh[f.uid] = now;
+    const p = await getPlayer(f.uid); if (!p) continue;
+    const upd = { name: p.name || f.name, hero: p.hero?.id || p.hero || f.hero || null, frame: p.frame || f.frame || null, pid: p.pid || f.pid || '' };
+    if (upd.name !== f.name || upd.hero !== f.hero || upd.frame !== f.frame || upd.pid !== f.pid) { Object.assign(f, upd); changed = true; }
+  }
+  if (changed) { G.save(); if (modalKind === 'chat' && $('modal').classList.contains('open')) chatRerender('fr'); }
+}
+function addFriendLocal(f) { G.S.friends ||= []; if (!friendOf(f.uid)) { G.S.friends.push({ uid: f.uid, name: f.name, pid: f.pid || '', hero: f.hero || null, frame: f.frame || null }); G.save(); CH.fresh[f.uid] = 0; refreshFriends(); } }
 const dmUnread = () => CH.dmList.filter((d) => d.lastBy && d.lastBy !== online.uid && (d.lastAt || 0) > (chatSeen().dm[d.id] || 0)).length;
 function chatUnread() { const s = chatSeen(), mine = (l) => (l || []).filter((m) => m.uid !== online.uid && m.t > 0); return { global: mine(CH.global).filter((m) => m.t > s.global).length, server: mine(CH.server).filter((m) => m.t > s.server).length, dm: dmUnread() }; }
 function chatUpdate(src) {
@@ -1839,24 +1853,25 @@ function chatUI() {
   const H = (b) => head('Sohbet', 'nav_quest', [{ id: 'global', label: 'Dünya', icon: 'nav_world', dot: u.global > 0 && CH.tab !== 'global' }, { id: 'server', label: 'Sunucu', icon: 'ic_castle', dot: u.server > 0 && CH.tab !== 'server' }, { id: 'friends', label: 'Arkadaş', icon: 'nav_heroes', dot: u.dm > 0 }], CH.tab) + b;
   if (!online.ready) return H('<div class="al-off">🌐 Sohbet için çevrimiçi olmalısın.</div>');
   const input = (ph) => `<div class="al-send"><input id="chIn" maxlength="200" placeholder="${ph}" autocomplete="off"><button class="w-btn gold" data-chsend>Gönder</button></div>`;
-  if (CH.tab === 'global') return H(`<div class="ch-h">🌍 <b>Dünya sohbeti</b><small>Tüm sunuculardaki oyuncular</small></div><div class="al-chat ch-list" id="chList">${chatMsgs(CH.global, { server: true })}</div>${input('Dünyaya yaz…')}`);
-  if (CH.tab === 'server') return H(`<div class="ch-h">🏰 <b>Sunucu #${G.S.server || 1} sohbeti</b><small>Yalnızca bu sunucudaki oyuncular</small></div><div class="al-chat ch-list" id="chList">${chatMsgs(CH.server)}</div>${input('Sunucuya yaz…')}`);
+  const errBox = (k) => (CH.errs[k] ? `<div class="why">⚠️ ${esc(CH.errs[k])}</div>` : '');
+  if (CH.tab === 'global') return H(errBox('global') + `<div class="ch-h">🌍 <b>Dünya sohbeti</b><small>Tüm sunuculardaki oyuncular</small></div><div class="al-chat ch-list" id="chList">${chatMsgs(CH.global, { server: true })}</div>${input('Dünyaya yaz…')}`);
+  if (CH.tab === 'server') return H(errBox('server') + `<div class="ch-h">🏰 <b>Sunucu #${G.S.server || 1} sohbeti</b><small>Yalnızca bu sunucudaki oyuncular</small></div><div class="al-chat ch-list" id="chList">${chatMsgs(CH.server)}</div>${input('Sunucuya yaz…')}`);
   // arkadaşlar
   if (CH.dm) {
     const f = CH.dm;
-    return H(`<div class="ch-dmh"><button class="w-btn" data-chback>‹ Geri</button>${frameHtml(f.hero, f.frame, 34)}<div><b>${esc(f.name)}</b><small>ID: ${esc(f.pid || '—')}</small></div></div>
+    return H(errBox('dmMsgs') + `<div class="ch-dmh"><button class="w-btn" data-chback>‹ Geri</button>${frameHtml(f.hero, f.frame, 34)}<div><b>${esc(f.name)}</b><small>ID: ${esc(f.pid || '—')}</small></div></div>
       <div class="al-chat ch-list" id="chList">${chatMsgs(CH.dmMsgs, { dm: true, empty: 'Henüz mesaj yok. Selam ver! 👋' })}</div>${input(`${esc(f.name)} kişisine yaz…`)}`);
   }
   const fr = (G.S.friends || []).map((f) => { const d = CH.dmList.find((x) => x.id === pairId(online.uid, f.uid)), unread = d && d.lastBy && d.lastBy !== online.uid && (d.lastAt || 0) > (chatSeen().dm[d.id] || 0); return { f, d, unread }; }).sort((a, b) => (b.d?.lastAt || 0) - (a.d?.lastAt || 0));
   return H(`<div class="ch-me"><div><small>Senin oyuncu ID'n</small><b id="chMyId">${shortId(online.uid)}</b></div><button class="w-btn" data-chcopy>📋 Kopyala</button></div>
     <div class="ch-addrow"><input id="chAddIn" maxlength="8" placeholder="Oyuncu ID'si (8 hane)" autocomplete="off" style="text-transform:uppercase"><button class="w-btn green" data-chadd ${CH.busy ? 'disabled' : ''}>＋ Ekle</button></div>
-    ${CH.err ? `<div class="why">${esc(CH.err)}</div>` : ''}
+    ${errBox('dm')}
     <h4 class="rl-h">Arkadaşların (${fr.length})</h4>
     ${fr.length ? `<div class="ch-fr">${fr.map(({ f, d, unread }) => `<button class="ch-frow ${unread ? 'new' : ''}" data-chfriend="${f.uid}">${frameHtml(f.hero, f.frame, 40)}<div><b>${esc(f.name)}</b><small>${d?.last ? esc((d.lastBy === online.uid ? 'Sen: ' : '') + d.last) : 'ID: ' + esc(f.pid || '—')}</small></div>${unread ? '<em class="ch-new">Yeni</em>' : '<i>›</i>'}</button>`).join('')}</div>` : '<div class="al-off">Henüz arkadaşın yok. Bir oyuncunun ID\'sini yazıp ekle ya da sohbette adının yanındaki ＋ butonuna bas.</div>'}`);
 }
 function openDm(f) {
   CH.dm = f; CH.dmMsgs = null; if (CH.dmUnsub) CH.dmUnsub();
-  CH.dmUnsub = watchDm(pairId(online.uid, f.uid), (m, e) => { if (m) CH.dmMsgs = m; else CH.err = e; if (CH.dm === f) { chatMarkSeen(); chatRerender('dm'); } });
+  CH.dmUnsub = watchDm(pairId(online.uid, f.uid), (m, e) => { if (m) { CH.dmMsgs = m; chErr('dmMsgs'); } else { chErr('dmMsgs', e); CH.dmMsgs = CH.dmMsgs || []; } if (CH.dm === f) { chatMarkSeen(); chatRerender('dm'); } });
   chatMarkSeen(); renderModal();
 }
 async function chatSend() {

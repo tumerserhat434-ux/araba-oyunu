@@ -330,3 +330,8 @@ export async function sendDm(friend, text, me) {
     return { ok: true };
   } catch (e) { return { ok: false, why: errOf(e) }; }
 }
+// oyuncunun herkese açık profili (arkadaş bilgilerini tazelemek için)
+export async function getPlayer(uid) {
+  if (!ready || !uid) return null;
+  try { const s = await FS.getDoc(FS.doc(db, 'players', uid)); return s.exists() ? { uid, ...s.data() } : null; } catch (e) { lastErr = errOf(e); return null; }
+}

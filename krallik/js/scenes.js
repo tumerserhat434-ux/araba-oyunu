@@ -2,12 +2,12 @@
 //  DEMİR SANCAK — 3D katman sahneleri: savaş, çağırma, kahraman görüntüleyici
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611182221';
-import * as A from './assets.js?v=2611182221';
-import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js?v=2611182221';
-import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js?v=2611182221';
-import * as G from './state.js?v=2611182221';
-import { setTheme, playVoice } from './audio.js?v=2611182221';
+import * as BLD from './buildings.js?v=2611182229';
+import * as A from './assets.js?v=2611182229';
+import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js?v=2611182229';
+import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js?v=2611182229';
+import * as G from './state.js?v=2611182229';
+import { setTheme, playVoice } from './audio.js?v=2611182229';
 
 let C = null; // main.js bağlamı
 let active = null; // { scene, camera, update(dt,t), close() }
