@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import * as BLD from './buildings.js';
 import * as A from './assets.js';
 import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js';
-import { TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js';
+import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js';
 import * as G from './state.js';
 import { setTheme, playVoice } from './audio.js';
 
@@ -95,10 +95,34 @@ function disposeScene(scene) {
 //  SAVAŞ
 // =====================================================================
 let grassTex = null;
-let battleBg = null, dirtTex = null, fadeTex = null;
-function battleBackground() {
-  if (!battleBg) { battleBg = new THREE.TextureLoader().load('assets/ui/bg_battle.webp'); battleBg.colorSpace = THREE.SRGBColorSpace; }
-  return battleBg;
+let dirtTex = null, fadeTex = null;
+const battleBgs = new Map();
+function battleBackground(path = 'assets/ui/bg_battle.webp') {
+  let t = battleBgs.get(path);
+  if (!t) { t = new THREE.TextureLoader().load(path); t.colorSpace = THREE.SRGBColorSpace; battleBgs.set(path, t); }
+  return t;
+}
+// Görev diyarlarının zemin dokuları (renk paletine göre)
+const themeTex = new Map();
+function themeGround(TH) {
+  if (themeTex.has(TH.key)) return themeTex.get(TH.key);
+  const g = canvasTex(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = TH.grass[0]; ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 7000; i++) { ctx.fillStyle = TH.grass[i % 5]; ctx.globalAlpha = rand(0.25, 0.8); ctx.fillRect(Math.random() * w, Math.random() * h, rand(1, 3), rand(2, 4)); }
+    ctx.globalAlpha = 1;
+  });
+  g.repeat.set(26, 26);
+  const d = canvasTex(1024, 1024, (ctx, w, h) => {
+    ctx.save(); ctx.translate(w / 2, h / 2); ctx.scale(1, 0.66);
+    const gr = ctx.createRadialGradient(0, 0, w * 0.2, 0, 0, w * 0.5); gr.addColorStop(0, TH.dirt[0]); gr.addColorStop(0.8, TH.dirt[1]); gr.addColorStop(0.93, TH.dirt[2] + 'd8'); gr.addColorStop(1, TH.dirt[2] + '00');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, w * 0.5, 0, 7); ctx.fill(); ctx.restore();
+    ctx.globalCompositeOperation = 'source-atop';
+    for (let i = 0; i < 9000; i++) { ctx.fillStyle = TH.dirt[i % 5]; ctx.globalAlpha = rand(0.15, 0.55); const r = rand(1, 4); ctx.fillRect(Math.random() * w, Math.random() * h, r, r); }
+    for (let i = 0; i < 26; i++) { const x = Math.random() * w, y = Math.random() * h, r = rand(30, 90); const sg = ctx.createRadialGradient(x, y, 0, x, y, r); sg.addColorStop(0, 'rgba(20,14,10,.55)'); sg.addColorStop(1, 'rgba(20,14,10,0)'); ctx.fillStyle = sg; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+    for (let i = 0; i < 50; i++) { ctx.strokeStyle = TH.dirt[4]; ctx.globalAlpha = 0.3; ctx.lineWidth = rand(2, 5); ctx.beginPath(); const x = Math.random() * w, y = Math.random() * h; ctx.moveTo(x, y); ctx.quadraticCurveTo(x + rand(-60, 60), y + rand(-20, 20), x + rand(-120, 120), y + rand(-30, 30)); ctx.stroke(); }
+    ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  }, false);
+  const o = { grass: g, dirt: d }; themeTex.set(TH.key, o); return o;
 }
 // arka plan resmini ekranın üst kısmına "cover" gibi yerleştir (ufuk çizgisi ≈ ekranın %70'i)
 function fitBattleBg(tex) {
@@ -108,15 +132,117 @@ function fitBattleBg(tex) {
   tex.offset.set(Math.max(0, Math.min(1 - tex.repeat.x, 0.56 - tex.repeat.x / 2)), 1 - tex.repeat.y);
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.needsUpdate = true;
 }
+
+// ---------------------------------------------------------------------
+//  Görev savaş alanı süsleri: yanan enkaz, duman, sancaklar, çadırlar,
+//  yere saplanmış mızraklar, kalkanlar ve diyara özel parçacıklar
+// ---------------------------------------------------------------------
+let scorchTex = null;
+function warDecor(scene, TH, camSide, AX, AZ, braziers, redSign) {
+  const put = (name, h, x, z, ry = 0, tint = null) => {
+    const sz = A.modelSize(name), m = sz && A.model(name); if (!m) return null;
+    m.scale.setScalar(h / Math.max(0.01, sz.y)); m.position.set(x, 0, z); m.rotation.y = ry;
+    if (tint) m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color.multiply(new THREE.Color(tint)); } });
+    scene.add(m); return m;
+  };
+  const far = (x) => !(Math.sign(x) === camSide && Math.abs(x) > AX * 0.45); // kameranın önünü kapatma
+  // yanık izleri
+  if (!scorchTex) scorchTex = canvasTex(128, 128, (ctx) => { const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(12,8,6,.85)'); g.addColorStop(0.6, 'rgba(20,14,10,.4)'); g.addColorStop(1, 'rgba(20,14,10,0)'); ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 128); }, false);
+  const scMat = new THREE.MeshBasicMaterial({ map: scorchTex, transparent: true, depthWrite: false }), scGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(scGeo, scMat); const s = rand(2.5, 6); m.scale.set(s, 1, s * rand(0.6, 1)); m.position.set(rand(-AX, AX) * 0.8, 0.03, rand(-AZ, AZ) * 0.8); m.renderOrder = -1; scene.add(m); }
+  // yanan enkaz yığınları + duman sütunları
+  const smokes = [], smokeMat = () => new THREE.SpriteMaterial({ map: glow(), color: TH.fx === 'fog' ? 0x3a3048 : 0x2a2420, transparent: true, depthWrite: false, opacity: 0 });
+  const firePile = (x, z, big) => {
+    const k = big ? 1.4 : 1;
+    put('crate_A_big', 0.9 * k, x - 0.5, z + 0.2, rand(0, 6), 0x3a3030); put('barrel', 0.8 * k, x + 0.5, z - 0.3, rand(0, 6), 0x4a3a30); put('crate_open', 0.6 * k, x, z - 0.6, rand(0, 6), 0x3a3030);
+    const f1 = sprite(0xff7a20, 1.8, 0.95), f2 = sprite(0xffd060, 0.9, 1); f1.position.set(x, 1.1 * k, z); f2.position.set(x, 1.0 * k, z); scene.add(f1, f2);
+    braziers.push({ f1, f2, ph: Math.random() * 6, k: 1.3 * k });
+    const L = new THREE.PointLight(0xff8a30, 6 * k, 9, 2); L.position.set(x, 1.6, z); scene.add(L);
+    for (let i = 0; i < 6; i++) { const s = new THREE.Sprite(smokeMat()); scene.add(s); smokes.push({ s, x, z, t: i / 6, sp: rand(0.18, 0.26), k }); }
+  };
+  const piles = [[0.5, 1], [-0.5, 1], [Math.PI - 0.6, 1], [Math.PI + 0.6, 1], [Math.PI / 2 + 0.25, 0], [-Math.PI / 2 - 0.25, 0]];
+  for (const [a, big] of piles) { const ang = camSide > 0 ? Math.PI - a : a; const x = Math.cos(ang) * (AX + 2.5), z = Math.sin(ang) * (AZ + 2.5); if (!far(x)) continue; firePile(x, z, big); }
+  // düşman kampı: çadırlar, sancaklar, silah rafları (düşmanın arkasında)
+  const rx = redSign * (AX + 3.5);
+  for (const z of [-9, 0, 9]) put('tent', 2.6, rx + redSign * rand(0, 2), z + rand(-1.5, 1.5), redSign > 0 ? -Math.PI / 2 : Math.PI / 2, TH.key === 'golge' ? 0x8a7aa0 : null);
+  for (const z of [-13, -5, 5, 13]) put('flag_red', 3.4, redSign * (AX + 0.5), z, rand(-0.3, 0.3));
+  put('weaponrack', 1.4, rx - redSign * 1.5, -4.5, redSign > 0 ? -Math.PI / 2 : Math.PI / 2); put('weaponrack', 1.4, rx - redSign * 1.5, 4.5, redSign > 0 ? -Math.PI / 2 : Math.PI / 2);
+  // bizim sancaklar (kamera tarafında, yanlarda)
+  for (const z of [-1, 1]) put('flag_blue', 3.4, -redSign * (AX - 2), z * (AZ + 1.5), 0);
+  // dağınık sandık, çuval, kırık el arabası
+  for (let i = 0; i < 10; i++) { const a = rand(0, 6.28), x = Math.cos(a) * (AX + rand(1, 6)), z = Math.sin(a) * (AZ + rand(1, 6)); if (!far(x)) continue; put(['crate_A_small', 'sack', 'barrel', 'crate_B_big', 'wheelbarrow'][i % 5], rand(0.5, 0.9), x, z, rand(0, 6), 0x8a7a6a); }
+  // yere saplanmış mızraklar ve düşmüş kalkanlar
+  const shaftGeo = new THREE.CylinderGeometry(0.04, 0.04, 2.2, 5), tipGeo = new THREE.ConeGeometry(0.09, 0.32, 5);
+  const shaftMat = new THREE.MeshStandardMaterial({ color: 0x5a3a20, roughness: 0.9 }), tipMat = new THREE.MeshStandardMaterial({ color: 0x9aa0a8, metalness: 0.6, roughness: 0.4 });
+  for (let i = 0; i < 22; i++) {
+    const g = new THREE.Group(), sh = new THREE.Mesh(shaftGeo, shaftMat), tp = new THREE.Mesh(tipGeo, tipMat); sh.position.y = 1.1; tp.position.y = 2.3; g.add(sh, tp);
+    const a = rand(0, 6.28), r = rand(0.7, 1.15); g.position.set(Math.cos(a) * AX * r, -0.3, Math.sin(a) * AZ * r); if (!far(g.position.x)) continue;
+    g.rotation.set(rand(-0.5, 0.5), rand(0, 6), rand(-0.5, 0.5)); sh.castShadow = true; scene.add(g);
+  }
+  const shGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.08, 14), shMats = [0x8a2a20, 0x2a4a8a, 0x6a5a40].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0.2 }));
+  for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(shGeo, shMats[i % 3]); const a = rand(0, 6.28), r = rand(0.75, 1.1); m.position.set(Math.cos(a) * AX * r, 0.06, Math.sin(a) * AZ * r); m.rotation.set(rand(-0.25, 0.25), 0, rand(-0.25, 0.25)); scene.add(m); }
+  // kayalar ve ağaçlar
+  for (let i = 0; i < 18; i++) { const a = rand(0, 6.28); const rk = BLD.createRock(rand(0.4, 1.2)); rk.position.set(Math.cos(a) * (AX + rand(3, 9)), 0, Math.sin(a) * (AZ + rand(3, 9))); if (!far(rk.position.x)) continue; scene.add(rk); }
+  if (TH.trees) for (let i = 0; i < 18; i++) { const side = i % 2 ? 1 : -1, x = rand(-AX - 10, AX + 4), z = side * rand(AZ + 7, AZ + 22); const t = BLD.createTree(Math.floor(Math.random() * 4)); t.position.set(x, 0, z); t.rotation.y = rand(0, 6); t.scale.setScalar(rand(0.9, 1.3)); scene.add(t); }
+  // diyar parçacıkları (kar, kor, toz, sis)
+  let pts = null, vel = null; const N = TH.fx === 'snow' ? 260 : TH.fx === 'embers' ? 140 : TH.fx === 'dust' ? 90 : TH.fx === 'fog' ? 0 : 60;
+  if (N) {
+    const pos = new Float32Array(N * 3); vel = new Float32Array(N);
+    for (let i = 0; i < N; i++) { pos[i * 3] = rand(-AX - 8, AX + 8); pos[i * 3 + 1] = rand(0, 14); pos[i * 3 + 2] = rand(-AZ - 8, AZ + 8); vel[i] = rand(0.6, 1.4); }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const col = { snow: 0xffffff, embers: 0xff8a30, dust: 0xe8b878, smoke: 0xffb060 }[TH.fx];
+    const mat = new THREE.PointsMaterial({ map: glow(), color: col, size: TH.fx === 'snow' ? 0.32 : TH.fx === 'dust' ? 0.5 : 0.22, transparent: true, depthWrite: false, opacity: TH.fx === 'dust' ? 0.45 : 0.95, blending: TH.fx === 'snow' || TH.fx === 'dust' ? THREE.NormalBlending : THREE.AdditiveBlending });
+    pts = new THREE.Points(geo, mat); scene.add(pts);
+  }
+  const fogs = [];
+  if (TH.fx === 'fog') for (let i = 0; i < 16; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(), color: i % 2 ? 0x6aff9a : 0xa070ff, transparent: true, depthWrite: false, opacity: 0.12 })); s.position.set(rand(-AX - 6, AX + 6), rand(0.4, 1.4), rand(-AZ - 4, AZ + 4)); s.scale.set(rand(9, 16), rand(2.5, 4), 1); scene.add(s); fogs.push({ s, v: rand(-0.6, 0.6) }); }
+  return (dt, t) => {
+    for (const m of smokes) {
+      m.t += dt * m.sp; if (m.t > 1) m.t -= 1;
+      m.s.position.set(m.x + Math.sin(m.t * 5 + m.x) * 0.6 + m.t * 1.5, 1.6 + m.t * 9 * m.k, m.z);
+      m.s.scale.setScalar((1.6 + m.t * 5) * m.k); m.s.material.opacity = Math.sin(m.t * Math.PI) * 0.55;
+    }
+    if (pts) {
+      const p = pts.geometry.attributes.position.array;
+      for (let i = 0; i < N; i++) {
+        const j = i * 3;
+        if (TH.fx === 'snow') { p[j + 1] -= vel[i] * 2.2 * dt; p[j] += Math.sin(t + i) * 0.4 * dt; if (p[j + 1] < 0) p[j + 1] = 14; }
+        else if (TH.fx === 'dust') { p[j] += vel[i] * 3 * dt; p[j + 1] = 0.5 + Math.abs(Math.sin(t * 0.5 + i)) * 2.5; if (p[j] > AX + 8) p[j] = -AX - 8; }
+        else { p[j + 1] += vel[i] * 1.6 * dt; p[j] += Math.sin(t * 2 + i) * 0.5 * dt; if (p[j + 1] > 14) p[j + 1] = 0; }
+      }
+      pts.geometry.attributes.position.needsUpdate = true;
+    }
+    for (const f of fogs) { f.s.position.x += f.v * dt; if (f.s.position.x > AX + 8) f.s.position.x = -AX - 8; if (f.s.position.x < -AX - 8) f.s.position.x = AX + 8; f.s.material.opacity = 0.1 + Math.sin(t * 0.7 + f.v * 9) * 0.04; }
+  };
+}
+const RES_IMG = (r, sz = 22) => `<img src="assets/ui/res_${r}.webp" width="${sz}" height="${sz}" alt="">`;
+export function rewardsHtml(rew) {
+  if (!rew) return '';
+  const res = Object.entries(rew.res).filter(([, v]) => v > 0).map(([r, v]) => `<span class="rw">${RES_IMG(r)}<b>${G.fmt(v)}</b></span>`).join('');
+  const it = (rew.items || []).map((x) => `<span class="rw"><img src="assets/ui/sp_t${SPEEDUPS[x.id].tier}.webp" width="22" height="22" alt=""><b>${SPEEDUPS[x.id].short} ×${x.n}</b></span>`).join('');
+  return res + it;
+}
+function campResultHtml(r, win, tot) {
+  return `<div class="modal-box cp-result ${win ? 'win' : 'lose'}">
+    ${win ? '<img class="cp-chest" src="assets/ui/ic_chest.webp" alt="">' : ''}<h2 class="cinzel">${win ? 'ZAFER!' : 'YENİLGİ'}</h2>
+    <div class="stats">
+      <div class="stat"><small>Kayıpların</small><b>0</b><br><small>Görev savaşında asker ölmez</small></div>
+      <div class="stat"><small>Düşman kaybı</small><b>${tot(r.dLoss)}</b></div>
+    </div>
+    ${win ? `<div class="cp-rw-h">Ödüller</div><div class="cp-rws">${rewardsHtml({ res: r.loot, items: r.items })}</div>` : '<p class="desc" style="text-align:center;margin:4px 0 10px">Ordun yeterince güçlü değil. Asker eğit, kahramanlarını ve binalarını yükselt, sonra tekrar dene.</p>'}
+    <button class="btn gold" style="width:100%" id="bBack">${win ? '🚩 Devam' : '↩ Görevlere dön'}</button></div>`;
+}
 export function openBattle(opts) {
   const scene = new THREE.Scene();
-  const bg = battleBackground(); fitBattleBg(bg); scene.background = bg;
-  scene.environment = C.makeEnv(0x8ab8ff, 0xd8e8ff, 0x4a6a2a, false);
+  const TH = opts.theme || null; // görev diyarı (yoksa klasik arena)
+  const soft = (c, k = 0.45) => new THREE.Color(c).lerp(new THREE.Color(0xffffff), k); // askerler diyar rengine boğulmasın
+  const bg = battleBackground(TH ? TH.bg : undefined); fitBattleBg(bg); scene.background = bg;
+  scene.environment = TH ? C.makeEnv(TH.sky, TH.sun, TH.ground, false) : C.makeEnv(0x8ab8ff, 0xd8e8ff, 0x4a6a2a, false);
   scene.environmentIntensity = 0.6;
   const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.5, 400);
-  const sun = new THREE.DirectionalLight(0xfff0d8, 2.6); sun.position.set(18, 40, 26); sun.castShadow = true;
+  const sun = new THREE.DirectionalLight(TH ? soft(TH.sun) : 0xfff0d8, 2.6); sun.position.set(18, 40, 26); sun.castShadow = true;
   Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 5, far: 120 }); sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0005;
-  scene.add(sun, new THREE.HemisphereLight(0xbfdcff, 0x5a7a30, 1.25));
+  scene.add(sun, TH ? new THREE.HemisphereLight(soft(TH.sky, 0.55), soft(TH.ground, 0.3), 1.25) : new THREE.HemisphereLight(0xbfdcff, 0x5a7a30, 1.25));
   // zemin: kenarları saydamlaşan çim + ortada oval toprak arena
   if (!grassTex) {
     grassTex = canvasTex(512, 512, (ctx, w, h) => {
@@ -142,16 +268,19 @@ export function openBattle(opts) {
     fadeTex = canvasTex(256, 256, (ctx, w, h) => { const g = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.5); g.addColorStop(0, '#fff'); g.addColorStop(1, '#000'); ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); }, false);
     fadeTex.colorSpace = THREE.NoColorSpace;
   }
-  const ground = new THREE.Mesh(new THREE.CircleGeometry(48, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: grassTex, alphaMap: fadeTex, transparent: true, depthWrite: false, roughness: 1 }));
+  const TG = TH ? themeGround(TH) : null;
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(48, 64).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: TG ? TG.grass : grassTex, alphaMap: fadeTex, transparent: true, depthWrite: false, roughness: 1 }));
   ground.receiveShadow = true; ground.renderOrder = -2; scene.add(ground);
   const AX = 23, AZ = 15; // arena yarıçapları (x: iki ordu ekseni)
-  const dirt = new THREE.Mesh(new THREE.PlaneGeometry(AX * 2.25, AX * 2.25).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: dirtTex, transparent: true, depthWrite: false, roughness: 1 }));
-  dirt.scale.z = AZ / AX; dirt.position.y = 0.02; dirt.receiveShadow = true; dirt.renderOrder = -1; scene.add(dirt);
+  const dirt = new THREE.Mesh(new THREE.PlaneGeometry(AX * 2.25, AX * 2.25).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: TG ? TG.dirt : dirtTex, transparent: true, depthWrite: false, roughness: 1 }));
+  dirt.scale.z = AZ / AX; if (TH) dirt.scale.multiplyScalar(1.3); dirt.position.y = 0.02; dirt.receiveShadow = true; dirt.renderOrder = -1; scene.add(dirt);
   // çit, mangallar, kuleler (kameranın olduğu yakın kenar boş bırakılır)
   const camSide = opts.mode === 'attack' ? -1 : 1; // mavi tarafın işareti
   const fireMat = new THREE.MeshStandardMaterial({ color: 0x6a6a72, roughness: 0.8 }), rimMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7, metalness: 0.3 });
   const braziers = [];
-  const fenceLen = A.modelSize('fence_wood_straight');
+  let warTick = null;
+  if (TH) warTick = warDecor(scene, TH, camSide, AX, AZ, braziers, opts.mode === 'attack' ? 1 : -1);
+  const fenceLen = !TH && A.modelSize('fence_wood_straight');
   const nF = 34;
   for (let i = 0; i < nF; i++) {
     const a0 = (i / nF) * Math.PI * 2, a1 = ((i + 1) / nF) * Math.PI * 2;
@@ -169,20 +298,20 @@ export function openBattle(opts) {
     const f1 = sprite(0xff8a20, 1.8, 0.95), f2 = sprite(0xffe070, 0.9, 1); f1.position.y = f2.position.y = 1.9; b.add(f1, f2);
     scene.add(b); braziers.push({ f1, f2, ph: Math.random() * 6 });
   };
-  for (const [a, k] of [[0.42, 1], [-0.42, 1], [Math.PI - 0.55, 1], [Math.PI + 0.55, 1], [Math.PI / 2, 1], [-Math.PI / 2, 1]]) {
+  if (!TH) for (const [a, k] of [[0.42, 1], [-0.42, 1], [Math.PI - 0.55, 1], [Math.PI + 0.55, 1], [Math.PI / 2, 1], [-Math.PI / 2, 1]]) {
     const ang = camSide > 0 ? Math.PI - a : a; // yakın taraftaki iki mangal kameraya göre ayarlanır
     const x = Math.cos(ang) * (AX + 3) * k, z = Math.sin(ang) * (AZ + 3) * k;
     if (Math.sign(x) === camSide && Math.abs(x) > AX * 0.5) continue;
     brazierAt(x, z);
   }
-  for (const z of [-1, 1]) { // uzak köşelerde süs kuleleri
+  if (!TH) for (const z of [-1, 1]) { // uzak köşelerde süs kuleleri
     const tw = BLD.createBuilding('archery', 3); tw.position.set(-camSide * (AX + 2), 0, z * (AZ + 5)); tw.rotation.y = camSide * Math.PI / 2; scene.add(tw);
   }
-  for (let i = 0; i < 26; i++) { // yanlarda ağaçlar
+  if (!TH) for (let i = 0; i < 26; i++) { // yanlarda ağaçlar
     const side = i % 2 ? 1 : -1, x = rand(-AX - 10, AX + 4) * 1, z = side * rand(AZ + 6, AZ + 22);
     const t = BLD.createTree(Math.floor(Math.random() * 4)); t.position.set(x, 0, z); t.rotation.y = rand(0, 6); t.scale.setScalar(rand(0.9, 1.3)); scene.add(t);
   }
-  for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28; const rk = BLD.createRock(rand(0.4, 1.1)); rk.position.set(Math.cos(a) * (AX + rand(3, 7)), 0, Math.sin(a) * (AZ + rand(3, 7))); if (Math.sign(rk.position.x) === camSide && Math.abs(rk.position.x) > AX * 0.6) continue; scene.add(rk); }
+  if (!TH) for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28; const rk = BLD.createRock(rand(0.4, 1.1)); rk.position.set(Math.cos(a) * (AX + rand(3, 7)), 0, Math.sin(a) * (AZ + rand(3, 7))); if (Math.sign(rk.position.x) === camSide && Math.abs(rk.position.x) > AX * 0.6) continue; scene.add(rk); }
 
   // tarafları belirle: oyuncu her zaman mavi
   const blueIsAtt = opts.mode === 'attack';
@@ -266,13 +395,14 @@ export function openBattle(opts) {
   // arayüz
   const win = opts.mode === 'attack' ? opts.result.win : !opts.result.win;
   const myHero = opts.mode === 'attack' ? opts.attacker.hero : opts.defender.hero;
-  const pw = (tr) => G.fmt(G.armyPower(tr || {}));
+  const pw = (tr, team) => G.fmt(opts.powers ? opts.powers[team] : G.armyPower(tr || {}));
+  const camp = opts.report?.kind === 'campaign';
   ov().innerHTML = `<div class="bt-top">
-      <div class="bt-side blue"><img class="bt-ava" src="assets/heroes/${myHero || G.S.commander || 'emre'}_a.webp" alt=""><div><b>${G.S.name}</b><span>⚔ ${pw(sides.blue.troops)}</span></div></div>
+      <div class="bt-side blue"><img class="bt-ava" src="assets/heroes/${myHero || G.S.commander || 'emre'}_a.webp" alt=""><div><b>${G.S.name}</b><span>⚔ ${pw(sides.blue.troops, 'blue')}</span></div></div>
       <div class="bt-vs"><span>⚔</span></div>
-      <div class="bt-side red"><div><b>${opts.title}</b><span>⚔ ${pw(sides.red.troops)}</span></div><img class="bt-ava" src="assets/heroes/oguz_a.webp" alt=""></div>
+      <div class="bt-side red"><div><b>${opts.title}</b><span>⚔ ${pw(sides.red.troops, 'red')}</span></div><img class="bt-ava${opts.enemyAva ? ' own' : ''}" src="${opts.enemyAva || 'assets/heroes/oguz_a.webp'}" alt=""></div>
     </div>
-    <div class="bt-plaque">${opts.mode === 'attack' ? 'Savaş Alanı' : 'Şehir Savunması'}</div>
+    <div class="bt-plaque">${opts.plaque || (opts.mode === 'attack' ? 'Savaş Alanı' : 'Şehir Savunması')}</div>
     <div class="ov-bottom bt-bottom" id="bHud">
       <div class="bt-ctrl" id="bCtrl"><div class="bt-units"><i>👥</i><div><small>Birlikler</small><b>${G.fmt(T0.blue)}</b></div></div>
         <button class="bt-start" id="bStart"><i>⚔</i><span>Savaşı Başlat</span></button>
@@ -288,6 +418,7 @@ export function openBattle(opts) {
     C.sfx(win ? 'win' : 'lose');
     const r = opts.report, tot = (o) => G.fmt(G.totalTroops(o || {}));
     const loot = r.loot || {};
+    if (camp) { $('bHud').innerHTML = campResultHtml(r, win, tot); $('bBack').onclick = () => { close(); opts.onClose?.(); }; return; }
     $('bHud').innerHTML = `<div class="modal-box" style="max-width:none;animation:pop .3s">
       <h2 class="cinzel" style="margin:0 0 6px;text-align:center;font-size:30px;color:${win ? 'var(--gold)' : '#ff7a6a'}">${win ? 'ZAFER!' : 'YENİLGİ'}</h2>
       <div class="stats">
@@ -316,7 +447,8 @@ export function openBattle(opts) {
     const cd = portrait ? 31 : 25, ch = portrait ? 15 : 13;
     camera.position.set(bs * cd, ch, Math.sin(ca) * 4);
     camera.lookAt(-bs * (portrait ? 7 : 4), 0, Math.sin(ca) * 1.5);
-    for (const b of braziers) { const q = 0.85 + Math.sin(t * 13 + b.ph) * 0.1 + Math.sin(t * 7.3 + b.ph) * 0.08; b.f1.scale.set(1.5 * q, 2.1 * q, 1); b.f2.scale.setScalar(0.85 * q); }
+    if (warTick) warTick(dt, t, camera);
+    for (const b of braziers) { const q = 0.85 + Math.sin(t * 13 + b.ph) * 0.1 + Math.sin(t * 7.3 + b.ph) * 0.08; const k = b.k || 1; b.f1.scale.set(1.5 * q * k, 2.1 * q * k, 1); b.f2.scale.setScalar(0.85 * q * k); }
     const p = clamp((T - 2.6) / 7, 0, 1), ep = ease(p);
     // ölüm kontrolü
     for (const team of ['blue', 'red']) {

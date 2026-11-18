@@ -73,6 +73,7 @@ export function load() {
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
   S.tankTraining ??= null;
+  S.camp ||= { done: 0, tries: 0 };
   dailyReset();
   catchUp();
   save();
@@ -215,6 +216,7 @@ export function addRes(obj) {
 export function gainRes(obj) { for (const r in obj) S.res[r] = (S.res[r] || 0) + obj[r]; }
 export function fmt(n) {
   n = Math.floor(n);
+  if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 1).replace('.', ',') + 'Mr';
   if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.', ',') + 'M';
   if (n >= 1e4) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace('.', ',') + 'B';
   return n.toLocaleString('tr-TR');

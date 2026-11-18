@@ -12,6 +12,8 @@ import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN
 import { STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { getAvatar } from './scenes.js';
+import { initCampaign, openCampaign } from './campui.js';
+import { campIdx, stageLabel } from './campaign.js';
 import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
 import { createGrass } from './grass.js';
 import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js';
@@ -488,7 +490,7 @@ const endPtr = (e) => {
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
 canvas.addEventListener('wheel', (e) => { if (!sceneActive()) cam.distT = clamp(cam.distT * (1 + Math.sign(e.deltaY) * 0.12), 28, 170); }, { passive: true });
-document.addEventListener('touchmove', (e) => { if (!e.target.closest('.sheet, .modal-box, .res10')) e.preventDefault(); }, { passive: false });
+document.addEventListener('touchmove', (e) => { if (!e.target.closest('.sheet, .modal-box, .res10, .cp-scroll')) e.preventDefault(); }, { passive: false });
 
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function tapAt(x, y) {
@@ -574,9 +576,7 @@ function updateTop() {
   $('troopCount').textContent = G.fmt(G.totalTroops());
   $('builderCount').textContent = `${G.busyBuilders()}/${G.builders()}`;
   $('freeDot').classList.toggle('hidden', !G.freePullAvailable());
-  const left = G.S.raid.at - Date.now() / 1000;
-  $('chipRaid').classList.toggle('hidden', left > 45);
-  $('raidTxt').textContent = 'Saldırı: ' + G.fmtTime(left);
+  $('campTag').textContent = stageLabel(campIdx());
 }
 
 // ---------------------------------------------------------------------
@@ -802,7 +802,6 @@ $('goldBtn').onclick = (e) => { e.stopPropagation(); shopTab = 'gold'; navigate(
 document.querySelectorAll('#top .res[data-r]').forEach((el) => (el.onclick = () => { shopTab = 'res'; navigate('shop'); }));
 $('profileBtn').onclick = () => navigate('profile');
 $('chipTroops').onclick = () => navigate('army');
-$('chipRaid').onclick = () => toast('Düşman yaklaşıyor! Asker eğit ve kulelerini güçlendir.');
 
 let modalKind = '', worldSel = null, heroTab = 'mine';
 export function navigate(go) {
@@ -811,6 +810,7 @@ export function navigate(go) {
   if (go === 'city') { closeModal(); return; }
   if (go === 'events') { questTab = 'daily'; go = 'quests'; }
 
+  if (go === 'campaign') { closeModal(); closeSheet(); openCampaign(); return; }
   if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); tutEvent('summonOpen'); return; }
   if (go === 'alliance') { closeModal(); setNav('alliance'); sfx('open'); openAlliance(); return; }
   if (go === 'world') { tutEvent('worldOpen'); if (G.S.tut === 'done') { closeModal(); setNav('world'); sfx('open'); openWorldMap(); return; } }
@@ -1523,14 +1523,6 @@ function gameTick(dt) {
     for (const id in holders) refreshPlot(id);
     updateTop(); updateQuestUI();
     if (sheetId && !document.activeElement?.classList.contains('slider')) renderSheet();
-    // baskın
-    const left = G.S.raid.at - Date.now() / 1000;
-    if (left < 30 && !G.S.raid.warned) { G.S.raid.warned = true; toast('⚠️ Düşman ordusu yaklaşıyor! 30 saniye!', true); sfx('warn'); }
-    if (left <= 0 && !sceneActive() && !$('modal').classList.contains('open')) {
-      const r = G.resolveRaid();
-      closeSheet();
-      openBattle({ mode: 'defense', result: r.res, attacker: { troops: r.attacker.troops }, defender: { troops: r.home, hero: G.S.commander, tower: G.towerPower() / 260 }, report: r.rep, title: r.attacker.name });
-    } else if (left <= 0) G.S.raid.at = Date.now() / 1000 + 20;
   }
   if (saveT > 5) { saveT = 0; G.save(); }
 }
@@ -1611,6 +1603,7 @@ async function boot() {
   buildPatrols();
   buildNight();
   initScenes({ baseDpr: renderer.getPixelRatio(), renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
+  initCampaign({ toast, sfx, openBattle, updateTop, navigate });
   const onAttack = (id) => { worldSel = id; atk.init = false; atk.rally = null; modalKind = 'attack'; renderModal(); };
   window.__dsAttack = onAttack;
   initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack, onRally: openRally, onScoutReport: openScoutReport, onTeleport: () => syncNow() });

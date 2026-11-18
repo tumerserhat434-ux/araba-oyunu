@@ -1,7 +1,7 @@
 # PROJE HAFIZASI — araba-oyunu deposu
 
 > Bu dosya, yeni bir sohbete yüklendiğinde projeyi kaldığı yerden sürdürmek için hazırlandı.
-> Son güncelleme: son commit `eb4c747` ("Demir Sancak: çoğunlukla gece, arada kısa alacakaranlık döngüsü").
+> Son güncelleme: Fetih Görevleri (bkz. 5.30). Çalışma dalı: `claude/demir-sancak-dosyasi-k0z9ce`.
 > Bu dosyada yalnızca doğrulanmış bilgiler var. Bilinmeyenler **"Bilinmiyor / doğrulanmadı"** diye işaretlendi.
 
 ---
@@ -9,7 +9,7 @@
 ## 0. Hızlı özet
 
 - **Depo:** `tumerserhat434-ux/araba-oyunu` (GitHub)
-- **Çalışılan dal:** `claude/laughing-hamilton-eaghgm` (güncel, `claude/selam-naber-ilicoo` üzerine devam). Önceki dal `claude/forest-parkour-mobile-game-9oxplw` bunun içine alındı. `main` dalına hiç aktarılmadı.
+- **Çalışılan dal:** `claude/demir-sancak-dosyasi-k0z9ce` (güncel; `claude/laughing-hamilton-eaghgm` üzerine devam, o da `claude/selam-naber-ilicoo` üzerine). Önceki dal `claude/forest-parkour-mobile-game-9oxplw` bunun içine alındı. `main` dalına hiç aktarılmadı.
 - **Oyunlar** (tarayıcıda çalışır, kurulum gerekmez):
   1. **Orman Kaçışı** (`orman-kacisi/`): Subway Surfers tarzı, yağmur ormanında gece geçen 3D sonsuz koşu. İlk çarpışmada ayı kovalar. **Tamamlandı, şu an dokunulmuyor.**
   2. **Demir Sancak** (`krallik/`): Rise of Kingdoms tarzı krallık kurma ve strateji oyunu. **Aktif geliştirilen proje.**
@@ -501,6 +501,18 @@ cd araba-oyunu && python3 -m http.server 8000
 - `scenes.js → freeScene(scene)`: geometri, malzeme, dokular, iskeletler (`skeleton.dispose`), arka plan/ortam dokusu. `freeOnClose: true` olan sahneler (dünya haritası, savaş) kapanınca/başka sahne açılınca silinir. `freeSkeletons(obj)`: haritadan kalkan sefer orduları, zombiler, devler; kahraman görüntüleyici ve çağırmada değişen kahramanlar.
 - Ölçüm (Playwright, iPhone SE): önce her harita açılışı +280 doku kalıcı birikiyordu; şimdi her kapanışta 186'ya döner. Savaş da başlangıca döner.
 - `assets.js → LOW_MEM` (ekranın uzun kenarı < 740 px ya da deviceMemory ≤ 3): kahraman dokuları 1024'e küçültülür. `webglcontextlost` olursa kayıt alınır ve sayfa kendiliğinden yeniden yüklenir.
+
+### 5.30 Bot baskınları kaldırıldı, yerine Fetih Görevleri
+- **Baskınlar kaldırıldı:** `main.js → gameTick` içindeki 30 sn uyarılı "Şehir Savunması" baskını ve `chipRaid` çipi silindi. `state.js → resolveRaid` ve `S.raid` kodda duruyor ama çağrılmıyor.
+- **Giriş:** Şehirde sağ sütunda "Çağır"ın altında **Görevler** butonu (`data-go="campaign"`, simge `ic_campaign.webp`, üzerinde sıradaki görev etiketi `campTag`).
+- **Mantık (`js/campaign.js`):** `S.camp = { done, tries }`; `done` = geçilen görev sayısı (0 → 1-1, 15 → 2-1). Her bölümde 15 görev; 5. ve 10. görev seçkin komutan, 15. görev bölüm patronu.
+  - Düşman gücü `stagePower(idx)`: 1-1 = 10 bin, 1-2 = 20 bin, sonra her görev ×1,2 (1-15 ≈ 214 bin, 2-15 ≈ 3,3 milyon, 3-15 ≈ 51 milyon, 5-15 ≈ 12 milyar). Ordu bileşimi diyara göre, belirlenimci (`stageArmy`).
+  - Bizim güç `myPower()` = evdeki tüm askerler + en güçlü 5 kahraman (`armyPowerMulti`).
+  - Sonuç `fightStage()`: güç ≥ düşman → kesin zafer; %90–100 arası "riskli" (şans %0–50); altı yenilgi. **Asker ölmez, kaynak harcanmaz.** İlk zaferde ödül (kaynak, altın, hızlandırma) ve sıradaki görev açılır; yenilince tekrar denenebilir.
+- **Diyarlar (`THEMES`):** 1 Yanan Vadi, 2 Kızıl Çöl, 3 Buzul Geçidi, 4 Ateş Diyarı, 5 Gölge Bataklığı; 6. bölümden sonra sırayla döner (güç artmaya devam eder). Her diyarın harita arka planı `cm_N.webp`, savaş arka planı `cb_N.webp`, komutan `cap_N.webp`, patron `boss_N.webp` (Higgsfield `gpt_image_2_6`, ~6 kredi toplam). Ödül sandığı `ic_chest.webp`.
+- **Ekran (`js/campui.js`, `#camp`, CSS `.cp-*`):** Kaydırılabilir bölüm haritası, 15 durak kıvrılan altın noktalı yolla bağlı (geçilen kısım parlak), seçili görev kartı (düşman/bizim güç çubuğu, şans, düşman ordusu, komutanlar, ilk zafer ödülü, Saldır). Başlıkta ◀ ▶ ile önceki bölümlere bakılır. Bölüm bitince "BÖLÜM N TAMAMLANDI" penceresi ve yeni bölüme geçiş.
+- **Savaş (`scenes.js → openBattle`)** yeni seçenekler: `theme` (diyar arka planı, zemin dokusu, ışık), `enemyAva`, `plaque`, `powers`, `onClose`; rapor türü `campaign` için ayrı sonuç penceresi (`campResultHtml`). `warDecor()`: yanan enkaz yığınları ve duman sütunları, düşman kampı (çadır, kırmızı sancak, silah rafı), yere saplı mızraklar, düşmüş kalkanlar, yanık izleri, diyar parçacıkları (kar, kor, toz, sis). Klasik arena (çit, mangal) yalnızca tema yokken kurulur.
+- `fmt()` artık milyarı `Mr` ile yazar (4,1Mr).
 
 ## 6. Önemli tasarım kararları (neden böyle)
 

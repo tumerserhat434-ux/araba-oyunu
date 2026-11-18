@@ -49,7 +49,6 @@
 <div id="side" class="hidden">
   <div class="chip hchip" id="chipTroops"><img class="hc-ic" src="assets/ui/ic_troops.webp" alt=""><div class="hc-t"><small>Ordu</small><span id="troopCount">0</span></div></div>
   <div class="chip hchip" id="chipBuilders"><img class="hc-ic" src="assets/ui/ic_builder.webp" alt=""><div class="hc-t"><small>İnşaatçı</small><span id="builderCount">0/2</span></div></div>
-  <div class="chip warn hidden" id="chipRaid">⚠️ <span id="raidTxt"></span></div>
 </div>
 
 <div id="rside" class="hidden">
@@ -59,6 +58,7 @@
   <button class="rbtn" data-go="login"><img src="assets/ui/ic_trophy.webp" width="46" height="46" alt=""><span>Ödüller</span><em class="dot hidden" id="logDot"></em></button>
   <button class="rbtn" data-go="ranking"><i data-ico="power" data-s="44"></i><span>Sıralama</span></button>
   <button class="rbtn glow" data-go="summon"><img src="assets/ui/ic_summon.webp" width="52" height="52" alt=""><span>Çağır</span><em id="freeDot" class="dot hidden"></em></button>
+  <button class="rbtn camp-btn" data-go="campaign"><img src="assets/ui/ic_campaign.webp" width="52" height="52" alt=""><span>Görevler</span><em id="campTag" class="camp-tag">1-1</em></button>
 </div>
 
 <div id="bottomHud" class="hidden">
@@ -84,6 +84,8 @@
 <div id="modal" class="modal"><div id="modalBox" class="modal-box"></div></div>
 <!-- Sahne üstü katman (savaş, çağırma) -->
 <div id="overlay" class="overlay hidden"></div>
+<!-- Fetih görevleri -->
+<div id="camp" class="camp hidden"></div>
 <div id="toasts"></div>
 
 <script type="module" src="js/main.js"></script>
