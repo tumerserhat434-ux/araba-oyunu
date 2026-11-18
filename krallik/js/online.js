@@ -214,3 +214,31 @@ export function watchChat(id, cb) {
   if (!ready || !id) return () => {};
   try { return FS.onSnapshot(FS.query(FS.collection(db, 'alliances', id, 'chat'), FS.orderBy('t', 'desc'), FS.limit(50)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).reverse()), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
 }
+
+// ---- Ralliler (alliances/{aid}/rallies/{rid}) ----
+// { leader, leaderName, giant{id,level,power,mapX,mapY}, lx, ly, created, endsAt(ms), status: open|done|cancelled, members{uid:{name,power,hero,frame}} }
+export async function createRally(aid, data) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try { const ref = FS.doc(FS.collection(db, 'alliances', aid, 'rallies')); await FS.setDoc(ref, { ...data, leader: user.uid, status: 'open' }); return { ok: true, id: ref.id }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function joinRally(aid, rid, member) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try {
+    const s = await FS.getDoc(FS.doc(db, 'alliances', aid, 'rallies', rid)); if (!s.exists()) return { ok: false, why: 'Ralli bulunamadı' };
+    const r = s.data();
+    if (r.status !== 'open' || Date.now() >= r.endsAt) return { ok: false, why: 'Ralli süresi doldu' };
+    if (r.members?.[user.uid]) return { ok: false, why: 'Bu ralliye zaten katıldın' };
+    if (Object.keys(r.members || {}).length >= 5) return { ok: false, why: 'Ralli dolu (5/5)' };
+    await FS.updateDoc(FS.doc(db, 'alliances', aid, 'rallies', rid), { [`members.${user.uid}`]: member });
+    return { ok: true, rally: { id: rid, ...r } };
+  } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function getRally(aid, rid) {
+  if (!ready) return null;
+  try { const s = await FS.getDoc(FS.doc(db, 'alliances', aid, 'rallies', rid)); return s.exists() ? { id: s.id, ...s.data() } : null; } catch (e) { lastErr = errOf(e); return null; }
+}
+export async function setRallyStatus(aid, rid, status) { try { await FS.updateDoc(FS.doc(db, 'alliances', aid, 'rallies', rid), { status }); } catch (e) { lastErr = errOf(e); } }
+export function watchRallies(aid, cb) {
+  if (!ready || !aid) return () => {};
+  try { return FS.onSnapshot(FS.query(FS.collection(db, 'alliances', aid, 'rallies'), FS.where('status', '==', 'open'), FS.limit(20)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}

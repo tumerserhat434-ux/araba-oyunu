@@ -31,6 +31,23 @@ service cloud.firestore {
             && (request.auth.uid in resource.data.members || resource.data.open == true)
             && request.resource.data.members.size() <= 50));
       allow delete: if request.auth != null && resource.data.leader == request.auth.uid;
+      match /rallies/{rid} {
+        allow read: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;
+        allow create: if request.auth != null
+          && request.resource.data.leader == request.auth.uid
+          && request.resource.data.members.keys().hasOnly([request.auth.uid])
+          && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;
+        allow update: if request.auth != null && (
+          (resource.data.leader == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+            && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.members.size() <= 5
+            && resource.data.status == 'open'
+            && request.time.toMillis() < resource.data.endsAt
+            && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members));
+      }
       match /chat/{mid} {
         allow read: if request.auth != null
           && request.auth.uid in get(/databases/$(database)/documents/alliances/$(aid)).data.members;

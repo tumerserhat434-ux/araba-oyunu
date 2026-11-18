@@ -488,6 +488,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - 23 kahraman GLB'sinin dokusu 768 → 2048: 21 tanesi Higgsfield `upscale_image` (bytedance, 4K → 2048'e indirildi, ~2 kredi/adet), ali ve defne yapay zekâda tekrar tekrar hata verdi → yerelde median + Lanczos + keskinleştirme. GLB başına ~0,7–1,1 MB, toplam `heroes3d` ~21 MB (isteğe bağlı yüklenir).
 - Araç: `scratchpad/hf/tools/ext.mjs get|set` (gltf-transform + meshopt ile tek dokuyu çıkar/değiştir), `scratchpad/tex/embed.sh <isim> <png>`. Scratchpad kalıcı değil.
 
+### 5.28 Devler ve ittifak rallileri
+- `state.js`: `S.giants` (~6), `S.giantMax`. Sv.1–78, `giantPower`: 150 bin, 500 bin, 800 bin, sonra ×1,12 (Sv.78 ≈ 3,9 milyar). `giantPos(g, t)` belirlenimci yürüyüş (merkez cx/cy, yarıçap r, hız spd); ralli açılınca `frozen`. `findGiant(L)`, `ensureNextGiant`, 15–25 dk'da yenilenir. Devlere normal sefer gönderilemez.
+- Ödül (`giantRewards`, herkese eşit, altın yok): kaynak 15 bin × (1+(L−1)×0,12) (taş 9 bin), 1 dk ×(2 + (L−1)/3), 5 dk (3'ün katı seviyelerde 2+L/12; Sv.30+ her seferinde), Sv.40+ 15 dk, Sv.60+ her 5 seviyede 1 sa.
+- Ralli: Firestore `alliances/{aid}/rallies/{rid}` {leader, leaderName, giant, lx/ly (lider şehri), created, endsAt (ms, +180 sn), status open|done|cancelled, members{uid:{name,power,hero,frame}}}. `online.js`: createRally, joinRally (5 kişi, süre/durum kontrolü), getRally, setRallyStatus, watchRallies. Kurallar `firestore.rules` (üye kendi kaydını ekler, süre `request.time` ile, lider yalnız status değiştirir) — **kullanıcı yeniden yayınlamalı**.
+- Yerel sefer `kind: 'rally'` (`startRallyMarch`): wait → muster (son 30 sn, kendi şehrinden lider şehrine) → go (lider şehrinden deve) → back. Süre dolunca main.js son üyeleri çeker (`m.final`), herkes sonucu aynı hesaplar: toplam güç ≥ dev gücü → zafer; kayıplar orantılı (zafer %4–35, yenilgi %35, `applyLosses`). <2 üye → iptal, askerler döner. 3 birlik sınırına dahil.
+- Arayüz: İttifak › Ralli sekmesi (`ic_rally`), açık ralliler (geri sayım, üyeler, güç çubuğu, Katıl), "Ralli oluştur" → harita Ara (Dev sekmesi açık, `openWorldMap({search:'giant'})`). Dev kartı: güç, ödüller, "Ralli aç" (ittifak + çevrimiçi gerekir). Sefer Kampı ralli modu (`atk.rally`: create/join). Ralli açılınca ittifak sohbetine duyuru. Raporlarda "📯 Ralli".
+- Model `assets/hf/giant.glb` (Higgsfield Tripo, ~9 kredi), simgeler `ic_rally.webp`, `ic_giant.webp`.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

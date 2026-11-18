@@ -66,6 +66,7 @@ export function load() {
   S.alliance ??= null;
   S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
   S.mines ||= []; S.mineMax ||= { food: 0, wood: 0, stone: 0, gold: 0 }; S.mineNext ||= 0;
+  S.giants ||= []; S.giantMax ||= 0; S.giantNext ||= 0;
   if (S.zombies.length > 14) { const keep = new Set(S.marches.map((m) => m.target)), nx = (S.zombieMax || 0) + 1; S.zombies = S.zombies.filter((z, i) => keep.has(z.id) || z.level === nx || i % 3 === 0).slice(0, 14); }
   if (S.mines.length > 16) S.mines = S.mines.filter((q, i) => q.busy || i % 3 !== 2).slice(0, 16);
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
@@ -600,8 +601,8 @@ function applyLosses(loss) {
   return { wounded, dead };
 }
 // ---- Çevrimiçi: gerçek oyuncular ----
-export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0 };
-export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
+export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0, rallyGiants: [] };
+export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || (S.giants || []).find((q) => q.id === id) || ONLINE.rallyGiants.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
 // Başka sunucunun bilgisayar krallıkları (görüntülenirken üretilir, kalıcı değil)
 export function foreignBots(server) {
   let seed = server * 9973; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -621,6 +622,7 @@ export function marchTime(e, troops) {
 export function startMarch(enemyId, sent, heroIds) {
   const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
   if (e.alliance && S.alliance && e.alliance.id === S.alliance.id) return { ok: false, why: '🤝 Müttefikine saldıramazsın' };
+  if (e.giant) return { ok: false, why: '🗿 Devler yalnızca ittifak rallisiyle kesilebilir' };
   if (e.zombie && !zombieUnlocked(e.level)) return { ok: false, why: `🧟 Önce Sv.${e.level - 1} zombiyi öldür` };
   if (e.mine && !mineUnlocked(e.type, e.level)) return { ok: false, why: `⛏ Önce Sv.${e.level - 1} ${MINE_TYPES[e.type].name} kazmalısın` };
   if (e.mine && e.busy && S.marches.some((m) => m.id === e.busy)) return { ok: false, why: 'Bu madende zaten birliğin var' };
@@ -639,6 +641,7 @@ export function startMarch(enemyId, sent, heroIds) {
 }
 export function recallMarch(id) {
   const m = S.marches.find((q) => q.id === id); if (!m) return false;
+  if (m.kind === 'rally') return false;
   if (m.phase === 'gather') { finishGather(m, now()); save(); return true; }
   if (m.phase !== 'go') return false;
   if (m.kind === 'gather') { const e = findEnemy(m.target); if (e && e.busy === m.id) e.busy = null; }
@@ -647,6 +650,7 @@ export function recallMarch(id) {
 function tickMarches() {
   const t = now();
   for (const m of [...S.marches]) {
+    if (m.kind === 'rally') { tickRally(m, t); continue; }
     if (m.kind === 'gather') {
       if (m.phase === 'go' && t >= m.arrive) { const e = findEnemy(m.target); if (!e) { m.phase = 'back'; m.survivors = m.troops; m.start = t; m.arrive = t + m.dur; m.loot = {}; continue; } m.phase = 'gather'; m.gStart = m.arrive; m.gEnd = m.arrive + m.hours * 3600; save(); emit('gatherStart', m); }
       if (m.phase === 'gather' && t >= m.gEnd) finishGather(m, m.gEnd);
@@ -708,7 +712,7 @@ function tickScouts() {
   }
 }
 export const lastScout = (enemyId) => S.scoutReports.find((r) => r.target === enemyId && !r.failed);
-export const troopsAway = () => { const o = {}; for (const m of S.marches) { const tr = m.phase === 'back' && m.kind !== 'gather' ? m.survivors || {} : m.troops; for (const k in tr) o[k] = (o[k] || 0) + tr[k]; } return o; };
+export const troopsAway = () => { const o = {}; for (const m of S.marches) { const tr = m.phase === 'back' && m.kind !== 'gather' && m.kind !== 'rally' ? m.survivors || {} : m.troops; for (const k in tr) o[k] = (o[k] || 0) + tr[k]; } return o; };
 export function importSave(json) { localStorage.setItem(SAVE_KEY, json); }
 export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 // Diğer oyuncuların göreceği herkese açık profil (savunma bilgisi dahil)
@@ -897,6 +901,95 @@ export function findMine(type, L) {
   return { ok: true, mine: m, created };
 }
 
+// ---- Devler (1–78): haritada dolaşır, yalnızca ittifak rallisiyle (en fazla 5 kişi) kesilir ----
+export const GIANT_MAX_LEVEL = 78, RALLY_MAX = 5, RALLY_WAIT = 180, RALLY_MUSTER = 30;
+export function giantPower(L) { return L <= 1 ? 150000 : L === 2 ? 500000 : L === 3 ? 800000 : Math.round(800000 * Math.pow(1.12, L - 3)); }
+export const giantUnlocked = (L) => L <= (S.giantMax || 0) + 1;
+// eşit ödül: kaynak (altın yok) + hızlandırmalar; seviyeyle ölçülü artar
+export function giantRewards(L) {
+  const k = 1 + (L - 1) * 0.12, res = { food: Math.round(15000 * k / 100) * 100, wood: Math.round(15000 * k / 100) * 100, stone: Math.round(9000 * k / 100) * 100 };
+  const items = [{ id: 's1m', n: 2 + Math.floor((L - 1) / 3) }];
+  const n5 = L >= 30 ? 3 + Math.floor((L - 30) / 12) : L % 3 === 0 ? 2 + Math.floor(L / 12) : 0; if (n5) items.push({ id: 's5m', n: n5 });
+  if (L >= 40) items.push({ id: 's15m', n: 1 + Math.floor((L - 40) / 15) });
+  if (L >= 60 && L % 5 === 0) items.push({ id: 's1h', n: 1 });
+  return { res, items };
+}
+// hareket: her dev kendi merkezinin çevresinde, zamana bağlı (belirlenimci) bir rotada yürür
+export function giantPos(g, t = now()) {
+  if (g.frozen) return [g.mapX, g.mapY];
+  const ph = t * g.spd + g.ph, r = g.r;
+  const x = g.cx + Math.cos(ph) * r + Math.cos(ph * 2.3 + 1) * r * 0.25, y = g.cy + Math.sin(ph * 0.8) * r * 0.9 + Math.sin(ph * 1.7) * r * 0.2;
+  return [Math.max(30, Math.min(970, x)), Math.max(30, Math.min(970, y))];
+}
+function makeGiant(L, near) {
+  for (let k = 0; k < 40; k++) {
+    const a = rand(0, Math.PI * 2), d = near ? rand(90, 220) : rand(150, 460), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
+    if (x < 70 || x > 930 || y < 70 || y > 930 || nearThrone(x, y, 50)) continue;
+    if (Math.hypot(S.mapX - x, S.mapY - y) < 80 || S.giants.some((q) => Math.hypot(q.cx - x, q.cy - y) < 70)) continue;
+    const g = { id: 'g' + Math.random().toString(36).slice(2, 8), giant: true, level: L, name: `Dev Sv.${L}`, lord: 'Dağların Devi', th: L, power: giantPower(L), troops: {}, tower: 0, res: {}, shieldUntil: 0, cx: Math.round(x), cy: Math.round(y), r: rand(18, 34), spd: rand(0.004, 0.008) * (Math.random() < 0.5 ? -1 : 1), ph: rand(0, 6.28) };
+    [g.mapX, g.mapY] = giantPos(g); return g;
+  }
+  return null;
+}
+function ensureNextGiant() { const next = Math.min(GIANT_MAX_LEVEL, (S.giantMax || 0) + 1); if (!S.giants.some((q) => q.level === next)) { const g = makeGiant(next, true); if (g) { S.giants.push(g); emit('giants'); } } }
+export function tickGiants(force) {
+  if (S.mapX == null) return;
+  const t = now();
+  for (const g of S.giants) [g.mapX, g.mapY] = giantPos(g, t);
+  if (force || !S.giants.length || t >= (S.giantNext || 0)) {
+    for (let i = S.giants.length; i < 6; i++) { const mx = S.giantMax || 0, near = i % 2 === 0; const g = makeGiant(near ? Math.max(1, Math.min(GIANT_MAX_LEVEL, mx + randi(-1, 1))) : randi(1, GIANT_MAX_LEVEL), near); if (g) S.giants.push(g); }
+    S.giantNext = t + rand(900, 1500); emit('giants');
+  }
+  ensureNextGiant();
+}
+export function findGiant(L) {
+  L = Math.max(1, Math.min(GIANT_MAX_LEVEL, Math.round(L)));
+  if (!giantUnlocked(L)) return { ok: false, why: `🔒 Önce Sv.${L - 1} devi kesmelisiniz` };
+  let g = S.giants.filter((q) => q.level === L && !q.frozen).sort((a, b) => Math.hypot(a.mapX - S.mapX, a.mapY - S.mapY) - Math.hypot(b.mapX - S.mapX, b.mapY - S.mapY))[0], created = false;
+  if (!g) { g = makeGiant(L, true); if (!g) return { ok: false, why: 'Yakında boş yer bulunamadı' }; S.giants.push(g); created = true; save(); emit('giants'); }
+  return { ok: true, giant: g, created };
+}
+// ralli seferi: wait (şehirde) → muster (son 30 sn lider şehrine) → go (deve) → back
+const rallyMarchTime = (from, to) => Math.round(Math.min(150, Math.max(10, 8 + Math.hypot(to[0] - from[0], to[1] - from[1]) * 0.18)));
+export function startRallyMarch(r, troops, heroIds) {
+  if (S.marches.length >= MAX_MARCHES) return { ok: false, why: `En fazla ${MAX_MARCHES} birlik aynı anda dışarıda olabilir` };
+  const tr = {}; let n = 0;
+  for (const t in TROOPS) { tr[t] = Math.max(0, Math.min(troops[t] || 0, S.troops[t] || 0)); n += tr[t]; }
+  if (!n) return { ok: false, why: 'Asker seç' };
+  heroIds = (heroIds || []).filter((id) => S.heroes[id] && !S.marches.some((m) => (m.heroes || []).includes(id))).slice(0, MAX_COMMANDERS);
+  for (const t in tr) S.troops[t] -= tr[t];
+  const power = armyPowerMulti(tr, heroIds);
+  const m = { id: 'r' + Math.random().toString(36).slice(2, 8), kind: 'rally', rid: r.rid, aid: r.aid, leader: r.leader, tname: `Dev Sv.${r.giant.level}`, giant: r.giant, tx: r.giant.mapX, ty: r.giant.mapY, lx: r.lx, ly: r.ly, endsAt: r.endsAt, troops: tr, heroes: heroIds, power, phase: 'wait', start: now(), arrive: r.endsAt };
+  S.marches.push(m); save(); emit('march', m);
+  return { ok: true, march: m, power, troops: tr };
+}
+function tickRally(m, t) {
+  if (m.phase === 'wait' && t >= m.endsAt - RALLY_MUSTER) { m.phase = 'muster'; m.start = m.endsAt - RALLY_MUSTER; m.arrive = m.endsAt; emit('rallyMuster', m); }
+  if (m.phase === 'muster' && t >= m.endsAt) {
+    if (!m.final) { m.needFinal = true; return; } // katılımcı listesi sunucudan bekleniyor
+    if (m.final.length < 2) { // kimse katılmadı → iptal
+      for (const k in m.troops) S.troops[k] += m.troops[k];
+      S.marches = S.marches.filter((q) => q !== m); unfreezeGiant(m); save(); emit('rallyCancel', m); return;
+    }
+    const d = rallyMarchTime([m.lx, m.ly], [m.tx, m.ty]); m.phase = 'go'; m.start = t; m.arrive = t + d; m.dur = d; save(); emit('rallyGo', m);
+  }
+  if (m.phase === 'go' && t >= m.arrive) {
+    const total = m.final.reduce((a, q) => a + (q.power || 0), 0), need = m.giant.power, win = total >= need;
+    const frac = win ? Math.max(0.04, Math.min(0.35, 0.3 * need / total)) : 0.35, loss = {};
+    for (const k in m.troops) { loss[k] = Math.floor(m.troops[k] * frac); m.troops[k] -= loss[k]; }
+    const split = applyLosses(loss); let rew = null;
+    if (win) { rew = giantRewards(m.giant.level); gainRes(rew.res); for (const it of rew.items) addItem(it.id, it.n); S.giantMax = Math.max(S.giantMax || 0, m.giant.level); S.stats.wins++; count('wins'); S.giants = S.giants.filter((g) => g.id !== m.giant.id); ensureNextGiant(); }
+    else { S.stats.losses++; unfreezeGiant(m); }
+    m.result = { win, total, need, members: m.final.length, rew };
+    const rep = { t, kind: 'rally', win, enemy: `Dev Sv.${m.giant.level}`, members: m.final.map((q) => q.name), total, need, aLoss: loss, wounded: split.wounded, dead: split.dead, loot: rew ? rew.res : {}, items: rew ? rew.items : null };
+    S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
+    const d = rallyMarchTime([m.tx, m.ty], [S.mapX, S.mapY]); m.phase = 'back'; m.start = t; m.arrive = t + d; save(); emit('rallyDone', m);
+  }
+  if (m.phase === 'back' && t >= m.arrive) { for (const k in m.troops) S.troops[k] += m.troops[k]; S.marches = S.marches.filter((q) => q !== m); save(); emit('marchHome', m); }
+}
+function unfreezeGiant(m) { const g = S.giants.find((q) => q.id === m.giant.id); if (g) g.frozen = false; }
+export function freezeGiant(id) { const g = S.giants.find((q) => q.id === id); if (g) { [g.mapX, g.mapY] = giantPos(g); g.frozen = true; save(); } return g; }
+
 // Düşman baskını (şehre saldırı)
 export function resolveRaid() {
   const strength = Math.max(1500, (armyPower(S.troops) + towerPower()) * rand(0.45, 1.25));
@@ -929,6 +1022,7 @@ export function tick() {
   if (S.scouts?.length) tickScouts();
   if (S.mapX != null && (!S.zombies?.length || now() >= (S.zombieNext || 0))) tickZombies();
   if (S.mapX != null && (!S.mines?.length || now() >= (S.mineNext || 0))) tickMines();
+  if (S.mapX != null && (!S.giants?.length || now() >= (S.giantNext || 0))) tickGiants();
   for (const p of PLOTS) {
     const b = S.buildings[p.id];
     if (b.busyUntil && b.busyUntil <= t) {
