@@ -17,6 +17,7 @@ import { openScene, closeScene, sceneOverlay as ov } from './scenes.js';
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
+const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
 const fmtT = (s) => { s = Math.max(0, Math.ceil(s)); const m = Math.floor(s / 60); return m ? `${m}:${String(s % 60).padStart(2, '0')}` : `${s}sn`; };
 let C = null; // { renderer, toast, sfx, onAttack(id), online, serverPlayers, onTeleport }
 let W = null; // açık harita durumu
@@ -132,6 +133,30 @@ function ribbon(ax, az, bx, bz, color, w = 2.6, op = 0.95) {
 }
 
 // ---------------------------------------------------------------------
+// Gözetleme helikopteri (prosedürel): mavi gövde, cam kokpit, kuyruk, kızaklar, dönen pervaneler
+function makeHeli() {
+  const g = new THREE.Group(), body = new THREE.Group(); g.add(body);
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.45, metalness: 0.35, ...o });
+  const blue = M(0x2a5ad8), dark = M(0x1a2236), gold = M(0xe0b040, { metalness: 0.7, roughness: 0.3 });
+  const hull = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), blue); hull.scale.set(1.25, 1.1, 2.1); body.add(hull);
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(1, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), M(0x9ae4ff, { emissive: 0x2a8ac8, emissiveIntensity: 0.7, roughness: 0.1 })); glass.scale.set(1.05, 0.95, 1.2); glass.rotation.x = Math.PI / 2.4; glass.position.set(0, 0.25, 1.05); body.add(glass);
+  const stripe = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.09, 6, 24), gold); stripe.rotation.y = Math.PI / 2; stripe.scale.set(1, 0.95, 1.75); body.add(stripe);
+  const boom = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.42, 3.6, 10), blue); boom.rotation.x = Math.PI / 2; boom.position.set(0, 0.35, -3.2); body.add(boom);
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.3, 0.8), blue); fin.position.set(0, 0.95, -4.8); body.add(fin);
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 0.45), blue); wing.position.set(0, 0.4, -4.3); body.add(wing);
+  for (const sx of [-1, 1]) { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.4, 6), dark); sk.rotation.x = Math.PI / 2; sk.position.set(sx * 0.95, -1.35, 0.1); body.add(sk); for (const z of [-0.8, 0.9]) { const st = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.7, 5), dark); st.position.set(sx * 0.85, -1.0, z); st.rotation.z = sx * 0.35; body.add(st); } }
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.55, 8), dark); mast.position.y = 1.3; body.add(mast);
+  const rotor = new THREE.Group(); rotor.position.y = 1.6; body.add(rotor);
+  for (let i = 0; i < 4; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 4.2), dark); bl.position.z = 2.1; const arm = new THREE.Group(); arm.rotation.y = i * Math.PI / 2; arm.add(bl); rotor.add(arm); }
+  const blur = new THREE.Mesh(new THREE.CircleGeometry(4.3, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xcfe0ff, transparent: true, opacity: 0.14, depthWrite: false })); blur.position.y = 1.62; body.add(blur);
+  const tail = new THREE.Group(); tail.position.set(0.12, 1.0, -4.8); body.add(tail);
+  for (let i = 0; i < 2; i++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.5, 0.16), dark); bl.rotation.x = i * Math.PI / 2; tail.add(bl); }
+  const beacon = glow(0xff4030, 2.2, 1); beacon.position.set(0, 1.25, -4.85); body.add(beacon);
+  g.scale.setScalar(1.15);
+  g.userData = { body, rotor, tail, beacon };
+  return g;
+}
+
 export function openWorldMap(opts = {}) {
   const scene = new THREE.Scene();
   const SKY = 0x1c2a44;
@@ -297,6 +322,23 @@ export function openWorldMap(opts = {}) {
   };
   syncMarches();
 
+  // ---- gözetleme helikopterleri ----
+  const scoutObjs = new Map();
+  const shadowMat = new THREE.MeshBasicMaterial({ map: discTex(), color: 0x000000, transparent: true, opacity: 0.45, depthWrite: false });
+  const syncScouts = () => {
+    for (const [id, o] of scoutObjs) if (!S.scouts.find((q) => q.id === id)) { scene.remove(o.heli, o.line, o.shadow); o.el.remove(); scoutObjs.delete(id); }
+    for (const sc of S.scouts) {
+      if (scoutObjs.has(sc.id) || !home || sc.foreign) continue;
+      const a = new THREE.Vector3(S.mapX, 0, S.mapY), b = new THREE.Vector3(sc.tx, 0, sc.ty);
+      const line = ribbon(a.x, a.z, b.x, b.z, 0x4ad0ff, 1.6, 0.7); scene.add(line);
+      const heli = makeHeli(); scene.add(heli);
+      const shadow = new THREE.Mesh(discGeo, shadowMat); shadow.scale.set(9, 1, 9); scene.add(shadow);
+      const el = document.createElement('div'); el.className = 'wm-heli'; labels.appendChild(el);
+      scoutObjs.set(sc.id, { heli, line, shadow, el, a, b });
+    }
+  };
+  syncScouts();
+
   // =====================================================================
   //  Kamera
   // =====================================================================
@@ -380,12 +422,14 @@ export function openWorldMap(opts = {}) {
         <div class="wm-cs"><div><small>Durum</small><b>Tarafsız</b></div><div><small>Konum</small><b>X:${TH.x} Y:${TH.y}</b></div></div>
         <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button></div></div>`;
     } else if (c && !c.me && !c.ground) {
+      const scouting = G.S.scouts.some((q) => q.target === c.id), last = G.lastScout(c.id), st = G.scoutTime(c);
       const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, ratio = c.power / Math.max(1, G.cityPower());
       const diff = ratio < 0.6 ? ['Kolay', '#7dff9a'] : ratio < 1 ? ['Orta', '#ffe68a'] : ratio < 1.5 ? ['Zor', '#ffaa6a'] : ['Çok zor', '#ff6a5a'];
       card = `<div class="wm-card"><div class="wm-ch"><b>${c.real ? '🌐 ' : ''}${c.name}</b><span>Belediye Sv.${c.th || 1}</span></div>
-        <div class="wm-cs"><div><small>${c.real ? 'Gerçek oyuncu' : c.lord}</small><b>⚔ ${G.fmt(c.power)}</b><em style="color:${diff[1]}">${diff[0]}</em></div><div><small>Konum</small><b>X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}</b><em>⏱ ${fmtT(t)}</em></div></div>
+        <div class="wm-cs"><div><small>${c.real ? 'Gerçek oyuncu' : c.lord}</small><b>⚔ ${G.fmt(c.power)}</b><em style="color:${diff[1]}">${diff[0]}</em></div><div><small>Konum</small><b>X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}</b><em>⏱ ${fmtT(t)} • 🚁 ${fmtT(st)}</em></div></div>
         ${sh ? `<div class="why">🛡️ Kalkan aktif: ${G.fmtTime(c.shieldUntil - Date.now() / 1000)}</div>` : ''}
-        <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button><button class="btn red" id="wmAtk" ${sh ? 'disabled' : ''}>⚔ Saldır</button></div>
+        <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button><button class="btn blue" id="wmScout" ${sh || scouting ? 'disabled' : ''}>${scouting ? '🚁 Yolda…' : `👁 Gözetle<small class="wm-cost">🌾${G.SCOUT_COST.food}</small>`}</button><button class="btn red" id="wmAtk" ${sh ? 'disabled' : ''}>⚔ Saldır</button></div>
+        ${last ? `<button class="btn gold wm-tp" id="wmLastRep">📜 Son gözetleme raporu (${agoS(last.t)})</button>` : ''}
         ${home ? `<button class="btn blue wm-tp" id="wmTpNear">📍 Yanına ışınlan • 🪙 ${G.TELEPORT_COST}</button>` : ''}</div>`;
     } else if (c && c.ground) {
       const okSpot = G.spotFree(c.mapX, c.mapY);
@@ -394,16 +438,19 @@ export function openWorldMap(opts = {}) {
         <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button><button class="btn blue" id="wmTpHere" ${okSpot ? '' : 'disabled'}>📍 Buraya ışınlan • 🪙 ${G.TELEPORT_COST}</button></div></div>`;
     } else if (c && c.me) card = `<div class="wm-card"><div class="wm-ch"><b>🏰 ${G.S.name}</b><span>Belediye Sv.${G.thLevel()}</span></div><div class="wm-cs"><div><small>Güç</small><b>⚔ ${G.fmt(G.cityPower())}</b></div><div><small>Konum</small><b>X:${G.S.mapX} Y:${G.S.mapY}</b></div></div><div class="wm-cb"><button class="btn gold" id="wmCity">🏰 Şehre gir</button></div></div>`;
     const marches = G.S.marches.map((m) => `<div class="wm-mr" data-mid="${m.id}"><span>${m.phase === 'go' ? '⚔' : '↩'} ${m.tname}</span><b data-mt="${m.id}">${fmtT(m.arrive - Date.now() / 1000)}</b>${m.phase === 'go' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
+    const scoutsRows = G.S.scouts.map((q) => `<div class="wm-mr sc"><span>🚁 ${q.phase === 'go' ? 'Gözetleme' : 'Dönüyor'} • ${q.tname}</span><b data-st="${q.id}">${fmtT(q.arrive - Date.now() / 1000)}</b></div>`).join('');
     ov().innerHTML = `<div class="wm-vig"></div><div class="wm-top"><button class="wm-srv" id="wmSrv">🌐 Sunucu #${server}${home ? '' : ' (yabancı)'} ⇄</button><span class="wm-xy" id="wmXY"></span><button class="x" id="wmX">✕</button></div>
       ${home ? '' : '<div class="wm-war">⚔ Krallıklar arası savaş: bu sunucudaki krallıklara saldırabilirsin (yürüyüş uzun sürer).</div>'}
       <div class="wm-side"><button id="wmHome" title="Şehrim">🏰</button><button id="wmThrone" title="Demir Taht">👑</button></div>
-      <div class="wm-bottom">${marches ? `<div class="wm-ms">${marches}</div>` : ''}${card}</div>`;
+      <div class="wm-bottom">${marches || scoutsRows ? `<div class="wm-ms">${scoutsRows}${marches}</div>` : ''}${card}</div>`;
     $('wmX').onclick = closeWorld;
     $('wmHome').onclick = () => { const me = list.find((q) => q.me); if (me) flyTo(me.mapX, me.mapY, 230); else closeWorld(); };
     $('wmThrone').onclick = () => { flyTo(TH.x, TH.y + 10, 300); select(throneCity); };
     $('wmSrv').onclick = () => { const next = server === myServer ? myServer + 1 : myServer; closeWorld(true); openWorldMap({ server: next }); C.toast(next === myServer ? '🏠 Kendi sunucuna döndün' : `🌐 Sunucu #${next} görüntüleniyor`); };
     if ($('wmClose')) $('wmClose').onclick = () => select(null);
     if ($('wmAtk')) $('wmAtk').onclick = () => C.onAttack(sel.id);
+    if ($('wmScout')) $('wmScout').onclick = () => { const r = G.startScout(sel.id); if (!r.ok) return C.toast(r.why, true); C.sfx('horn'); C.toast(`🚁 Helikopter havalandı • ${fmtT(r.scout.dur * 2)} sonra rapor`); syncScouts(); render(); };
+    if ($('wmLastRep')) $('wmLastRep').onclick = () => C.onScoutReport(G.lastScout(sel.id));
     const doTp = (x, y) => { const r = G.teleport(x, y); if (!r.ok) { C.toast(r.why, true); return; } C.sfx('reveal'); C.toast('📍 Şehrin ışınlandı!'); C.onTeleport?.(); closeWorld(); openWorldMap({}); };
     if ($('wmTpNear')) $('wmTpNear').onclick = () => { const sp = G.spotNear(sel.mapX, sel.mapY); if (!sp) return C.toast('Yakında boş yer yok', true); doTp(sp[0], sp[1]); };
     if ($('wmTpHere')) $('wmTpHere').onclick = () => doTp(sel.mapX, sel.mapY);
@@ -411,8 +458,8 @@ export function openWorldMap(opts = {}) {
     ov().querySelectorAll('[data-recall]').forEach((b) => (b.onclick = () => { G.recallMarch(b.dataset.recall); render(); }));
   };
   const select = (c) => { sel = c; if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
-  W = { scene, render, select, syncMarches, cities, list, server, home };
-  window.__wmSelect = select;
+  W = { scene, render, select, syncMarches, syncScouts, cities, list, server, home };
+  window.__wmSelect = select; window.__wmCam = cam;
   render();
 
   // canlı oyuncular: açılışta ve her 30 sn'de bir (yeni katılanlar hemen görünür)
@@ -490,12 +537,28 @@ export function openWorldMap(opts = {}) {
       o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px,0) translate(-50%,-100%)`;
       o.el.textContent = `${m.phase === 'go' ? '⚔' : '↩'} ${fmtT(m.arrive - now)}`;
     }
+    // gözetleme helikopterleri: kalkış, hızlı uçuş, hedefte kısa tur, iniş
+    syncScouts();
+    for (const sc of G.S.scouts) {
+      const o = scoutObjs.get(sc.id); if (!o) continue;
+      const k = clamp((now - sc.start) / Math.max(1, sc.arrive - sc.start), 0, 1), from = sc.phase === 'go' ? o.a : o.b, to = sc.phase === 'go' ? o.b : o.a;
+      const e = k * k * (3 - 2 * k), alt = 22 * Math.min(1, Math.min(k, 1 - k) * 7) + 1.6;
+      o.heli.position.lerpVectors(from, to, e); o.heli.position.y = alt + Math.sin(t * 3) * 0.4;
+      o.heli.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      const ud = o.heli.userData, spd = Math.sin(k * Math.PI);
+      ud.body.rotation.x = 0.28 * spd; ud.rotor.rotation.y += dt * 38; ud.tail.rotation.x += dt * 50; ud.beacon.material.opacity = Math.sin(t * 8) > 0 ? 1 : 0.15;
+      o.shadow.position.set(o.heli.position.x, 0.35, o.heli.position.z); o.shadow.material.opacity = 0.45 * (1 - alt / 40);
+      _v.set(o.heli.position.x, o.heli.position.y + 8, o.heli.position.z).project(camera);
+      o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px,0) translate(-50%,-100%)`;
+      o.el.textContent = `🚁 ${sc.phase === 'go' ? '' : '↩ '}${fmtT(sc.arrive - now)}`;
+    }
     if (performance.now() - lastFetch > 30000) fetchReal();
     if (t - lastUi > 0.25) {
       lastUi = t;
       const xy = $('wmXY'); if (xy) xy.textContent = `X:${Math.round(cam.tx)} Y:${Math.round(cam.tz)}`;
+      ov().querySelectorAll('[data-st]').forEach((el) => { const q = G.S.scouts.find((z) => z.id === el.dataset.st); if (q) el.textContent = fmtT(q.arrive - now); });
       ov().querySelectorAll('[data-mt]').forEach((el) => { const m = G.S.marches.find((q) => q.id === el.dataset.mt); if (m) el.textContent = fmtT(m.arrive - now); });
-      if (ov().querySelectorAll('.wm-mr').length !== G.S.marches.length) render();
+      if (ov().querySelectorAll('.wm-mr').length !== G.S.marches.length + G.S.scouts.length) render();
     }
   };
   const dispose = () => {

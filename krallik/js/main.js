@@ -808,6 +808,7 @@ function renderModalInner() {
   if (k === 'ranking') return openModal(rankingUI());
   if (k === 'login') return openModal(loginUI());
   if (k === 'attack') return openModal(attackUI());
+  if (k === 'scout') return openModal(scoutUI(scoutRep));
 }
 const allEnemies = () => G.S.enemies.concat(G.ONLINE.enemies);
 function worldUI() {
@@ -999,12 +1000,41 @@ function reportsUI() {
   if (!G.S.reports.length) return head('Savaş Raporları', '📜') + '<p class="desc">Henüz savaş yok. Dünya haritasından bir krallığa saldır!</p>';
   const tot = (o) => G.fmt(G.totalTroops(o || {}));
   const ago = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
-  return head('Savaş Raporları', '📜') + G.S.reports.map((r) => `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span>
+  return head('Savaş Raporları', '📜') + G.S.reports.map((r, i) => r.kind === 'scout' ? `<div class="rep scout ${r.failed ? 'lose' : ''}" data-scoutrep="${i}"><span class="t">${ago(r.t)}</span>
+    <b>👁 Gözetleme: ${r.failed ? 'BAŞARISIZ' : 'RAPOR'}</b> — ${r.enemy}
+    <div class="ln">${r.failed ? r.why : `Yağmalanabilir: 🌾${G.fmt(r.loot.food)} 🪵${G.fmt(r.loot.wood)} 🪨${G.fmt(r.loot.stone)} • Asker: ${tot(r.troops)} • <u>Ayrıntılar ›</u>`}</div></div>` : `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span>
     <b>${r.kind === 'attack' ? '⚔ Saldırı' : '🛡️ Savunma'}: ${r.win ? 'ZAFER' : 'YENİLGİ'}</b> — ${r.enemy}
     <div class="ln">Kayıpların: ${tot(r.aLoss)} (🤕 ${tot(r.wounded)} yaralı, 💀 ${tot(r.dead)} ölü) • Düşman kaybı: ${tot(r.dLoss)}</div>
     ${r.kind === 'attack' && r.win ? `<div class="ln">Ganimet: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)} 🪙${r.loot.gold || 0}</div>` : ''}
     ${r.kind === 'defense' && !r.win ? `<div class="ln">Yağmalanan: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}</div>` : ''}</div>`).join('');
 }
+// ---- Gözetleme raporu ----
+let scoutRep = null;
+const agoTxt = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
+function scoutUI(r) {
+  if (!r) return head('Gözetleme Raporu', '🗺️') + '<p class="desc">Rapor bulunamadı.</p>';
+  if (r.failed) return head('Gözetleme Raporu', '🗺️') + `<div class="sc-fail">🚁 Helikopter <b>${r.enemy}</b> şehrini gözetleyemedi.<br>${r.why}</div><button class="w-btn" data-m="close">Kapat</button>`;
+  const order = ['infantry', 'spearman', 'archer', 'cavalry', 'tank'];
+  const tot = G.totalTroops(r.troops || {});
+  const h = r.hero && r.hero.id ? HERO_BY_ID[r.hero.id] : null;
+  const ratio = r.power / Math.max(1, G.cityPower());
+  const diff = ratio < 0.6 ? ['Kolay', '#7dff9a'] : ratio < 1 ? ['Orta', '#ffe68a'] : ratio < 1.5 ? ['Zor', '#ffaa6a'] : ['Çok zor', '#ff6a5a'];
+  const target = G.findEnemy(r.target), lootSum = r.loot.food + r.loot.wood + r.loot.stone;
+  return head('Gözetleme Raporu', '🗺️') + `
+    <div class="sc-top"><div><b>${r.real ? '🌐 ' : ''}${r.enemy}</b><span>${r.lord || ''} • Belediye Sv.${r.th}</span></div><em>👁 ${agoTxt(r.t)}<br><small>X:${r.mapX} Y:${r.mapY}</small></em></div>
+    <div class="sc-pow"><div><small>Toplam güç</small><b>⚔ ${G.fmt(r.power)}</b></div><div><small>Senin gücün</small><b>⚔ ${G.fmt(G.cityPower())}</b></div><div><small>Zorluk</small><b style="color:${diff[1]}">${diff[0]}</b></div></div>
+    <h4 class="sc-h">💰 Yağmalanabilir kaynaklar</h4>
+    <div class="sc-res">${['food', 'wood', 'stone', 'gold'].map((k) => `<div>${resImg(k, 30)}<b>${G.fmt(r.loot[k] || 0)}</b></div>`).join('')}</div>
+    <p class="sc-note">Kazanırsan ordunun taşıyabildiği kadarını alırsın. Toplam: ${G.fmt(lootSum)}</p>
+    <h4 class="sc-h">🛡️ Savunmadaki askerler <span>${G.fmt(tot)}</span></h4>
+    <div class="sc-troops">${order.map((k) => `<div class="${(r.troops[k] || 0) ? '' : 'zero'}"><i>${TROOPS[k].icon}</i><span>${TROOPS[k].short}</span><b>${G.fmt(r.troops[k] || 0)}</b></div>`).join('')}</div>
+    <h4 class="sc-h">👑 Komutan</h4>
+    ${h ? `<div class="sc-hero"><img src="assets/heroes/${h.id}_a.webp" alt=""><div><b>${h.name}</b><span>${'★'.repeat(h.rarity)} • Bonus +%${r.hero.bonus}</span></div></div>` : r.hero ? `<div class="sc-hero"><div><b>Bilinmeyen komutan</b><span>Bonus +%${r.hero.bonus}</span></div></div>` : '<div class="sc-hero none">Şehirde komutan yok</div>'}
+    <h4 class="sc-h">🏹 Okçu kuleleri</h4>
+    <div class="sc-hero none">${r.tower ? `Kule hasarı: <b>${G.fmt(r.tower)}</b>` : 'Kule savunması yok'}</div>
+    <div class="sc-btns"><button class="w-btn" data-m="close">Kapat</button>${target && worldOpen() ? `<button class="w-btn red" data-scoutatk="${r.target}">⚔ Saldır</button>` : ''}</div>`;
+}
+export function openScoutReport(r) { scoutRep = r; modalKind = 'scout'; lastModalKey = ''; renderModal(); }
 let profTab = 'me';
 function profileUI() {
   const h = HERO_BY_ID[G.S.commander], th = G.thLevel();
@@ -1083,6 +1113,10 @@ $('modalBox').addEventListener('click', (e) => {
   if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
   const ta = e.target.closest('[data-tall]');
   if (ta) { const m2 = ta.dataset.tall; for (const t in TROOPS) atk.troops[t] = m2 === 'all' ? G.S.troops[t] : m2 === 'half' ? Math.floor(G.S.troops[t] / 2) : 0; return renderModal(); }
+  const sr = e.target.closest('[data-scoutrep]');
+  if (sr) { openScoutReport(G.S.reports[+sr.dataset.scoutrep]); return; }
+  const sa = e.target.closest('[data-scoutatk]');
+  if (sa) { const id = sa.dataset.scoutatk; closeModal(); window.__dsAttack(id); return; }
   const m = e.target.closest('[data-m]'); if (!m) return;
   const a = m.dataset.m;
   if (a === 'close') closeModal();
@@ -1129,6 +1163,9 @@ G.onChange((ev, data) => {
     lastBattle = r; sfx(r.res.win ? 'win' : 'lose');
     showBattleBanner(r); refreshWorldUI(); syncSoon();
   }
+  if (ev === 'scout') { sfx('click'); refreshWorldUI(); }
+  if (ev === 'scoutArrived') { if (!data.report?.failed) toast(`👁 Helikopter ${data.tname} şehrini gözetliyor…`); refreshWorldUI(); }
+  if (ev === 'scoutHome') { refreshWorldUI(); updateTop(); $('repDot').classList.remove('hidden'); if (data.report?.failed) toast('🚁 Gözetleme başarısız: ' + data.report.why, true); else { sfx('reveal'); openScoutReport(data.report); } }
   if (ev === 'marchHome') { toast('↩ Ordun şehre döndü'); refreshWorldUI(); updateTop(); }
   if (ev === 'marchBlocked') { toast('🛡️ Hedefin kalkanı var, ordu geri dönüyor', true); refreshWorldUI(); }
   if (ev === 'researched') { toast(`🔬 ${RESEARCH[data].name} Sv.${G.S.research.levels[data]} tamamlandı!`); sfx('built'); }
@@ -1272,7 +1309,7 @@ async function boot() {
   initScenes({ renderer, toast, sfx, closeModal, navigate, onSceneClosed, fillPortraits, needGold, updateTop, makeEnv, event: tutEvent });
   const onAttack = (id) => { worldSel = id; atk.init = false; modalKind = 'attack'; renderModal(); };
   window.__dsAttack = onAttack;
-  initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack, onTeleport: () => syncNow() });
+  initWorldMap({ renderer, toast, sfx, online, serverPlayers, onAttack, onScoutReport: openScoutReport, onTeleport: () => syncNow() });
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   applyCam();
   setLoad(95, 'Son dokunuşlar…'); await frame();

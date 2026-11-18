@@ -59,6 +59,7 @@ export function load() {
   if (S.server >= 300) S.server = null; // eski deneme numarası → yeniden atanır (sunucular 1'den başlar)
   if (S.mapX == null) { S.mapX = Math.round(rand(220, 780)); S.mapY = Math.round(rand(220, 780)); }
   S.marches ||= [];
+  S.scouts ||= []; S.scoutReports ||= [];
   ensureMapKingdoms();
   S.tankTraining ??= null;
   dailyReset();
@@ -560,6 +561,45 @@ function tickMarches() {
     }
   }
 }
+// ---- Gözetleme: helikopter hedefe uçar, keşif yapar, geri döner ----
+// Ordudan çok daha hızlı: her yön 5–45 sn (ordu 10–240 sn)
+export const SCOUT_COST = { food: 300 };
+export const MAX_SCOUTS = 2;
+export const scoutTime = (e) => Math.round(Math.min(45, Math.max(5, 4 + mapDist(e) * 0.05)));
+export function startScout(enemyId) {
+  const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
+  if (S.scouts.length >= MAX_SCOUTS) return { ok: false, why: `En fazla ${MAX_SCOUTS} gözetleme aynı anda` };
+  if (S.scouts.some((q) => q.target === enemyId)) return { ok: false, why: 'Bu şehre zaten helikopter gidiyor' };
+  if (e.shieldUntil > now()) return { ok: false, why: '🛡️ Kalkanlı şehir gözetlenemez' };
+  if (!canAfford(SCOUT_COST)) return { ok: false, why: 'Yetersiz yiyecek (🌾 ' + SCOUT_COST.food + ')' };
+  pay(SCOUT_COST);
+  const dur = scoutTime(e), t0 = now();
+  const sc = { id: 's' + Math.random().toString(36).slice(2, 8), target: enemyId, tname: e.name, tx: e.mapX, ty: e.mapY, foreign: e.foreign || (e.server && e.server !== S.server ? e.server : 0), snap: e.real || e.foreign ? JSON.parse(JSON.stringify(e)) : null, start: t0, arrive: t0 + dur, dur, phase: 'go' };
+  S.scouts.push(sc); save(); emit('scout', sc);
+  return { ok: true, scout: sc };
+}
+// Hedefin o anki durumunun fotoğrafı (rapor)
+function scoutSnapshot(e) {
+  const loot = {}; for (const r of ['food', 'wood', 'stone']) loot[r] = Math.max(0, Math.floor((e.res?.[r] || 0) * 0.6)); loot.gold = Math.max(0, Math.floor(e.res?.gold || 0));
+  const h = e.hero ? { id: e.hero.id || null, bonus: Math.round(e.hero.bonus || 0), role: e.hero.role || null } : null;
+  return { t: now(), kind: 'scout', win: true, target: e.id, enemy: e.name, lord: e.lord, real: !!e.real, th: e.th || 1, power: Math.round(e.power || 0), troops: { ...e.troops }, tower: Math.round((e.tower || 0) * 120), hero: h, loot, mapX: Math.round(e.mapX), mapY: Math.round(e.mapY) };
+}
+function tickScouts() {
+  const t = now();
+  for (const sc of [...S.scouts]) {
+    if (sc.phase === 'go' && t >= sc.arrive) {
+      if (sc.snap && !findEnemy(sc.target)) (sc.snap.foreign ? ONLINE.foreign : ONLINE.enemies).push(sc.snap);
+      const e = findEnemy(sc.target);
+      sc.report = e && !(e.shieldUntil > t) ? scoutSnapshot(e) : { t, kind: 'scout', failed: true, target: sc.target, enemy: sc.tname, why: e ? 'Hedef kalkan açtı' : 'Hedef bulunamadı' };
+      sc.phase = 'back'; sc.start = t; sc.arrive = t + sc.dur; sc.snap = null; save(); emit('scoutArrived', sc);
+    } else if (sc.phase === 'back' && t >= sc.arrive) {
+      S.scouts = S.scouts.filter((q) => q !== sc);
+      if (sc.report) { S.scoutReports.unshift(sc.report); S.scoutReports = S.scoutReports.slice(0, 20); S.reports.unshift(sc.report); S.reports = S.reports.slice(0, 30); }
+      save(); emit('scoutHome', sc);
+    }
+  }
+}
+export const lastScout = (enemyId) => S.scoutReports.find((r) => r.target === enemyId && !r.failed);
 export const troopsAway = () => { const o = {}; for (const m of S.marches) for (const k in (m.phase === 'go' ? m.troops : m.survivors || {})) o[k] = (o[k] || 0) + (m.phase === 'go' ? m.troops : m.survivors)[k]; return o; };
 export function importSave(json) { localStorage.setItem(SAVE_KEY, json); }
 export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
@@ -650,6 +690,7 @@ export function resolveRaid() {
 export function tick() {
   const t = now();
   if (S.marches?.length) tickMarches();
+  if (S.scouts?.length) tickScouts();
   for (const p of PLOTS) {
     const b = S.buildings[p.id];
     if (b.busyUntil && b.busyUntil <= t) {

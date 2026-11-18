@@ -401,6 +401,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Performans**: 420 rastgele meşale, kristaller, harabeler, gözetleme kuleleri ve bulutlar kaldırıldı; ağaç/kaya/çadır/sur instanced.
 - Test: Playwright, dokunmatik CDP olaylarıyla kaydırma/atalet/pinch doğrulandı. Gerçek iPhone'da denenmedi.
 
+### 5.16 Gözetleme (helikopter)
+- Haritada şehir kartında "👁 Gözetle" (🌾300, `G.SCOUT_COST`). Aynı anda en fazla 2 (`MAX_SCOUTS`), aynı hedefe tek helikopter, kalkanlı şehir gözetlenemez.
+- Süre `scoutTime(e)` = 4 + mesafe×0,05 sn (5–45 sn) her yön; ordu 10–240 sn. Kartta "⏱ ordu • 🚁 helikopter" süreleri.
+- `state.js`: `S.scouts` (go/back), varışta `scoutSnapshot(e)` (yağmalanabilir = kaynak×0,6 + tüm altın, asker türleri, komutan, kule hasarı = tower×120, güç, Belediye sv.), dönüşte `S.scoutReports` (son 20) + `S.reports` (kind 'scout'). Olaylar: scout, scoutArrived, scoutHome.
+- `main.js → scoutUI / openScoutReport`: rapor penceresi (zorluk, kaynaklar, askerler, komutan, kule, "⚔ Saldır"). Dönüşte otomatik açılır; Raporlar listesinde tıklanabilir; şehir kartında "📜 Son gözetleme raporu".
+- `worldmap.js → makeHeli()`: prosedürel mavi helikopter (dönen ana/kuyruk pervanesi, yanıp sönen ışık, gölge), kalkış-iniş irtifası, mavi oklu yol şeridi.
+- Bilgisayar krallıklarında komutan yok (`e.hero` null) → raporda "Şehirde komutan yok". Gerçek oyuncularda profilindeki komutan görünür.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
