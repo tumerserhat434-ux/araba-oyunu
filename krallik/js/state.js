@@ -64,6 +64,7 @@ export function load() {
   S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {};
   S.alliance ??= null;
   S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
+  S.mines ||= []; S.mineMax ||= { food: 0, wood: 0, stone: 0, gold: 0 }; S.mineNext ||= 0;
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
@@ -471,7 +472,7 @@ export function teleport(x, y) {
   if (S.res.gold < TELEPORT_COST) return { ok: false, why: 'Yetersiz altın', needGold: true };
   S.res.gold -= TELEPORT_COST; S.mapX = Math.round(x); S.mapY = Math.round(y);
   S.enemies.forEach((e) => { if (Math.hypot(e.mapX - S.mapX, e.mapY - S.mapY) < 24) placeOnMap(e, S.enemies.indexOf(e)); });
-  S.zombies = S.zombies.filter((z) => Math.hypot(z.mapX - S.mapX, z.mapY - S.mapY) > 20); tickZombies(true);
+  S.zombies = S.zombies.filter((z) => Math.hypot(z.mapX - S.mapX, z.mapY - S.mapY) > 20); tickZombies(true); S.mines = S.mines.filter((q) => q.busy || Math.hypot(q.mapX - S.mapX, q.mapY - S.mapY) > 20); tickMines(true);
   save(); emit('teleport'); return { ok: true };
 }
 // Hedefin yakınında boş yer bul
@@ -483,7 +484,7 @@ export function spotNear(x, y) {
 export function placeOnServer(server) {
   S.server = server;
   for (let k = 0; k < 80; k++) { const a = Math.random() * Math.PI * 2, d = 110 + Math.random() * (220 + k * 2), x = THRONE.x + Math.cos(a) * d, y = THRONE.y + Math.sin(a) * d; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
-  S.enemies.forEach((e, i) => placeOnMap(e, i)); S.zombies = []; S.zombieNext = 0; save();
+  S.enemies.forEach((e, i) => placeOnMap(e, i)); S.zombies = []; S.zombieNext = 0; S.mines = S.mines.filter((q) => q.busy); S.mineNext = 0; save();
 }
 function placeOnMap(e, i) {
   for (let k = 0; k < 40; k++) {
@@ -595,7 +596,7 @@ function applyLosses(loss) {
 }
 // ---- Çevrimiçi: gerçek oyuncular ----
 export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0 };
-export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
+export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
 // Başka sunucunun bilgisayar krallıkları (görüntülenirken üretilir, kalıcı değil)
 export function foreignBots(server) {
   let seed = server * 9973; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -616,8 +617,10 @@ export function startMarch(enemyId, sent, heroIds) {
   const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
   if (e.alliance && S.alliance && e.alliance.id === S.alliance.id) return { ok: false, why: '🤝 Müttefikine saldıramazsın' };
   if (e.zombie && !zombieUnlocked(e.level)) return { ok: false, why: `🧟 Önce Sv.${e.level - 1} zombiyi öldür` };
+  if (e.mine && !mineUnlocked(e.type, e.level)) return { ok: false, why: `⛏ Önce Sv.${e.level - 1} ${MINE_TYPES[e.type].name} kazmalısın` };
+  if (e.mine && e.busy && S.marches.some((m) => m.id === e.busy)) return { ok: false, why: 'Bu madende zaten birliğin var' };
   if (e.zombie && S.marches.some((m) => m.target === e.id)) return { ok: false, why: 'Bu zombiye zaten ordu gidiyor' };
-  if (S.marches.length >= 3) return { ok: false, why: 'En fazla 3 sefer aynı anda' };
+  if (S.marches.length >= MAX_MARCHES) return { ok: false, why: `En fazla ${MAX_MARCHES} birlik aynı anda dışarıda olabilir (saldırı, zombi, kazım)` };
   const troops = {}; let n = 0;
   for (const t in TROOPS) { troops[t] = Math.max(0, Math.min(sent[t] || 0, S.troops[t] || 0)); n += troops[t]; }
   if (!n) return { ok: false, why: 'Asker seç' };
@@ -625,16 +628,26 @@ export function startMarch(enemyId, sent, heroIds) {
   for (const t in troops) S.troops[t] -= troops[t];
   const dur = marchTime(e, troops), t0 = now();
   const m = { id: 'm' + Math.random().toString(36).slice(2, 8), target: enemyId, tname: e.name, tx: e.mapX, ty: e.mapY, foreign: e.foreign || (e.server && e.server !== S.server ? e.server : 0), snap: e.real || e.foreign ? JSON.parse(JSON.stringify(e)) : null, troops, heroes: heroIds, start: t0, arrive: t0 + dur, dur, phase: 'go' };
+  if (e.mine) { m.kind = 'gather'; m.mtype = e.type; m.mlevel = e.level; m.rate = gatherRate(e.type, e.level, troops, heroIds); m.hours = mineHours(e.level); e.busy = m.id; }
   S.marches.push(m); save(); emit('march', m);
   return { ok: true, march: m };
 }
 export function recallMarch(id) {
-  const m = S.marches.find((q) => q.id === id); if (!m || m.phase !== 'go') return false;
+  const m = S.marches.find((q) => q.id === id); if (!m) return false;
+  if (m.phase === 'gather') { finishGather(m, now()); save(); return true; }
+  if (m.phase !== 'go') return false;
+  if (m.kind === 'gather') { const e = findEnemy(m.target); if (e && e.busy === m.id) e.busy = null; }
   const el = now() - m.start; m.phase = 'back'; m.survivors = m.troops; m.start = now(); m.arrive = now() + Math.max(3, el); save(); return true;
 }
 function tickMarches() {
   const t = now();
   for (const m of [...S.marches]) {
+    if (m.kind === 'gather') {
+      if (m.phase === 'go' && t >= m.arrive) { const e = findEnemy(m.target); if (!e) { m.phase = 'back'; m.survivors = m.troops; m.start = t; m.arrive = t + m.dur; m.loot = {}; continue; } m.phase = 'gather'; m.gStart = m.arrive; m.gEnd = m.arrive + m.hours * 3600; save(); emit('gatherStart', m); }
+      if (m.phase === 'gather' && t >= m.gEnd) finishGather(m, m.gEnd);
+      if (m.phase === 'back' && t >= m.arrive) { for (const k in m.troops) S.troops[k] += m.troops[k]; gainRes(m.loot || {}); S.marches = S.marches.filter((q) => q !== m); save(); emit('gatherHome', m); }
+      continue;
+    }
     if (m.phase === 'go' && t >= m.arrive) {
       if (m.snap && !findEnemy(m.target)) (m.snap.foreign ? ONLINE.foreign : ONLINE.enemies).push(m.snap);
       const e = findEnemy(m.target);
@@ -690,7 +703,7 @@ function tickScouts() {
   }
 }
 export const lastScout = (enemyId) => S.scoutReports.find((r) => r.target === enemyId && !r.failed);
-export const troopsAway = () => { const o = {}; for (const m of S.marches) for (const k in (m.phase === 'go' ? m.troops : m.survivors || {})) o[k] = (o[k] || 0) + (m.phase === 'go' ? m.troops : m.survivors)[k]; return o; };
+export const troopsAway = () => { const o = {}; for (const m of S.marches) { const tr = m.phase === 'back' && m.kind !== 'gather' ? m.survivors || {} : m.troops; for (const k in tr) o[k] = (o[k] || 0) + tr[k]; } return o; };
 export function importSave(json) { localStorage.setItem(SAVE_KEY, json); }
 export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 // Diğer oyuncuların göreceği herkese açık profil (savunma bilgisi dahil)
@@ -814,6 +827,71 @@ export function findZombie(L) {
 }
 export const zombieRespawnIn = () => Math.max(0, (S.zombieNext || 0) - now());
 
+// ---- Madenler: buğday, kereste, taş, altın — Sv.1–10, sırayla açılır ----
+export const MAX_MARCHES = 3;
+export const MINE_TYPES = {
+  food: { name: 'Buğday Tarlası', icon: '🌾', base: 4000, top: 20000 },
+  wood: { name: 'Kereste Ormanı', icon: '🪵', base: 4000, top: 20000 },
+  stone: { name: 'Taş Ocağı', icon: '🪨', base: 2400, top: 12000 },
+  gold: { name: 'Altın Madeni', icon: '🪙', base: 10, top: 40 },
+};
+export const MINE_MAX_LEVEL = 10;
+// saatlik taban verim (Sv.1 → Sv.10 geometrik), kazım süresi (Sv.1 3 sa, her seviye +30 dk), tam verim için gereken güç
+export const mineRate = (type, L) => Math.round(MINE_TYPES[type].base * Math.pow(MINE_TYPES[type].top / MINE_TYPES[type].base, (L - 1) / 9));
+export const mineHours = (L) => 3 + (L - 1) * 0.5;
+export const mineRefPower = (L) => Math.round(6000 * Math.pow(1.75, L - 1));
+export const mineUnlocked = (type, L) => L <= (S.mineMax?.[type] || 0) + 1;
+// gönderilen gücün tam verim gücüne oranı (en az %25) × komutan bonusu (en fazla +%50)
+export function gatherRate(type, L, troops, heroIds) {
+  const pw = armyPowerMulti(troops, heroIds), f = Math.max(0.25, Math.min(1, pw / mineRefPower(L)));
+  const hb = 1 + Math.min(0.5, combinedBonus(heroesOf(heroIds)) / 200);
+  return Math.max(1, Math.round(mineRate(type, L) * f * hb));
+}
+function finishGather(m, at) {
+  const hrs = Math.max(0, Math.min(m.hours, (at - m.gStart) / 3600)), amount = Math.floor(m.rate * hrs);
+  m.loot = { [m.mtype]: amount };
+  if (hrs > 0) S.mineMax[m.mtype] = Math.max(S.mineMax[m.mtype] || 0, m.mlevel);
+  S.mines = S.mines.filter((q) => q.id !== m.target); // maden tükendi
+  ensureNextMine(m.mtype);
+  const t = now(); m.phase = 'back'; m.start = t; m.arrive = t + m.dur;
+  S.reports.unshift({ t, kind: 'gather', win: true, enemy: `${MINE_TYPES[m.mtype].name} Sv.${m.mlevel}`, loot: m.loot, hrs }); S.reports = S.reports.slice(0, 30);
+  emit('gatherDone', m);
+}
+const MINE_MIX = ['food', 'wood', 'stone', 'food', 'wood', 'stone', 'gold'];
+function makeMine(type, L, near) {
+  const m = { id: 'n' + Math.random().toString(36).slice(2, 8), mine: true, type, level: L, name: `${MINE_TYPES[type].name} Sv.${L}`, lord: 'Kaynak noktası', th: L, power: 0, troops: {}, tower: 0, res: {}, shieldUntil: 0, busy: null };
+  for (let k = 0; k < 40; k++) {
+    const a = rand(0, Math.PI * 2), d = near ? rand(35, 170) : rand(60, 420), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
+    if (x < 30 || x > 970 || y < 30 || y > 970 || nearThrone(x, y, 16)) continue;
+    if (occupied().concat([[S.mapX, S.mapY]]).every(([px, py]) => Math.hypot(px - x, py - y) > 28) && S.zombies.concat(S.mines).every((q) => Math.hypot(q.mapX - x, q.mapY - y) > 18)) { m.mapX = Math.round(x); m.mapY = Math.round(y); return m; }
+  }
+  return null;
+}
+function ensureNextMine(type) { const next = Math.min(MINE_MAX_LEVEL, (S.mineMax[type] || 0) + 1); if (!S.mines.some((q) => q.type === type && q.level === next && !q.busy)) { const m = makeMine(type, next, true); if (m) { S.mines.push(m); emit('mines'); } } }
+const MINE_COUNT = 24;
+export function tickMines(force) {
+  if (S.mapX == null) return;
+  const t = now();
+  if (force || !S.mines.length || t >= (S.mineNext || 0)) {
+    for (let i = S.mines.length; i < MINE_COUNT; i++) {
+      const type = MINE_MIX[i % MINE_MIX.length], mx = S.mineMax[type] || 0, near = i % 2 === 0;
+      const L = near ? Math.max(1, Math.min(MINE_MAX_LEVEL, mx + randi(-1, 1))) : randi(1, MINE_MAX_LEVEL);
+      const m = makeMine(type, L, near); if (m) S.mines.push(m);
+    }
+    S.mineNext = t + rand(600, 1200); emit('mines');
+  }
+  for (const type in MINE_TYPES) ensureNextMine(type);
+}
+// Haritada ara: seçilen türde ve seviyede en yakın boş maden; yoksa yakında oluştur
+export function findMine(type, L) {
+  L = Math.max(1, Math.min(MINE_MAX_LEVEL, Math.round(L)));
+  if (!mineUnlocked(type, L)) return { ok: false, why: `🔒 Önce Sv.${L - 1} ${MINE_TYPES[type].name} kazmalısın` };
+  const d = (q) => Math.hypot(q.mapX - S.mapX, q.mapY - S.mapY);
+  let m = S.mines.filter((q) => q.type === type && q.level === L && !q.busy).sort((a, b) => d(a) - d(b))[0], created = false;
+  if (!m) { m = makeMine(type, L, true); if (!m) return { ok: false, why: 'Yakında boş yer bulunamadı' }; S.mines.push(m); created = true; save(); emit('mines'); }
+  return { ok: true, mine: m, created };
+}
+
 // Düşman baskını (şehre saldırı)
 export function resolveRaid() {
   const strength = Math.max(1500, (armyPower(S.troops) + towerPower()) * rand(0.45, 1.25));
@@ -845,6 +923,7 @@ export function tick() {
   if (S.marches?.length) tickMarches();
   if (S.scouts?.length) tickScouts();
   if (S.mapX != null && (!S.zombies?.length || now() >= (S.zombieNext || 0))) tickZombies();
+  if (S.mapX != null && (!S.mines?.length || now() >= (S.mineNext || 0))) tickMines();
   for (const p of PLOTS) {
     const b = S.buildings[p.id];
     if (b.busyUntil && b.busyUntil <= t) {

@@ -892,8 +892,9 @@ function attackUI() {
       <button class="tq" data-tq="${t}:0">0</button><button class="tq" data-tq="${t}:half">½</button><button class="tq" data-tq="${t}:all">Tümü</button></div></div>`;
   }
   const tot = G.totalTroops(atk.troops), myP = G.armyPowerMulti(atk.troops, atk.heroes), better = myP >= e.power;
-  return head('Sefer Kampı', '⚔️') + `
-    <div class="w-banner camp-banner"><div><div class="bt">${e.name}</div><div class="bs">Lord ${e.lord} • ⚔ ${G.fmt(e.power)}</div></div></div>
+  const MT = e.mine ? G.MINE_TYPES[e.type] : null, rate = e.mine ? G.gatherRate(e.type, e.level, atk.troops, atk.heroes) : 0, hrs = e.mine ? G.mineHours(e.level) : 0, ref = e.mine ? G.mineRefPower(e.level) : 0;
+  return head(e.mine ? 'Kazım Birliği' : 'Sefer Kampı', '⚔️') + `
+    <div class="w-banner camp-banner"><div><div class="bt">${e.mine ? MT.icon + ' ' : ''}${e.name}</div><div class="bs">${e.mine ? `En fazla ${hrs} saat kazım • Tam verim için ⚔ ${G.fmt(ref)}` : `Lord ${e.lord} • ⚔ ${G.fmt(e.power)}`}</div></div></div>
     <div class="w-card"><div class="camp-h"><b>Komutanlar</b><span>${atk.heroes.length} / ${G.MAX_COMMANDERS}</span></div>
       <div class="cmd-slots">${slots}</div>
       <div class="cmd-pool">${pool || '<p class="desc">Henüz kahramanın yok.</p>'}</div>
@@ -901,8 +902,10 @@ function attackUI() {
     <div class="w-card"><div class="camp-h"><b>Birlikler</b><span>${G.fmt(tot)} asker</span></div>
       <div class="row" style="margin-bottom:8px"><button class="w-btn" data-tall="none">Temizle</button><button class="w-btn" data-tall="half">Yarısı</button><button class="w-btn gold" data-tall="all">Hepsini seç</button></div>
       ${rows}</div>
-    <div class="stats"><div class="stat"><small>Ordu gücün</small><b style="color:${better ? '#7dff9a' : '#ffb08a'}">⚔ ${G.fmt(myP)}</b></div><div class="stat"><small>Düşman gücü</small><b>⚔ ${G.fmt(e.power)}</b></div></div>
-    <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${tot ? '' : 'disabled'}>🚩 Yürüyüşe çık</button></div>`;
+    ${e.mine ? `<div class="stats"><div class="stat"><small>Birlik gücü</small><b style="color:${myP >= ref ? '#7dff9a' : '#ffb08a'}">⚔ ${G.fmt(myP)}</b></div><div class="stat"><small>Saatlik verim</small><b>${MT.icon} ${G.fmt(rate)}</b></div><div class="stat"><small>Kazım süresi</small><b>⏱ ${hrs} sa</b></div><div class="stat"><small>Toplam (tam süre)</small><b>${MT.icon} ${G.fmt(Math.floor(rate * hrs))}</b></div></div>
+      <p class="camp-note">${myP >= ref ? '✅ Tam verim!' : `Daha güçlü birlik = daha çok kaynak (tam verim ⚔ ${G.fmt(ref)}).`} Komutanlar verimi %50'ye kadar artırır. Birlik sayısı: ${G.S.marches.length}/${G.MAX_MARCHES}</p>`
+    : `<div class="stats"><div class="stat"><small>Ordu gücün</small><b style="color:${better ? '#7dff9a' : '#ffb08a'}">⚔ ${G.fmt(myP)}</b></div><div class="stat"><small>Düşman gücü</small><b>⚔ ${G.fmt(e.power)}</b></div></div>`}
+    <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${tot ? '' : 'disabled'}>${e.mine ? '⛏ Kazmaya gönder' : '🚩 Yürüyüşe çık'}</button></div>`;
 }
 let questTab = 'main';
 const rewardTxt = (r) => Object.entries(r).filter(([k]) => RES[k]).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ') + (r._items ? '  ' + r._items.map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join('  ') : '');
@@ -1147,7 +1150,7 @@ function reportsUI() {
   if (!G.S.reports.length) return head('Savaş Raporları', '📜') + '<p class="desc">Henüz savaş yok. Dünya haritasından bir krallığa saldır!</p>';
   const tot = (o) => G.fmt(G.totalTroops(o || {}));
   const ago = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
-  return head('Savaş Raporları', '📜') + G.S.reports.map((r, i) => r.kind === 'scout' ? `<div class="rep scout ${r.failed ? 'lose' : ''}" data-scoutrep="${i}"><span class="t">${ago(r.t)}</span>
+  return head('Savaş Raporları', '📜') + G.S.reports.map((r, i) => r.kind === 'gather' ? `<div class="rep gather"><span class="t">${ago(r.t)}</span><b>⛏ Kazım tamamlandı</b> — ${r.enemy}<div class="ln">${Object.entries(r.loot || {}).map(([k, v]) => RES[k].icon + ' +' + G.fmt(v)).join(' ')} • ${(r.hrs || 0).toFixed(1)} saat</div></div>` : r.kind === 'scout' ? `<div class="rep scout ${r.failed ? 'lose' : ''}" data-scoutrep="${i}"><span class="t">${ago(r.t)}</span>
     <b>👁 Gözetleme: ${r.failed ? 'BAŞARISIZ' : 'RAPOR'}</b> — ${r.enemy}
     <div class="ln">${r.failed ? r.why : `Yağmalanabilir: 🌾${G.fmt(r.loot.food)} 🪵${G.fmt(r.loot.wood)} 🪨${G.fmt(r.loot.stone)} • Asker: ${tot(r.troops)} • <u>Ayrıntılar ›</u>`}</div></div>` : `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span>
     <b>${r.kind === 'attack' ? '⚔ Saldırı' : '🛡️ Savunma'}: ${r.win ? 'ZAFER' : 'YENİLGİ'}</b> — ${r.enemy}
@@ -1376,6 +1379,9 @@ G.onChange((ev, data) => {
   if (ev === 'scout') { sfx('click'); refreshWorldUI(); }
   if (ev === 'scoutArrived') { if (!data.report?.failed) toast(`👁 Helikopter ${data.tname} şehrini gözetliyor…`); refreshWorldUI(); }
   if (ev === 'scoutHome') { refreshWorldUI(); updateTop(); $('repDot').classList.remove('hidden'); if (data.report?.failed) toast('🚁 Gözetleme başarısız: ' + data.report.why, true); else { sfx('reveal'); openScoutReport(data.report); } }
+  if (ev === 'gatherStart') { toast(`⛏ Birliğin ${G.MINE_TYPES[data.mtype].name} Sv.${data.mlevel}'de kazıma başladı`); refreshWorldUI(); }
+  if (ev === 'gatherDone') { refreshWorldUI(); $('repDot').classList.remove('hidden'); }
+  if (ev === 'gatherHome') { const [k, v] = Object.entries(data.loot || {})[0] || []; toast(k ? `⛏ Kazım birliği döndü: ${RES[k].icon} +${G.fmt(v)}` : '↩ Kazım birliği döndü'); sfx('coin'); refreshWorldUI(); updateTop(); }
   if (ev === 'marchHome') { toast('↩ Ordun şehre döndü'); refreshWorldUI(); updateTop(); }
   if (ev === 'marchBlocked') { toast('🛡️ Hedefin kalkanı var, ordu geri dönüyor', true); refreshWorldUI(); }
   if (ev === 'researched') { toast(`🔬 ${RESEARCH[data].name} Sv.${G.S.research.levels[data]} tamamlandı!`); sfx('built'); }

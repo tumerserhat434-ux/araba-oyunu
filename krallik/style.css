@@ -1201,3 +1201,21 @@ header#top > .profile { margin-left: 8px; }
 .zs-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .zs-chip { padding: 5px 11px; border-radius: 10px; border: 1.5px solid rgba(160, 255, 120, .35); background: rgba(0,0,0,.35); color: #e8ffe0; font-family: 'Lilita One', sans-serif; font-size: 13px; cursor: pointer; }
 .zs-chip.on { background: linear-gradient(180deg, #ffe07a, #e0a020); color: #3a1e00; border-color: #fff0b0; }
+/* ---- Madenler (harita) ---- */
+.wm-l.mine b { color: #2a1800; text-shadow: none; }
+.wm-l.mine.food b { background: radial-gradient(circle at 50% 30%, #fff08a, #d8a020 70%); box-shadow: 0 0 0 1.5px #3a2400, 0 0 0 3px #fff0b0; }
+.wm-l.mine.wood b { background: radial-gradient(circle at 50% 30%, #c8ff8a, #4a9a2a 70%); box-shadow: 0 0 0 1.5px #0a2a04, 0 0 0 3px #d8ffb0; }
+.wm-l.mine.stone b { background: radial-gradient(circle at 50% 30%, #ffffff, #8a94a8 70%); box-shadow: 0 0 0 1.5px #1a2030, 0 0 0 3px #e8ecf4; }
+.wm-l.mine.gold b { background: radial-gradient(circle at 50% 30%, #fff6b0, #f0a810 60%, #8a5400); box-shadow: 0 0 0 1.5px #3a2000, 0 0 0 3px #fff0a0, 0 0 10px rgba(255, 200, 60, .8); }
+.wm-l.mine.locked b { background: radial-gradient(circle at 50% 30%, #8a8a8a, #3a3a3a 70%); color: #fff; box-shadow: 0 0 0 1.5px #000, 0 0 0 3px #8a8a8a; }
+.wm-l.mine.busy span { color: #9ad0ff; }
+.wm-card.mine.m-food { background: radial-gradient(120% 90% at 50% 0%, #6a5410 0%, #2a2008 45%, #120e04 100%) padding-box, var(--wm-gold) border-box; }
+.wm-card.mine.m-wood { background: radial-gradient(120% 90% at 50% 0%, #2a5a1a 0%, #142a0c 45%, #0a1206 100%) padding-box, var(--wm-gold) border-box; }
+.wm-card.mine.m-stone { background: radial-gradient(120% 90% at 50% 0%, #4a5468 0%, #1e2432 45%, #0c0e16 100%) padding-box, var(--wm-gold) border-box; }
+.wm-card.mine.m-gold { background: radial-gradient(120% 90% at 50% 0%, #8a6410 0%, #3a2606 45%, #160e02 100%) padding-box, var(--wm-gold) border-box; }
+.wm-mr.ga > i { background: radial-gradient(circle at 40% 30%, #ffe07a, #a8701a); }
+.zs-kinds { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 10px; }
+.zs-kind { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 2px; border-radius: 12px; border: 1.5px solid rgba(255, 210, 120, .3); background: rgba(0,0,0,.35); color: #fff; cursor: pointer; }
+.zs-kind i { font-style: normal; font-size: 20px; } .zs-kind span { font-family: 'Lilita One', sans-serif; font-size: 11.5px; }
+.zs-kind.on { border-color: #ffd04a; background: linear-gradient(180deg, rgba(255, 210, 90, .45), rgba(120, 70, 10, .6)); box-shadow: 0 0 10px rgba(255, 200, 60, .5); }
+.rep.gather { border-left-color: #ffd04a; }

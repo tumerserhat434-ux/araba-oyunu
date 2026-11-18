@@ -19,7 +19,7 @@ const UI = (n) => `assets/ui/${n}.webp`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
-const fmtT = (s) => { s = Math.max(0, Math.ceil(s)); const m = Math.floor(s / 60); return m ? `${m}:${String(s % 60).padStart(2, '0')}` : `${s}sn`; };
+const fmtT = (s) => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, p2 = (v) => String(v).padStart(2, '0'); return h ? `${h}:${p2(m)}:${p2(s % 60)}` : m ? `${m}:${p2(s % 60)}` : `${s}sn`; };
 let C = null; // { renderer, toast, sfx, onAttack(id), online, serverPlayers, onTeleport }
 let W = null; // açık harita durumu
 
@@ -374,6 +374,35 @@ export function openWorldMap(opts = {}) {
   };
   syncZombies();
 
+  // ---- madenler (buğday, kereste, taş, altın) ----
+  const mineObjs = new Map();
+  const MCOL = { food: 0xffd04a, wood: 0x8ad04a, stone: 0xb8c0d0, gold: 0xffc020 };
+  const mProp = (n, x, z, sc, ry = 0, tint) => { const m = tint && A.tinted ? A.tinted(n, tint) : A.model(n); if (!m) return null; m.scale.setScalar(sc); m.position.set(x, 0, z); m.rotation.y = ry; return m; };
+  const buildMine = (q) => {
+    const g = new THREE.Group(); g.position.set(q.mapX, 0, q.mapY); scene.add(g);
+    const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: terrTex(), color: MCOL[q.type], transparent: true, opacity: 0.55, depthWrite: false })); ring.scale.set(17, 1, 17); ring.position.y = 0.2; g.add(ring);
+    const s2 = 1 + q.level * 0.03, parts = [];
+    if (q.type === 'food') parts.push(mProp('building_grain', -2.6, 0, 5.2 * s2), mProp('building_grain', 2.6, 0.6, 5.2 * s2, 0.3), mProp('sack', 0, 4, 5), mProp('wheelbarrow', -4, 4, 4.4, 0.6));
+    if (q.type === 'wood') parts.push(mProp('resource_lumber', 0, 1.5, 5.4 * s2), mProp('trees_A_medium', -4, -2.5, 4.2), mProp('trees_B_medium', 3.8, -3, 4.2), mProp('resource_lumber', 3, 3.5, 4, 1.2));
+    if (q.type === 'stone') parts.push(mProp('resource_stone', 0, 1, 5.6 * s2), mProp('rock_single_B', -3.6, -2.2, 4.6), mProp('rock_single_C', 3.6, -2, 4.2), mProp('wheelbarrow', 3.4, 3.4, 4.2, -0.6));
+    if (q.type === 'gold') { parts.push(mProp('building_mine_blue', 0, -1.5, 5.4 * s2, 0, 0xc8a060), mProp('resource_stone', -3.4, 3, 4.4, 0.5, 0xffd060), mProp('resource_stone', 3.2, 3.2, 3.8, 1.4, 0xffd060)); const gw = glow(0xffc040, 12, 0.55); gw.position.y = 3; g.add(gw); }
+    for (const m of parts) if (m) g.add(m);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.6), new THREE.MeshBasicMaterial({ color: 0x2a6ae0, side: THREE.DoubleSide })); flag.position.set(0, 8, 0); flag.visible = false; g.add(flag);
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(8.5, 8.5, 10, 8), hitMat); hit.position.y = 5; hit.userData.city = q; g.add(hit); hits.push(hit);
+    const el = document.createElement('div'); el.className = 'wm-l mine ' + q.type; labels.appendChild(el);
+    return { z: q, c: q, g, el, hit, flag, key: '' };
+  };
+  const syncMines = () => {
+    if (!home) return;
+    for (const [id, o] of mineObjs) if (!S.mines.includes(o.z)) { scene.remove(o.g); o.el.remove(); hits.splice(hits.indexOf(o.hit), 1); mineObjs.delete(id); if (sel === o.z) select(null); }
+    for (const q of S.mines) {
+      let o = mineObjs.get(q.id); if (!o) { o = buildMine(q); mineObjs.set(q.id, o); }
+      const lock = !G.mineUnlocked(q.type, q.level), busy = !!q.busy && S.marches.some((m) => m.id === q.busy), key = lock + ':' + busy;
+      if (o.key !== key) { o.key = key; o.flag.visible = busy; o.el.classList.toggle('locked', lock); o.el.classList.toggle('busy', busy); o.el.innerHTML = `<b>${q.level}</b><span>${busy ? '⛏ ' : lock ? '🔒 ' : ''}${G.MINE_TYPES[q.type].icon}</span>`; }
+    }
+  };
+  syncMines();
+
   // =====================================================================
   //  Kamera
   // =====================================================================
@@ -456,7 +485,14 @@ export function openWorldMap(opts = {}) {
     const cost = (ic, v) => `<em class="wm-cost">${ic}${v}</em>`;
     const win = (title, badge, body, kind = '') => `<div class="wm-card ${kind}"><div class="wm-crown"></div><div class="wm-ch"><b>${title}</b>${badge ? `<span class="wm-badge">${badge}</span>` : ''}</div>${body}</div>`;
     const stat = (ic, label, val, sub = '') => `<div class="wm-st"><i>${ic}</i><div><small>${label}</small><b>${val}</b>${sub}</div></div>`;
-    if (c && c.zombie) {
+    if (c && c.mine) {
+      const MT = G.MINE_TYPES[c.type], L = c.level, lock = !G.mineUnlocked(c.type, L), busy = c.busy && G.S.marches.find((m) => m.id === c.busy), t = G.marchTime(c, G.S.troops), full = G.marchesFull?.() ?? G.S.marches.length >= G.MAX_MARCHES;
+      card = win(`${MT.icon} ${MT.name} Sv.${L}`, `⏱ ${fmtT(t)}`, `
+        <div class="wm-cs">${stat(MT.icon, 'Saatlik verim (tam)', G.fmt(G.mineRate(c.type, L)))}${stat('⏳', 'En fazla kazım', G.mineHours(L) + ' saat')}</div>
+        <div class="wm-cs">${stat('⚔️', 'Tam verim gücü', G.fmt(G.mineRefPower(L)))}${stat('🚩', 'Birlikler', `${G.S.marches.length}/${G.MAX_MARCHES}`)}</div>
+        ${lock ? `<div class="wm-shield zl">🔒 Önce <b>Sv.${L - 1}</b> ${MT.name} kazmalısın. En yüksek: Sv.${G.S.mineMax[c.type] || 0}</div>` : busy ? `<div class="wm-shield">⛏ Birliğin burada ${busy.phase === 'gather' ? 'kazıyor • kalan ' + fmtT(busy.gEnd - Date.now() / 1000) : 'yolda'}</div>` : full ? '<div class="wm-shield zl">🚩 3 birliğin de dışarıda. Biri dönünce gönderebilirsin.</div>' : ''}
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${busy ? B('violet', 'wmRecallMine', '↩', 'Geri çağır') : B('gold', 'wmAtk', '⛏', 'Kaz', '', lock || full)}</div>`, 'mine m-' + c.type);
+    } else if (c && c.zombie) {
       const L = c.level, lock = !G.zombieUnlocked(L), need = G.zombiePower(L), mine = G.armyPower(G.S.troops), [lo, hi] = G.zombieLootRange(L), t = G.marchTime(c, G.S.troops), going = G.S.marches.some((m) => m.target === c.id);
       const ok = mine >= need * 1.1 ? ['Kolay', 'easy'] : mine >= need ? ['Orta', 'mid'] : mine >= need * 0.75 ? ['Zor', 'hard'] : ['Çok zor', 'vhard'];
       card = win(`🧟 Zombi Sv.${L}`, `⏱ ${fmtT(t)}`, `
@@ -485,24 +521,28 @@ export function openWorldMap(opts = {}) {
     } else if (c && c.me) card = win(`🏰 ${G.S.name}`, `🏛️ Belediye Sv.${G.thLevel()}`, `<div class="wm-cs">${stat('⚔️', 'Güç', G.fmt(G.cityPower()))}${stat('📍', 'Konum', `X:${G.S.mapX} Y:${G.S.mapY}`)}</div>
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('gold', 'wmCity', '🏰', 'Şehre Gir')}</div>`, 'mine');
     if (search && home) {
-      const mx = Math.min(G.ZOMBIE_MAX_LEVEL, (G.S.zombieMax || 0) + 1), L = search.lv = Math.max(1, Math.min(mx, search.lv));
-      const here = G.S.zombies.filter((z) => z.level === L).length, need = G.zombiePower(L), mine = G.armyPower(G.S.troops);
+      const isZ = search.kind === 'zombie', MT = isZ ? null : G.MINE_TYPES[search.kind];
+      const mx = isZ ? Math.min(G.ZOMBIE_MAX_LEVEL, (G.S.zombieMax || 0) + 1) : Math.min(G.MINE_MAX_LEVEL, (G.S.mineMax[search.kind] || 0) + 1), L = search.lv = Math.max(1, Math.min(mx, search.lv));
+      const here = isZ ? G.S.zombies.filter((z) => z.level === L).length : G.S.mines.filter((q) => q.type === search.kind && q.level === L && !q.busy).length, need = isZ ? G.zombiePower(L) : G.mineRate(search.kind, L);
+      const kinds = [['zombie', '🧟', 'Zombi'], ['food', '🌾', 'Buğday'], ['wood', '🪵', 'Kereste'], ['stone', '🪨', 'Taş'], ['gold', '🪙', 'Altın']].map(([k, i, n]) => `<button class="zs-kind ${k === search.kind ? 'on' : ''}" data-zkind="${k}"><i>${i}</i><span>${n}</span></button>`).join('');
       const chips = [...new Set([1, Math.max(1, mx - 5), Math.max(1, mx - 2), Math.max(1, mx - 1), mx])].map((v) => `<button class="zs-chip ${v === L ? 'on' : ''}" data-zlv="${v}">Sv.${v}${v === mx ? ' ★' : ''}</button>`).join('');
-      card = win('🔍 Haritada Ara', `En yüksek: Sv.${G.S.zombieMax || 0}`, `
-        <div class="zs-pick"><button class="zs-step" id="zsMinus">−</button><div class="zs-lv"><img src="${UI('ic_search')}" alt=""><div><small>Zombi seviyesi</small><b>Sv.${L}</b></div></div><button class="zs-step" id="zsPlus">+</button></div>
+      card = win('🔍 Haritada Ara', `En yüksek: Sv.${isZ ? G.S.zombieMax || 0 : G.S.mineMax[search.kind] || 0}`, `
+        <div class="zs-kinds">${kinds}</div>
+        <div class="zs-pick"><button class="zs-step" id="zsMinus">−</button><div class="zs-lv"><img src="${UI('ic_search')}" alt=""><div><small>${isZ ? 'Zombi seviyesi' : MT.name}</small><b>Sv.${L}</b></div></div><button class="zs-step" id="zsPlus">+</button></div>
         <input class="zs-range" id="zsRange" type="range" min="1" max="${mx}" value="${L}">
         <div class="zs-chips">${chips}</div>
-        <div class="wm-cs">${stat('💀', 'Gereken güç', G.fmt(need))}${stat('📍', 'Haritada', here ? `${here} zombi` : 'Yok (oluşur)')}</div>
+        <div class="wm-cs">${isZ ? stat('💀', 'Gereken güç', G.fmt(need)) : stat(MT.icon, 'Saatlik verim', G.fmt(need))}${stat('📍', 'Haritada', here ? `${here} adet` : 'Yok (oluşur)')}</div>
         <div class="wm-cb">${B('steel', 'wmZsClose', '✖', 'Kapat')}${B('gold', 'wmZsGo', '🔍', 'Ara')}</div>`, 'zombie search');
     }
-    const marches = G.S.marches.map((m) => `<div class="wm-mr" data-mid="${m.id}"><i>${m.phase === 'go' ? '⚔' : '↩'}</i><span>${m.tname}</span><b data-mt="${m.id}">${fmtT(m.arrive - Date.now() / 1000)}</b>${m.phase === 'go' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
+    const marches = G.S.marches.map((m) => `<div class="wm-mr ${m.kind === 'gather' ? 'ga' : ''}" data-mid="${m.id}"><i>${m.kind === 'gather' ? (m.phase === 'back' ? '↩' : '⛏') : m.phase === 'go' ? '⚔' : '↩'}</i><span>${m.phase === 'gather' ? 'Kazıyor • ' : ''}${m.tname}</span><b data-mt="${m.id}">${fmtT((m.phase === 'gather' ? m.gEnd : m.arrive) - Date.now() / 1000)}</b>${m.phase === 'go' || m.phase === 'gather' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
     const scoutsRows = G.S.scouts.map((q) => `<div class="wm-mr sc"><i>🚁</i><span>${q.phase === 'go' ? 'Gözetleme' : 'Dönüyor'} • ${q.tname}</span><b data-st="${q.id}">${fmtT(q.arrive - Date.now() / 1000)}</b></div>`).join('');
     ov().innerHTML = `<div class="wm-vig"></div><div class="wm-top"><button class="wm-srv" id="wmSrv"><i>🌐</i><span>Sunucu #${server}${home ? '' : ' <small>(yabancı)</small>'}</span><em>⇄</em></button><span class="wm-xy"><i>📍</i><b id="wmXY">X:${Math.round(cam.tx)} Y:${Math.round(cam.tz)}</b></span><button class="wm-x" id="wmX">✕</button></div>
       ${home ? '' : '<div class="wm-war">⚔ Krallıklar arası savaş: bu sunucudaki krallıklara saldırabilirsin (yürüyüş uzun sürer).</div>'}
       <div class="wm-side">${home ? `<button id="wmSearch" class="wm-orb emerald ${search ? 'on' : ''}"><img src="${UI('ic_search')}" alt=""><span>Ara</span></button>` : ''}<button id="wmHome" class="wm-orb sapphire"><i>🏰</i><span>Şehrim</span></button><button id="wmThrone" class="wm-orb ruby"><i>👑</i><span>Taht</span></button></div>
       <div class="wm-bottom">${marches || scoutsRows ? `<div class="wm-ms">${scoutsRows}${marches}</div>` : ''}${card}</div>`;
     $('wmX').onclick = closeWorld;
-    if ($('wmSearch')) $('wmSearch').onclick = () => { if (search) search = null; else { search = { lv: Math.min(G.ZOMBIE_MAX_LEVEL, (G.S.zombieMax || 0) + 1) }; sel = null; } C.sfx('click'); render(); };
+    const defLv = (k) => (k === 'zombie' ? Math.min(G.ZOMBIE_MAX_LEVEL, (G.S.zombieMax || 0) + 1) : Math.min(G.MINE_MAX_LEVEL, (G.S.mineMax[k] || 0) + 1));
+    if ($('wmSearch')) $('wmSearch').onclick = () => { if (search) search = null; else { search = { kind: 'zombie', lv: defLv('zombie') }; sel = null; } C.sfx('click'); render(); };
     if (search) {
       const setLv = (v) => { search.lv = v; render(); };
       if ($('zsMinus')) $('zsMinus').onclick = () => setLv(search.lv - 1);
@@ -510,14 +550,17 @@ export function openWorldMap(opts = {}) {
       if ($('zsRange')) $('zsRange').oninput = (e) => { search.lv = +e.target.value; const b = ov().querySelector('.zs-lv b'); if (b) b.textContent = 'Sv.' + search.lv; };
       if ($('zsRange')) $('zsRange').onchange = () => render();
       ov().querySelectorAll('[data-zlv]').forEach((b) => (b.onclick = () => setLv(+b.dataset.zlv)));
+      ov().querySelectorAll('[data-zkind]').forEach((b) => (b.onclick = () => { search.kind = b.dataset.zkind; search.lv = defLv(search.kind); C.sfx('click'); render(); }));
       $('wmZsClose').onclick = () => { search = null; render(); };
-      $('wmZsGo').onclick = () => { const r = G.findZombie(search.lv); if (!r.ok) return C.toast(r.why, true); search = null; syncZombies(); C.sfx(r.created ? 'reveal' : 'click'); C.toast(r.created ? `🧟 Sv.${r.zombie.level} zombi bulundu! (yakınında belirdi)` : `🧟 Sv.${r.zombie.level} zombi bulundu!`); flyTo(r.zombie.mapX, r.zombie.mapY + 14, Math.min(cam.d, 150)); select(r.zombie); };
+      $('wmZsGo').onclick = () => { if (search.kind !== 'zombie') { const r = G.findMine(search.kind, search.lv); if (!r.ok) return C.toast(r.why, true); search = null; syncMines(); C.sfx(r.created ? 'reveal' : 'click'); C.toast(`${G.MINE_TYPES[r.mine.type].icon} ${r.mine.name} bulundu!`); flyTo(r.mine.mapX, r.mine.mapY + 14, Math.min(cam.d, 150)); select(r.mine); return; }
+        const r = G.findZombie(search.lv); if (!r.ok) return C.toast(r.why, true); search = null; syncZombies(); C.sfx(r.created ? 'reveal' : 'click'); C.toast(r.created ? `🧟 Sv.${r.zombie.level} zombi bulundu! (yakınında belirdi)` : `🧟 Sv.${r.zombie.level} zombi bulundu!`); flyTo(r.zombie.mapX, r.zombie.mapY + 14, Math.min(cam.d, 150)); select(r.zombie); };
     }
     $('wmHome').onclick = () => { const me = list.find((q) => q.me); if (me) flyTo(me.mapX, me.mapY, 230); else closeWorld(); };
     $('wmThrone').onclick = () => { flyTo(TH.x, TH.y + 10, 300); select(throneCity); };
     $('wmSrv').onclick = () => { const next = server === myServer ? myServer + 1 : myServer; closeWorld(true); openWorldMap({ server: next }); C.toast(next === myServer ? '🏠 Kendi sunucuna döndün' : `🌐 Sunucu #${next} görüntüleniyor`); };
     if ($('wmClose')) $('wmClose').onclick = () => select(null);
     if ($('wmAtk')) $('wmAtk').onclick = () => C.onAttack(sel.id);
+    if ($('wmRecallMine')) $('wmRecallMine').onclick = () => { G.recallMarch(sel.busy); C.toast('↩ Kazım birliği geri çağrıldı'); syncMines(); render(); };
     if ($('wmScout')) $('wmScout').onclick = () => { const r = G.startScout(sel.id); if (!r.ok) return C.toast(r.why, true); C.sfx('horn'); C.toast(`🚁 Helikopter havalandı • ${fmtT(r.scout.dur * 2)} sonra rapor`); syncScouts(); render(); };
     if ($('wmLastRep')) $('wmLastRep').onclick = () => C.onScoutReport(G.lastScout(sel.id));
     const doTp = (x, y) => { const r = G.teleport(x, y); if (!r.ok) { C.toast(r.why, true); return; } C.sfx('reveal'); C.toast('📍 Şehrin ışınlandı!'); C.onTeleport?.(); closeWorld(); openWorldMap({}); };
@@ -526,7 +569,7 @@ export function openWorldMap(opts = {}) {
     if ($('wmCity')) $('wmCity').onclick = closeWorld;
     ov().querySelectorAll('[data-recall]').forEach((b) => (b.onclick = () => { G.recallMarch(b.dataset.recall); render(); }));
   };
-  const select = (c) => { sel = c; if (c) search = null; zombieObjs.forEach((o) => o.el.classList.toggle('sel', o.z === c)); if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
+  const select = (c) => { sel = c; if (c) search = null; zombieObjs.forEach((o) => o.el.classList.toggle('sel', o.z === c)); mineObjs.forEach((o) => o.el.classList.toggle('sel', o.z === c)); if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
   W = { scene, render, select, syncMarches, syncScouts, cities, list, server, home };
   window.__wmSelect = select; window.__wmCam = cam;
   render();
@@ -586,7 +629,8 @@ export function openWorldMap(opts = {}) {
       if (o.c === sel) o.terr.material.opacity = 0.75 + Math.sin(t * 6) * 0.2; else o.terr.material.opacity = 0.8;
     }
     putLabel(tLabel, 0, 40);
-    if (t - (W._zs || 0) > 0.5) { W._zs = t; syncZombies(); }
+    if (t - (W._zs || 0) > 0.5) { W._zs = t; syncZombies(); syncMines(); }
+    for (const o of mineObjs.values()) { const d = Math.hypot(o.z.mapX - cam.tx, o.z.mapY - cam.tz), vis = d < cam.d * 2.6 + 120; o.g.visible = vis; if (!vis) { o.el.style.display = 'none'; continue; } if (o.g.scale.x !== lod) o.g.scale.setScalar(lod); putLabel(o, -2 * lod); }
     for (const o of zombieObjs.values()) {
       const d = Math.hypot(o.z.mapX - cam.tx, o.z.mapY - cam.tz), vis = d < cam.d * 2.6 + 120; o.g.visible = vis;
       if (!vis) { o.el.style.display = 'none'; continue; }
@@ -607,12 +651,12 @@ export function openWorldMap(opts = {}) {
     const now = Date.now() / 1000;
     for (const m of G.S.marches) {
       const o = marchObjs.get(m.id); if (!o) continue;
-      const k = clamp((now - m.start) / Math.max(1, m.arrive - m.start), 0, 1), from = m.phase === 'go' ? o.a : o.b, to = m.phase === 'go' ? o.b : o.a;
-      o.army.position.lerpVectors(from, to, k); o.army.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
-      o.army.children.forEach((u) => u.userData && animateUnit(u, 'run', t, dt));
+      const gat = m.phase === 'gather', k = gat ? 1 : clamp((now - m.start) / Math.max(1, m.arrive - m.start), 0, 1), from = m.phase === 'go' || gat ? o.a : o.b, to = m.phase === 'go' || gat ? o.b : o.a;
+      o.army.position.lerpVectors(from, to, k); if (gat) o.army.position.x += 5; o.army.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      o.army.children.forEach((u) => u.userData && animateUnit(u, gat ? 'idle' : 'run', t, dt));
       _v.set(o.army.position.x, 9, o.army.position.z).project(camera);
       o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px,0) translate(-50%,-100%)`;
-      o.el.textContent = `${m.phase === 'go' ? '⚔' : '↩'} ${fmtT(m.arrive - now)}`;
+      o.el.textContent = m.phase === 'gather' ? `⛏ ${fmtT(m.gEnd - now)}` : `${m.kind === 'gather' ? '⛏' : m.phase === 'go' ? '⚔' : '↩'} ${fmtT(m.arrive - now)}`;
     }
     // gözetleme helikopterleri: kalkış, hızlı uçuş, hedefte kısa tur, iniş
     syncScouts();
@@ -634,8 +678,9 @@ export function openWorldMap(opts = {}) {
       lastUi = t;
       const xy = $('wmXY'); if (xy) xy.textContent = `X:${Math.round(cam.tx)} Y:${Math.round(cam.tz)}`;
       ov().querySelectorAll('[data-st]').forEach((el) => { const q = G.S.scouts.find((z) => z.id === el.dataset.st); if (q) el.textContent = fmtT(q.arrive - now); });
-      ov().querySelectorAll('[data-mt]').forEach((el) => { const m = G.S.marches.find((q) => q.id === el.dataset.mt); if (m) el.textContent = fmtT(m.arrive - now); });
-      if (ov().querySelectorAll('.wm-mr').length !== G.S.marches.length + G.S.scouts.length) render();
+      ov().querySelectorAll('[data-mt]').forEach((el) => { const m = G.S.marches.find((q) => q.id === el.dataset.mt); if (m) el.textContent = fmtT((m.phase === 'gather' ? m.gEnd : m.arrive) - now); });
+      const sig = G.S.marches.map((m) => m.id + m.phase).join() + '|' + G.S.scouts.length;
+      if (sig !== W._sig) { W._sig = sig; render(); }
     }
   };
   const dispose = () => {

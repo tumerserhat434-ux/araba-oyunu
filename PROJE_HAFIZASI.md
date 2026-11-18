@@ -457,6 +457,15 @@ cd araba-oyunu && python3 -m http.server 8000
 - `G.findZombie(L)`: en yakın o seviyedeki zombi; yoksa oyuncunun yakınında hemen oluşturur (`created`). Kamera süzülür ve zombi kartı açılır.
 - `ensureNextZombie()`: zombi öldürülünce ve yenilenme anında sıradaki seviye haritada yoksa yakına ekler (Sv.4 bulunamama sorunu).
 
+### 5.23 Madenler (kaynak toplama) ve 3 birlik sınırı
+- `state.js → MINE_TYPES`: food (Buğday Tarlası 4000→20000/sa), wood (Kereste Ormanı 4000→20000), stone (Taş Ocağı 2400→12000), gold (Altın Madeni 10→40/sa). Sv.1–10, `mineRate` geometrik; `mineHours(L)` = 3 + (L−1)×0,5 sa; `mineRefPower(L)` = 6000×1,75^(L−1) (tam verim gücü).
+- `gatherRate`: taban × min(1, max(0,25, güç/refPower)) × (1 + min(0,5, komutan bonusu/200)). Sefere başlarken hesaplanır (`m.rate`).
+- Sefer: `kind: 'gather'`, fazlar go → gather (`gStart/gEnd`) → back. Geri çağırma kazımda da çalışır (o ana kadar kazılan). Bitince `finishGather`: ganimet, `S.mineMax[type]` güncellenir, maden tükenip haritadan kalkar, sıradaki seviye yakında belirir (`ensureNextMine`), rapor (`kind: 'gather'`). Eve dönünce `gainRes`.
+- Sıra kuralı: `mineUnlocked(type, L)` tür başına. Madende birlik varken (`busy`) ikinci birlik gönderilemez.
+- `MAX_MARCHES = 3`: saldırı + zombi + kazım toplam 3 birlik. `troopsAway` kazımdaki askerleri sayar.
+- `S.mines` (~24: 7 buğday, 7 kereste, 7 taş, 3 altın), 10–20 dk'da yenilenir (`tickMines`). `findMine(type, L)` Ara penceresinden (sekmeler: Zombi/Buğday/Kereste/Taş/Altın).
+- Harita: KayKit parçalarıyla maden görünümleri (tarla, kereste yığını, taş, altın maden binası + ışık), renkli seviye rozetleri, kazımdayken mavi bayrak ve ordu madende bekler, kart (verim, süre, tam verim gücü, birlik sayısı, Kaz / Geri çağır). Sefer Kampı maden için "Kazım Birliği" görünümü (saatlik verim, toplam).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
