@@ -2,27 +2,27 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611182113';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182113';
-import * as ASSETS from './assets.js?v=2611182113';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611182113';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611182113';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182113';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182113';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182113';
-import * as G from './state.js?v=2611182113';
-import { getAvatar } from './scenes.js?v=2611182113';
-import { initCampaign, openCampaign } from './campui.js?v=2611182113';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182113';
-import { campIdx, stageLabel } from './campaign.js?v=2611182113';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182113';
-import { createGrass } from './grass.js?v=2611182113';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182113';
-import { initTutorial, tutEvent } from './tut.js?v=2611182113';
-import { icon } from './icons.js?v=2611182113';
-import { paintCity } from './terrain.js?v=2611182113';
-import { createLife, createVillager, animVillager } from './life.js?v=2611182113';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182113';
+import * as BLD from './buildings.js?v=2611182146';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611182146';
+import * as ASSETS from './assets.js?v=2611182146';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611182146';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid } from './online.js?v=2611182146';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611182146';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182146';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611182146';
+import * as G from './state.js?v=2611182146';
+import { getAvatar } from './scenes.js?v=2611182146';
+import { initCampaign, openCampaign } from './campui.js?v=2611182146';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611182146';
+import { campIdx, stageLabel } from './campaign.js?v=2611182146';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611182146';
+import { createGrass } from './grass.js?v=2611182146';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611182146';
+import { initTutorial, tutEvent } from './tut.js?v=2611182146';
+import { icon } from './icons.js?v=2611182146';
+import { paintCity } from './terrain.js?v=2611182146';
+import { createLife, createVillager, animVillager } from './life.js?v=2611182146';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611182146';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1139,7 +1139,7 @@ function allianceUI() {
     const busy = G.S.marches.length >= G.MAX_MARCHES;
     const cards = list.map((r) => { const mem = Object.values(r.members || {}), n = mem.length, tot = mem.reduce((t, q) => t + (q.power || 0), 0), need = r.giant.power, joined = !!r.members?.[me], pct = Math.min(100, tot / need * 100);
       return `<div class="rl-card ${joined ? 'in' : ''}"><div class="rl-gi"><img src="${UI('ic_giant')}" alt=""><b>${r.giant.level}</b></div>
-        <div class="rl-info"><b>🗿 Dev Sv.${r.giant.level}</b><small>👑 ${(r.leaderName || '').replace(/</g, '')} • 👥 ${n}/${G.RALLY_MAX}</small>
+        <div class="rl-info"><b>${r.giant.pyr ? '🔺 Piramit' : '🗿 Dev'} Sv.${r.giant.level}</b><small>👑 ${(r.leaderName || '').replace(/</g, '')} • 👥 ${n}/${G.RALLY_MAX}</small>
           <div class="rl-bar ${tot >= need ? 'ok' : ''}"><i style="width:${pct.toFixed(0)}%"></i><span>⚔ ${G.fmt(tot)} / ${G.fmt(need)}</span></div>
           <div class="rl-av">${mem.map((q) => frameHtml(q.hero, q.frame, 24)).join('')}</div></div>
         <div class="rl-side"><em data-rc="${r.endsAt}">${fmtMs(r.endsAt - nowMs)}</em>${joined ? '<span class="rl-tag">Katıldın</span>' : `<button class="w-btn green" data-rjoin="${r.id}" ${n >= G.RALLY_MAX || busy ? 'disabled' : ''}>${n >= G.RALLY_MAX ? 'Dolu' : 'Katıl'}</button>`}</div></div>`; }).join('');
@@ -1356,16 +1356,17 @@ async function doRally() {
   rallyBusy = true;
   try {
     if (R.mode === 'create') {
-      const g = G.findEnemy(R.gid); if (!g) return toast('Dev bulunamadı', true);
-      if (!G.giantUnlocked(g.level)) return toast(`🔒 Önce Sv.${g.level - 1} devi kesmelisiniz`, true);
-      const endsAt = Date.now() + G.RALLY_WAIT * 1000, giant = { id: g.id, level: g.level, power: g.power, mapX: Math.round(g.mapX), mapY: Math.round(g.mapY) };
+      const g = G.findEnemy(R.gid); if (!g) return toast('Hedef bulunamadı', true);
+      if (g.pyr) { const acc = G.pyrAccess(g); if (!acc.ok) return toast('🔺 ' + acc.why, true); }
+      else if (!G.giantUnlocked(g.level)) return toast(`🔒 Önce Sv.${g.level - 1} devi kesmelisiniz`, true);
+      const endsAt = Date.now() + G.RALLY_WAIT * 1000, giant = { id: g.id, level: g.level, power: g.pyr ? G.pyrState(g).hp : g.power, mapX: Math.round(g.mapX), mapY: Math.round(g.mapY), ...(g.pyr ? { pyr: true } : {}) };
       const r = await createRally(G.S.alliance.id, { leaderName: G.S.name, giant, lx: G.S.mapX, ly: G.S.mapY, created: Date.now(), endsAt, members: { [online.uid]: me } });
       if (!r.ok) return toast(r.why, true);
-      G.freezeGiant(g.id);
+      if (!g.pyr) G.freezeGiant(g.id);
       const sm = G.startRallyMarch({ rid: r.id, aid: G.S.alliance.id, leader: online.uid, giant, lx: G.S.mapX, ly: G.S.mapY, endsAt: endsAt / 1000 }, tr, heroes);
       if (!sm.ok) return toast(sm.why, true);
       toast(`📯 Ralli açıldı! İttifakın ${G.RALLY_WAIT / 60} dk içinde katılabilir`); sfx('horn');
-      sendChat(G.S.alliance.id, `📯 Dev Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli`, me);
+      sendChat(G.S.alliance.id, g.pyr ? `📯 🔺 Piramit Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli` : `📯 Dev Sv.${giant.level} için ralli açtım! Katılın: İttifak › Ralli`, me);
     } else {
       const r = R.r, jr = await joinRally(G.S.alliance.id, r.id, me);
       if (!jr.ok) return toast(jr.why, true);
@@ -1428,7 +1429,7 @@ function reportsUI() {
   if (!G.S.reports.length) return head('Savaş Raporları', '📜') + '<p class="desc">Henüz savaş yok. Dünya haritasından bir krallığa saldır!</p>';
   const tot = (o) => G.fmt(G.totalTroops(o || {}));
   const ago = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
-  return head('Savaş Raporları', '📜') + G.S.reports.map((r, i) => r.kind === 'rally' ? `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span><b>📯 Ralli: ${r.win ? 'ZAFER' : 'YENİLGİ'}</b> — ${r.enemy}<div class="ln">👥 ${(r.members || []).join(', ')} • ⚔ ${G.fmt(r.total)} / ${G.fmt(r.need)}</div>${r.win ? `<div class="ln">Ödül: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)} ${(r.items || []).map((it) => `⏩${SPEEDUPS[it.id].short}×${it.n}`).join(' ')}</div>` : ''}</div>` : r.kind === 'gather' ? `<div class="rep gather"><span class="t">${ago(r.t)}</span><b>⛏ Kazım tamamlandı</b> — ${r.enemy}<div class="ln">${Object.entries(r.loot || {}).map(([k, v]) => RES[k].icon + ' +' + G.fmt(v)).join(' ')} • ${(r.hrs || 0).toFixed(1)} saat</div></div>` : r.kind === 'scout' ? `<div class="rep scout ${r.failed ? 'lose' : ''}" data-scoutrep="${i}"><span class="t">${ago(r.t)}</span>
+  return head('Savaş Raporları', '📜') + G.S.reports.map((r, i) => r.kind === 'pyramid' ? `<div class="rep ${r.captured ? '' : r.win === false ? 'lose' : ''}"><span class="t">${ago(r.t)}</span><b>🔺 ${r.rally ? 'Ralli • ' : ''}${r.enemy}: ${r.captured ? 'ELE GEÇİRİLDİ!' : 'HASAR'}</b><div class="ln">Verilen hasar: ⚔ ${G.fmt(r.dmg)}${r.hp != null ? ` • Kalan can: ${G.fmt(r.hp)}` : ''}${r.why ? ` • ${r.why}` : ''}</div><div class="ln">Kayıpların: ${tot(r.aLoss)} (🤕 ${tot(r.wounded)} yaralı)${r.members ? ` • Katılan: ${r.members.length}` : ''}</div></div>` : r.kind === 'rally' ? `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span><b>📯 Ralli: ${r.win ? 'ZAFER' : 'YENİLGİ'}</b> — ${r.enemy}<div class="ln">👥 ${(r.members || []).join(', ')} • ⚔ ${G.fmt(r.total)} / ${G.fmt(r.need)}</div>${r.win ? `<div class="ln">Ödül: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)} ${(r.items || []).map((it) => `⏩${SPEEDUPS[it.id].short}×${it.n}`).join(' ')}</div>` : ''}</div>` : r.kind === 'gather' ? `<div class="rep gather"><span class="t">${ago(r.t)}</span><b>⛏ Kazım tamamlandı</b> — ${r.enemy}<div class="ln">${Object.entries(r.loot || {}).map(([k, v]) => RES[k].icon + ' +' + G.fmt(v)).join(' ')} • ${(r.hrs || 0).toFixed(1)} saat</div></div>` : r.kind === 'scout' ? `<div class="rep scout ${r.failed ? 'lose' : ''}" data-scoutrep="${i}"><span class="t">${ago(r.t)}</span>
     <b>👁 Gözetleme: ${r.failed ? 'BAŞARISIZ' : 'RAPOR'}</b> — ${r.enemy}
     <div class="ln">${r.failed ? r.why : `Yağmalanabilir: 🌾${G.fmt(r.loot.food)} 🪵${G.fmt(r.loot.wood)} 🪨${G.fmt(r.loot.stone)} • Asker: ${tot(r.troops)} • <u>Ayrıntılar ›</u>`}</div></div>` : `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span>
     <b>${r.kind === 'attack' ? '⚔ Saldırı' : '🛡️ Savunma'}: ${r.win ? 'ZAFER' : 'YENİLGİ'}</b> — ${r.enemy}
@@ -1662,6 +1663,7 @@ G.onChange((ev, data) => {
   if (ev === 'healed') toast(`💚 ${G.totalTroops(data.counts)} asker iyileşti`);
   if (ev === 'battle') { $('repDot').classList.remove('hidden'); if (data.win && data.kind === 'attack') pushNews(`<u>${G.S.name}</u> <em>${data.enemy}</em> krallığını fethetti!`); }
   if (ev === 'quests') { updateQuestUI(); }
+  if (ev === 'pyrHit' || ev === 'pyrRally') { pyrApply(ev, data); return; }
   if (ev === 'marchArrived') {
     const { r } = data; if (r.enemy.real) sendAttack(r.enemy.uid, { name: G.S.name, win: r.res.win, loot: r.rep.loot, sent: r.sent, aLoss: r.res.aLoss, dLoss: r.res.dLoss });
     lastBattle = r; sfx(r.res.win ? 'win' : 'lose');
@@ -1753,6 +1755,25 @@ const frame = () => new Promise((r) => setTimeout(r, 16));
 // ---------------------------------------------------------------------
 let lastSync = 0, syncTimer = 0;
 async function syncNow() { if (!online.ready) return false; lastSync = Date.now(); return saveCloud(G.exportSave(), G.publicProfile()); }
+// ---- Mısır piramitleri: sunucu durumu ve vuruşlar ----
+let pyrUnsub = null, pyrServer = 0;
+function pyrWatch() {
+  if (!online.ready || !G.S.server || (pyrUnsub && pyrServer === G.S.server)) return;
+  if (pyrUnsub) pyrUnsub(); pyrServer = G.S.server;
+  pyrUnsub = watchPyramids(G.S.server, (o) => { if (!o) return; G.ONLINE.pyr = o; refreshPyramids(); });
+}
+async function pyrApply(ev, data) {
+  const q = G.PYRAMIDS.find((x) => x.id === data.pid), rep = data.rep;
+  if (ev === 'pyrRally' && data.m.leader !== online.uid) { toast(`🔺 Ralli Piramit Sv.${data.level}'e ⚔ ${G.fmt(data.dmg)} hasar verdi`); $('repDot').classList.remove('hidden'); return; }
+  if (!q || !G.S.alliance || !online.ready) { rep.why = 'Sunucuya bağlı değilsin, hasar işlenemedi'; G.save(); toast('🔺 ' + rep.why, true); return; }
+  const a = G.S.alliance, r = await hitPyramid(G.S.server, q.id, q.power, { aid: a.id, tag: a.tag, name: a.name, color: a.color ?? 1 }, data.dmg, G.PYR_RESET * 1000);
+  if (!r.ok) { rep.why = r.why; G.save(); toast('🔺 ' + r.why, true); return; }
+  rep.hp = r.hp; rep.captured = !!(r.captured && r.captured.aid === a.id); if (r.captured && !rep.captured) rep.why = `[${r.captured.tag}] en çok hasarı verdiği için piramidi aldı`;
+  G.save(); $('repDot').classList.remove('hidden');
+  if (rep.captured) { sfx('win'); toast(`🏆 [${a.tag}] Piramit Sv.${q.level}'i ele geçirdi!`); sendChat(a.id, `🏆 🔺 Piramit Sv.${q.level} artık [${a.tag}] ittifakının!`, G.myMember()); }
+  else if (r.captured) { sfx('lose'); toast(`🔺 Piramit Sv.${q.level}'i [${r.captured.tag}] aldı (en çok hasar onlarda)`, true); }
+  else toast(`🔺 Piramit Sv.${q.level}'e ⚔ ${G.fmt(data.dmg)} hasar! Kalan can ${G.fmt(r.hp)}`);
+}
 function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 3000); }
 async function refreshRivals(force) {
   if (!online.ready || (!force && Date.now() - G.ONLINE.rivalsAt < 90000)) return;
@@ -1786,6 +1807,7 @@ async function startOnline() {
   let cTh = 0; try { cTh = JSON.parse(cloud?.data || '{}').buildings?.townhall?.level || 0; } catch (e) { /* bozuk */ }
   if (cloud && (fresh ? cTh > G.thLevel() : cloud.updated > G.S.lastSeen * 1000 + 120000)) { if (await adoptCloud(cloud, true)) return; }
   if (!G.S.server) { const n = await assignServer(); G.placeOnServer(n); toast(`🌐 Sunucu #${n}'e katıldın!`); }
+  pyrWatch();
   await syncNow();
   processInbox(); refreshRivals(true);
   if (G.S.alliance) alRefresh(); // üyeliği doğrula, gücü güncelle

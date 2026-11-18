@@ -263,3 +263,33 @@ export function watchHelps(aid, cb) {
   if (!ready || !aid) return () => {};
   try { return FS.onSnapshot(FS.query(FS.collection(db, 'alliances', aid, 'helps'), FS.limit(100)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
 }
+
+// ---- Mısır piramitleri (servers/{s}/pyramids/{pid}) ----
+// { owner: { aid, tag, name, color } | null, ownedAt (ms), hp, dmg: { aid: hasar }, names: { aid: { tag, name, color } }, lastHit (ms) }
+export function watchPyramids(server, cb) {
+  if (!ready) return () => {};
+  try { return FS.onSnapshot(FS.collection(db, 'servers', String(server), 'pyramids'), (s) => { const o = {}; s.docs.forEach((d) => { o[d.id] = d.data(); }); cb(o); }, (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}
+// Hasarı işle (transaction): piramidin canı biterse en çok hasar veren ittifak sahibi olur, can yeniden dolar
+export async function hitPyramid(server, pid, maxHp, ally, dmg, resetMs) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try {
+    const ref = FS.doc(db, 'servers', String(server), 'pyramids', pid);
+    return await FS.runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref), now = Date.now();
+      let d = snap.exists() ? snap.data() : { owner: null, ownedAt: 0, hp: maxHp, dmg: {}, names: {}, lastHit: 0 };
+      if (d.owner?.aid === ally.aid) return { ok: false, why: 'Bu piramit zaten ittifakının' };
+      if (!d.lastHit || now - d.lastHit > resetMs) { d.hp = maxHp; d.dmg = {}; } // uzun süre vurulmadıysa savaş sıfırlanır
+      d.dmg = { ...(d.dmg || {}) }; d.names = { ...(d.names || {}) };
+      d.dmg[ally.aid] = (d.dmg[ally.aid] || 0) + dmg; d.names[ally.aid] = { tag: ally.tag, name: ally.name, color: ally.color ?? 1 };
+      d.hp = (d.hp ?? maxHp) - dmg; d.lastHit = now;
+      let captured = null;
+      if (d.hp <= 0) {
+        const [win] = Object.entries(d.dmg).sort((a, b) => b[1] - a[1])[0];
+        captured = { aid: win, ...d.names[win] }; d.owner = captured; d.ownedAt = now; d.hp = maxHp; d.dmg = {}; d.lastHit = 0;
+      }
+      tx.set(ref, { owner: d.owner || null, ownedAt: d.ownedAt || 0, hp: d.hp, dmg: d.dmg, names: d.names, lastHit: d.lastHit });
+      return { ok: true, hp: d.hp, captured, mine: d.dmg[ally.aid] || 0 };
+    });
+  } catch (e) { return { ok: false, why: errOf(e) }; }
+}

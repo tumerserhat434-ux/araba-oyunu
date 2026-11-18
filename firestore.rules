@@ -16,6 +16,13 @@ service cloud.firestore {
         allow read, delete: if request.auth != null && request.auth.uid == uid;
       }
     }
+    // Mısır piramitleri: giriş yapmış oyuncular hasar işleyebilir (alanlar sınırlı)
+    match /servers/{sid}/pyramids/{pid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.resource.data.keys().hasOnly(['owner', 'ownedAt', 'hp', 'dmg', 'names', 'lastHit'])
+        && request.resource.data.hp is number && request.resource.data.hp <= 200000000;
+    }
     // İttifak rütbeleri: R5 lider, R4 (lider atar) R1–R3 arası rütbe verir ve üye çıkarır, R3 yalnızca R1'i R2 yapar
     function rk(m) { return m.get('rank', 1); }
     function selfEdit(d, n, me) {

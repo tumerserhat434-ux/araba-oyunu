@@ -551,6 +551,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - Şu an tüm dallar (`main`, `claude/selam-naber-ilicoo`, `claude/laughing-hamilton-eaghgm`, `claude/forest-parkour-mobile-game-9oxplw`, çalışma dalı) aynı commit'te tutuluyor; yayın için en az `claude/selam-naber-ilicoo`'ya gönder.
 - **Önbellek kırıcı:** her yayından önce `python3 krallik/surum.py` çalıştır; tüm `./x.js` içe aktarmalarına ve `index.html`'deki `main.js`/`style.css`'e `?v=<zaman>` ekler. Yoksa iPhone Safari eski dosyaları kullanır (kullanıcı "yaptıkların gözükmüyor" dedi).
 
+### 5.33 Harita 2000×2000 ve Mısır piramitleri
+- **Harita büyütüldü:** `state.js → MAP_SIZE = 2000`, `MAP_MID`, `THRONE` (1000,1000). Eski kayıtlar `migrateMap()` ile +500 kaydırılır (`S.mapVer = 2`); gerçek oyuncuların eski konumları `rivalToEnemy` içinde `mapVer` yoksa +500 kaydırılır, `publicProfile.mapVer = 2`. Yeni oyuncular tahttan 140–700 birim uzağa yerleşir. `worldmap.js → MAP = G.MAP_SIZE`, dekor sayıları ve aralıkları ölçeklendi, `MAX_D = 950`.
+- **Piramitler (`state.js → PYR_LEVELS`, `PYRAMIDS`):** 28 tane, tahttan halkalar halinde: Sv.1 ×10 (830 birim, 5M can), Sv.2 ×7 (650, 13M), Sv.3 ×5 (480, 30M), Sv.4 ×3 (330, 65M), Sv.5 ×3 (190, 140M). Konumlar belirlenimci (herkeste aynı). Model `assets/hf/pyramid.glb` (Tripo, ~9 kredi), Demir Taht boyunda (Sv.1 29 → Sv.5 41 birim), çevresinde çöl zemini. Şehirler/dekor piramit alanına konmaz (`nearPyramid`).
+- **Kurallar:** Sv.1'e her ittifak saldırabilir; Sv.N için ittifak en az 2 gündür (`PYR_HOLD`) bir Sv.N-1 piramide sahip olmalı (`pyrAccess`). Normal sefer (hasar = ordu gücü, %6 kayıp) ya da ralli (toplam güç, %8 kayıp, tek kişi de yürür; hasarı lider işler). Can bitince **en çok hasar veren** ittifak sahip olur, can dolar. 1 saat vurulmayan piramidin hasarı sıfırlanır (`PYR_RESET`). Sahip ittifakın renginde ve üstünde [ETİKET] yazısı.
+- **Sunucu:** Firestore `servers/{server}/pyramids/{pid}` { owner{aid,tag,name,color}, ownedAt, hp, dmg{aid}, names, lastHit }; `online.js → watchPyramids`, `hitPyramid` (transaction). Kural basit (alanlar sınırlı); hasar miktarı istemcide hesaplandığı için hileye açık.
+- Test: sahte `online.js` ile (pyramid izleme/vuruş taklidi).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

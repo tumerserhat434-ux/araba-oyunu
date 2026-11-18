@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182113';
+import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611182146';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -57,7 +57,9 @@ export function load() {
   for (const e of S.enemies) e.troops.tank ??= 0;
   // dünya haritası: sunucu, koordinat, seferler ve harita krallıkları
   if (S.server >= 300) S.server = null; // eski deneme numarası → yeniden atanır (sunucular 1'den başlar)
-  if (S.mapX == null) { S.mapX = Math.round(rand(220, 780)); S.mapY = Math.round(rand(220, 780)); }
+  if (S.mapX == null) { S.mapX = Math.round(rand(MAP_MID - 500, MAP_MID + 500)); S.mapY = Math.round(rand(MAP_MID - 500, MAP_MID + 500)); S.mapVer = MAP_VER; }
+  if (S.mapVer !== MAP_VER) migrateMap();
+  if (nearPyramid(S.mapX, S.mapY, 24) || nearThrone(S.mapX, S.mapY, 24)) { const sp = spotNear(S.mapX, S.mapY); if (sp) [S.mapX, S.mapY] = sp; }
   S.marches ||= [];
   S.scouts ||= []; S.scoutReports ||= [];
   S.items ||= {};
@@ -514,9 +516,33 @@ function ensureMapKingdoms() {
 // Haritadaki dolu yerler (şehirler) — ışınlama ve yeni oyuncu yerleşimi için
 function occupied() { return S.enemies.concat(ONLINE.enemies.filter((e) => (e.server || 1) === (S.server || 1))).map((e) => [e.mapX, e.mapY]); }
 // Haritanın ortasındaki Demir Taht kalesi: çevresine şehir kurulamaz
-export const THRONE = { x: 500, y: 500, r: 62 };
+export const MAP_SIZE = 2000, MAP_MID = MAP_SIZE / 2, MAP_VER = 2; // harita 1000→2000 büyütüldü (eski kayıtlar +500 kaydırılır)
+export const THRONE = { x: MAP_MID, y: MAP_MID, r: 62 };
 const nearThrone = (x, y, pad = 0) => Math.hypot(x - THRONE.x, y - THRONE.y) < THRONE.r + pad;
-export const spotFree = (x, y, r = 24) => x > 30 && x < 970 && y > 30 && y < 970 && !nearThrone(x, y, 12) && occupied().every(([a, b]) => Math.hypot(a - x, b - y) > r);
+// ---- Mısır piramitleri: dıştan (Sv.1) içe (Sv.5, tahta yakın) halkalar halinde ----
+// Sahiplik ittifaklarındır (sunucuda servers/{s}/pyramids). Sv.N'ye saldırmak için ittifak en az 2 gündür Sv.N-1 piramide sahip olmalı.
+export const PYR_LEVELS = {
+  1: { n: 10, power: 5e6, dist: 830, r: 22 },
+  2: { n: 7, power: 13e6, dist: 650, r: 24 },
+  3: { n: 5, power: 30e6, dist: 480, r: 26 },
+  4: { n: 3, power: 65e6, dist: 330, r: 28 },
+  5: { n: 3, power: 140e6, dist: 190, r: 31 },
+};
+export const PYR_HOLD = 2 * 86400; // bir üst seviyeye geçmek için sahiplik süresi (sn)
+export const PYR_RESET = 3600; // 1 saat vurulmayan piramidin hasarı sıfırlanır
+export const PYRAMIDS = (() => {
+  const out = []; let sd = 7741; const r01 = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
+  for (const L of [1, 2, 3, 4, 5]) {
+    const d = PYR_LEVELS[L], off = L * 0.83;
+    for (let i = 0; i < d.n; i++) {
+      const a = off + i / d.n * Math.PI * 2 + (r01() - 0.5) * 0.25, dist = d.dist + (r01() - 0.5) * 40;
+      out.push({ id: `pyr${L}_${i + 1}`, pyr: true, level: L, name: `Piramit Sv.${L}`, lord: 'Kadim Firavun', th: L, power: d.power, r: d.r, mapX: Math.round(THRONE.x + Math.cos(a) * dist), mapY: Math.round(THRONE.y + Math.sin(a) * dist), troops: {}, tower: 0, res: {}, shieldUntil: 0 });
+    }
+  }
+  return out;
+})();
+export const nearPyramid = (x, y, pad = 0) => PYRAMIDS.some((p) => Math.hypot(x - p.mapX, y - p.mapY) < p.r + pad);
+export const spotFree = (x, y, r = 24) => x > 30 && x < MAP_SIZE - 30 && y > 30 && y < MAP_SIZE - 30 && !nearThrone(x, y, 12) && !nearPyramid(x, y, 14) && occupied().every(([a, b]) => Math.hypot(a - x, b - y) > r);
 export const TELEPORT_COST = 200;
 export function teleport(x, y) {
   if (S.marches.length) return { ok: false, why: 'Seferdeki ordular dönmeden ışınlanamazsın' };
@@ -535,16 +561,24 @@ export function spotNear(x, y) {
 // Yeni sunucuya yerleş: rastgele boş bir yer
 export function placeOnServer(server) {
   S.server = server;
-  for (let k = 0; k < 80; k++) { const a = Math.random() * Math.PI * 2, d = 110 + Math.random() * (220 + k * 2), x = THRONE.x + Math.cos(a) * d, y = THRONE.y + Math.sin(a) * d; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
+  for (let k = 0; k < 80; k++) { const a = Math.random() * Math.PI * 2, d = 140 + Math.random() * (560 + k * 4), x = THRONE.x + Math.cos(a) * d, y = THRONE.y + Math.sin(a) * d; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
   S.enemies.forEach((e, i) => placeOnMap(e, i)); S.zombies = []; S.zombieNext = 0; S.mines = S.mines.filter((q) => q.busy); S.mineNext = 0; save();
+}
+// eski 1000'lik harita kaydını 2000'lik haritaya taşı (tahta göre konum korunur)
+function migrateMap() {
+  const d = (MAP_SIZE - 1000) / 2, mv = (o) => { if (!o) return; if (o.mapX != null) o.mapX += d; if (o.mapY != null) o.mapY += d; if (o.cx != null) o.cx += d; if (o.cy != null) o.cy += d; };
+  if (S.mapX != null) { S.mapX += d; S.mapY += d; }
+  [...(S.enemies || []), ...(S.zombies || []), ...(S.mines || []), ...(S.giants || [])].forEach(mv);
+  for (const m of S.marches || []) { for (const k of ['tx', 'ty', 'lx', 'ly']) if (m[k] != null) m[k] += d; if (m.giant) mv(m.giant); if (m.snap) mv(m.snap); }
+  S.mapVer = MAP_VER;
 }
 function placeOnMap(e, i) {
   for (let k = 0; k < 40; k++) {
     const ang = (i * 2.399) + rand(-0.4, 0.4), dist = 32 + Math.sqrt(i + 1) * 24 + rand(-8, 8);
     const x = Math.round(S.mapX + Math.cos(ang) * dist), y = Math.round(S.mapY + Math.sin(ang) * dist);
-    if (!nearThrone(x, y, 14) && Math.hypot(S.mapX - x, S.mapY - y) > 27 && S.enemies.every((o) => o === e || o.mapX == null || Math.hypot(o.mapX - x, o.mapY - y) > 27)) { e.mapX = Math.max(20, Math.min(980, x)); e.mapY = Math.max(20, Math.min(980, y)); return; }
+    if (!nearThrone(x, y, 14) && Math.hypot(S.mapX - x, S.mapY - y) > 27 && S.enemies.every((o) => o === e || o.mapX == null || Math.hypot(o.mapX - x, o.mapY - y) > 27)) { e.mapX = Math.max(20, Math.min(MAP_SIZE - 20, x)); e.mapY = Math.max(20, Math.min(MAP_SIZE - 20, y)); return; }
   }
-  e.mapX = Math.max(30, Math.min(970, S.mapX + rand(-300, 300))); e.mapY = Math.max(30, Math.min(970, S.mapY + rand(-300, 300)));
+  e.mapX = Math.max(30, Math.min(MAP_SIZE - 30, S.mapX + rand(-300, 300))); e.mapY = Math.max(30, Math.min(MAP_SIZE - 30, S.mapY + rand(-300, 300)));
   pushOutOfThrone(e);
 }
 function pushOutOfThrone(e) { if (!nearThrone(e.mapX, e.mapY, 12)) return; const a = Math.atan2(e.mapY - THRONE.y, e.mapX - THRONE.x) || 1; e.mapX = Math.round(THRONE.x + Math.cos(a) * (THRONE.r + 30)); e.mapY = Math.round(THRONE.y + Math.sin(a) * (THRONE.r + 30)); }
@@ -647,14 +681,31 @@ function applyLosses(loss) {
   return { wounded, dead };
 }
 // ---- Çevrimiçi: gerçek oyuncular ----
-export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0, rallyGiants: [] };
-export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || (S.giants || []).find((q) => q.id === id) || ONLINE.rallyGiants.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
+export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0, rallyGiants: [], pyr: {} };
+// piramidin sunucudaki durumu (yoksa sahipsiz ve tam canlı)
+export function pyrState(p) {
+  const d = ONLINE.pyr[p.id] || {}, stale = !d.lastHit || Date.now() - d.lastHit > PYR_RESET * 1000;
+  return { owner: d.owner || null, ownedAt: d.ownedAt || 0, hp: stale ? p.power : Math.max(0, d.hp ?? p.power), dmg: stale ? {} : d.dmg || {}, names: d.names || {}, lastHit: d.lastHit || 0 };
+}
+// ittifakımın bu piramide saldırma hakkı var mı?
+export function pyrAccess(p) {
+  if (!S.alliance) return { ok: false, why: 'Piramitler için bir ittifaka katılmalısın' };
+  const st = pyrState(p);
+  if (st.owner?.aid === S.alliance.id) return { ok: false, why: 'Bu piramit zaten ittifakının', own: true };
+  if (p.level === 1) return { ok: true };
+  const nowMs = Date.now(), held = PYRAMIDS.filter((q) => q.level === p.level - 1).map((q) => pyrState(q)).filter((q) => q.owner?.aid === S.alliance.id);
+  if (!held.length) return { ok: false, why: `Önce ittifakın bir Sv.${p.level - 1} piramide sahip olmalı` };
+  const best = Math.min(...held.map((q) => q.ownedAt)), wait = best + PYR_HOLD * 1000 - nowMs;
+  if (wait > 0) return { ok: false, why: `Sv.${p.level - 1} piramit 2 gündür sizde olmalı • ${fmtTime(wait / 1000)} kaldı`, wait };
+  return { ok: true };
+}
+export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || PYRAMIDS.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || (S.mines || []).find((q) => q.id === id) || (S.giants || []).find((q) => q.id === id) || ONLINE.rallyGiants.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
 // Başka sunucunun bilgisayar krallıkları (görüntülenirken üretilir, kalıcı değil)
 export function foreignBots(server) {
   let seed = server * 9973; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const base = Math.max(3000, armyPower(S.troops) + towerPower() + 6000), out = [];
   for (let i = 0; i < 30; i++) {
-    const e = { id: 'f' + server + '_' + i, name: KINGDOM_NAMES[(i * 5 + server) % KINGDOM_NAMES.length] + ' #' + server, lord: LORD_NAMES[(i * 3 + server) % LORD_NAMES.length], mapX: Math.round(80 + rnd() * 840), mapY: Math.round(80 + rnd() * 840), troops: {}, tower: 0, th: 1, res: {}, power: 0, shieldUntil: 0, foreign: server };
+    const e = { id: 'f' + server + '_' + i, name: KINGDOM_NAMES[(i * 5 + server) % KINGDOM_NAMES.length] + ' #' + server, lord: LORD_NAMES[(i * 3 + server) % LORD_NAMES.length], mapX: Math.round(80 + rnd() * (MAP_SIZE - 160)), mapY: Math.round(80 + rnd() * (MAP_SIZE - 160)), troops: {}, tower: 0, th: 1, res: {}, power: 0, shieldUntil: 0, foreign: server };
     pushOutOfThrone(e); regenEnemy(e, base * (0.4 + rnd() * 1.6)); out.push(e);
   }
   return out;
@@ -669,6 +720,7 @@ export function startMarch(enemyId, sent, heroIds) {
   const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
   if (e.alliance && S.alliance && e.alliance.id === S.alliance.id) return { ok: false, why: '🤝 Müttefikine saldıramazsın' };
   if (e.giant) return { ok: false, why: '🗿 Devler yalnızca ittifak rallisiyle kesilebilir' };
+  if (e.pyr) { const a = pyrAccess(e); if (!a.ok) return { ok: false, why: '🔺 ' + a.why }; }
   if (e.zombie && !zombieUnlocked(e.level)) return { ok: false, why: `🧟 Önce Sv.${e.level - 1} zombiyi öldür` };
   if (e.mine && !mineUnlocked(e.type, e.level)) return { ok: false, why: `⛏ Önce Sv.${e.level - 1} ${MINE_TYPES[e.type].name} kazmalısın` };
   if (e.mine && e.busy && S.marches.some((m) => m.id === e.busy)) return { ok: false, why: 'Bu madende zaten birliğin var' };
@@ -706,6 +758,15 @@ function tickMarches() {
     if (m.phase === 'go' && t >= m.arrive) {
       if (m.snap && !findEnemy(m.target)) (m.snap.foreign ? ONLINE.foreign : ONLINE.enemies).push(m.snap);
       const e = findEnemy(m.target);
+      if (e && e.pyr) { // piramide vuruş: hasar = ordu gücü, asker kaybı %6 (yaralı), sonuç sunucuda işlenir
+        const dmg = Math.round(armyPowerMulti(m.troops, m.heroes) * (1 + rb('blade')) * (1 + rallyAtkBonus()));
+        const loss = {}; for (const k in m.troops) { loss[k] = Math.floor(m.troops[k] * 0.06); }
+        const split = applyLosses(loss); m.survivors = {}; for (const k in m.troops) m.survivors[k] = m.troops[k] - loss[k];
+        m.phase = 'back'; m.start = t; m.arrive = t + m.dur; m.result = { pyr: true, dmg };
+        const rep = { t, kind: 'pyramid', enemy: e.name, level: e.level, pid: e.id, dmg, aLoss: loss, wounded: split.wounded, dead: split.dead, win: null };
+        S.reports.unshift(rep); S.reports = S.reports.slice(0, 30); save();
+        emit('pyrHit', { pid: e.id, level: e.level, dmg, rep }); continue;
+      }
       if (!e || e.shieldUntil > t) { m.phase = 'back'; m.survivors = m.troops; m.start = t; m.arrive = t + m.dur; m.blocked = true; emit('marchBlocked', m); continue; }
       for (const k in m.troops) S.troops[k] += m.troops[k];
       const r = attackEnemy(m.target, { ...m.troops }, m.heroes);
@@ -765,13 +826,14 @@ export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 export function publicProfile() {
   const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
-  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag } : null };
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, mapVer: MAP_VER, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag } : null };
 }
 // Gerçek oyuncuyu haritadaki düşman biçimine çevir
 export function rivalToEnemy(p) {
   let hsh = 0; for (const ch of p.uid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
   const ang = (hsh % 360) * Math.PI / 180, dist = 0.25 + ((hsh >> 9) % 60) / 100;
-  return { alliance: p.alliance || null, frame: p.frame || null, skin: p.skin || null, mapX: p.mapX ?? (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY ?? (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 1, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
+  const sh = p.mapVer === MAP_VER || p.mapX == null ? 0 : (MAP_SIZE - 1000) / 2; // eski 1000'lik haritadaki kayıt
+  return { alliance: p.alliance || null, frame: p.frame || null, skin: p.skin || null, mapX: p.mapX != null ? p.mapX + sh : (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY != null ? p.mapY + sh : (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 1, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
     troops: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0, ...(p.troops || {}) }, tower: (p.towerPow || 0) / 120, th: p.th || 1, hero: p.hero || null,
     res: { food: (p.lootable?.food || 0) / 0.6, wood: (p.lootable?.wood || 0) / 0.6, stone: (p.lootable?.stone || 0) / 0.6, gold: 0 }, power: p.power || 0, shieldUntil: (S.pvpCooldown?.[p.uid] || 0) };
 }
@@ -844,8 +906,8 @@ function makeZombie(L, near) {
   const z = { id: 'z' + Math.random().toString(36).slice(2, 8), zombie: true, level: L, name: `Zombi Sv.${L}`, lord: 'Ölüler Ordusu', th: L, tower: 0, hero: null, res: {}, shieldUntil: 0, troops: { infantry: n, spearman: 0, archer: 0, cavalry: 0, tank: 0 } };
   z.power = armyPower(z.troops);
   for (let k = 0; k < 40; k++) {
-    const a = rand(0, Math.PI * 2), d = near ? rand(70, 200) : rand(120, 450), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
-    if (x < 30 || x > 970 || y < 30 || y > 970 || nearThrone(x, y, 16)) continue;
+    const a = rand(0, Math.PI * 2), d = near ? rand(70, 200) : rand(120, 450), x = (S.mapX ?? MAP_MID) + Math.cos(a) * d, y = (S.mapY ?? MAP_MID) + Math.sin(a) * d;
+    if (x < 30 || x > MAP_SIZE - 30 || y < 30 || y > MAP_SIZE - 30 || nearThrone(x, y, 16) || nearPyramid(x, y, 10)) continue;
     if (occupied().concat([[S.mapX, S.mapY]]).every(([px, py]) => Math.hypot(px - x, py - y) > 30) && S.zombies.concat(S.mines || []).every((q) => Math.hypot(q.mapX - x, q.mapY - y) > 40)) { z.mapX = Math.round(x); z.mapY = Math.round(y); return z; }
   }
   return null;
@@ -916,8 +978,8 @@ const MINE_MIX = ['food', 'wood', 'stone', 'food', 'wood', 'stone', 'gold'];
 function makeMine(type, L, near) {
   const m = { id: 'n' + Math.random().toString(36).slice(2, 8), mine: true, type, level: L, name: `${MINE_TYPES[type].name} Sv.${L}`, lord: 'Kaynak noktası', th: L, power: 0, troops: {}, tower: 0, res: {}, shieldUntil: 0, busy: null };
   for (let k = 0; k < 40; k++) {
-    const a = rand(0, Math.PI * 2), d = near ? rand(35, 170) : rand(60, 420), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
-    if (x < 30 || x > 970 || y < 30 || y > 970 || nearThrone(x, y, 16)) continue;
+    const a = rand(0, Math.PI * 2), d = near ? rand(35, 170) : rand(60, 420), x = (S.mapX ?? MAP_MID) + Math.cos(a) * d, y = (S.mapY ?? MAP_MID) + Math.sin(a) * d;
+    if (x < 30 || x > MAP_SIZE - 30 || y < 30 || y > MAP_SIZE - 30 || nearThrone(x, y, 16) || nearPyramid(x, y, 10)) continue;
     if (occupied().concat([[S.mapX, S.mapY]]).every(([px, py]) => Math.hypot(px - x, py - y) > 28) && S.zombies.concat(S.mines).every((q) => Math.hypot(q.mapX - x, q.mapY - y) > 18)) { m.mapX = Math.round(x); m.mapY = Math.round(y); return m; }
   }
   return null;
@@ -965,12 +1027,12 @@ export function giantPos(g, t = now()) {
   if (g.frozen) return [g.mapX, g.mapY];
   const ph = t * g.spd + g.ph, r = g.r;
   const x = g.cx + Math.cos(ph) * r + Math.cos(ph * 2.3 + 1) * r * 0.25, y = g.cy + Math.sin(ph * 0.8) * r * 0.9 + Math.sin(ph * 1.7) * r * 0.2;
-  return [Math.max(30, Math.min(970, x)), Math.max(30, Math.min(970, y))];
+  return [Math.max(30, Math.min(MAP_SIZE - 30, x)), Math.max(30, Math.min(MAP_SIZE - 30, y))];
 }
 function makeGiant(L, near) {
   for (let k = 0; k < 40; k++) {
-    const a = rand(0, Math.PI * 2), d = near ? rand(90, 220) : rand(150, 460), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
-    if (x < 70 || x > 930 || y < 70 || y > 930 || nearThrone(x, y, 50)) continue;
+    const a = rand(0, Math.PI * 2), d = near ? rand(90, 220) : rand(150, 460), x = (S.mapX ?? MAP_MID) + Math.cos(a) * d, y = (S.mapY ?? MAP_MID) + Math.sin(a) * d;
+    if (x < 70 || x > MAP_SIZE - 70 || y < 70 || y > MAP_SIZE - 70 || nearThrone(x, y, 50) || nearPyramid(x, y, 30)) continue;
     if (Math.hypot(S.mapX - x, S.mapY - y) < 80 || S.giants.some((q) => Math.hypot(q.cx - x, q.cy - y) < 70)) continue;
     const g = { id: 'g' + Math.random().toString(36).slice(2, 8), giant: true, level: L, name: `Dev Sv.${L}`, lord: 'Dağların Devi', th: L, power: giantPower(L), troops: {}, tower: 0, res: {}, shieldUntil: 0, cx: Math.round(x), cy: Math.round(y), r: rand(18, 34), spd: rand(0.004, 0.008) * (Math.random() < 0.5 ? -1 : 1), ph: rand(0, 6.28) };
     [g.mapX, g.mapY] = giantPos(g); return g;
@@ -1013,11 +1075,22 @@ function tickRally(m, t) {
   if (m.phase === 'wait' && t >= m.endsAt - RALLY_MUSTER) { m.phase = 'muster'; m.start = m.endsAt - RALLY_MUSTER; m.arrive = m.endsAt; emit('rallyMuster', m); }
   if (m.phase === 'muster' && t >= m.endsAt) {
     if (!m.final) { m.needFinal = true; return; } // katılımcı listesi sunucudan bekleniyor
-    if (m.final.length < 2) { // kimse katılmadı → iptal
+    if (m.final.length < (m.giant.pyr ? 1 : 2)) { // kimse katılmadı → iptal (piramit rallisi tek başına da yürür)
       for (const k in m.troops) S.troops[k] += m.troops[k];
       S.marches = S.marches.filter((q) => q !== m); unfreezeGiant(m); save(); emit('rallyCancel', m); return;
     }
     const d = rallyMarchTime([m.lx, m.ly], [m.tx, m.ty]); m.phase = 'go'; m.start = t; m.arrive = t + d; m.dur = d; save(); emit('rallyGo', m);
+  }
+  if (m.phase === 'go' && t >= m.arrive && m.giant.pyr) { // piramit rallisi: toplam güç kadar hasar, lider sunucuya işler
+    const total = m.final.reduce((a, q) => a + (q.power || 0), 0), loss = {};
+    for (const k in m.troops) { loss[k] = Math.floor(m.troops[k] * 0.08); m.troops[k] -= loss[k]; }
+    const split = applyLosses(loss);
+    m.result = { pyr: true, total, members: m.final.length };
+    const rep = { t, kind: 'pyramid', rally: true, enemy: `Piramit Sv.${m.giant.level}`, level: m.giant.level, pid: m.giant.id, dmg: total, members: m.final.map((q) => q.name), aLoss: loss, wounded: split.wounded, dead: split.dead, win: null };
+    S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
+    const d = rallyMarchTime([m.tx, m.ty], [S.mapX, S.mapY]); m.phase = 'back'; m.start = t; m.arrive = t + d; save();
+    emit('pyrRally', { m, pid: m.giant.id, level: m.giant.level, dmg: total, rep });
+    return;
   }
   if (m.phase === 'go' && t >= m.arrive) {
     const total = m.final.reduce((a, q) => a + (q.power || 0), 0), need = m.giant.power, win = total >= need;
