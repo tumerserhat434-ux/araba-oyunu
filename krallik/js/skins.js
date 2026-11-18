@@ -4,7 +4,7 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611181935';
+import * as A from './assets.js?v=2611181948';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -58,6 +58,87 @@ function costume(g, id, base, R, H) {
     if (w.userData.pop < 1) { w.userData.pop = Math.min(1, w.userData.pop + dt * 2.2); const p = w.userData.pop, e = 1 + Math.sin(p * Math.PI) * 0.12; w.scale.setScalar(p * e); }
     const pulse = sk.pulse * (0.35 + (Math.sin(t * 2.2) * 0.5 + 0.5) * 0.65); for (const m of mats) m.emissiveIntensity = pulse;
   };
+}
+
+// ---------------------------------------------------------------------
+//  Kodla kurulan, hareketli ejderha: başı izleyen boğumlu gövde, çırpan
+//  zarlı kanatlar, açılan çene, parlayan gözler. S = gövde boyu.
+// ---------------------------------------------------------------------
+function makeDragon(S) {
+  const group = new THREE.Group();
+  const mBody = new THREE.MeshStandardMaterial({ color: 0xb01a1a, roughness: 0.45, metalness: 0.2, emissive: 0x2a0303 });
+  const mBelly = new THREE.MeshStandardMaterial({ color: 0xe8a848, roughness: 0.6 });
+  const mWing = new THREE.MeshStandardMaterial({ color: 0xb8222a, roughness: 0.55, metalness: 0.05, side: THREE.DoubleSide, emissive: 0x4a0608, transparent: true, opacity: 0.93 });
+  const mBone = new THREE.MeshStandardMaterial({ color: 0x3a0606, roughness: 0.5 });
+  const mHorn = new THREE.MeshStandardMaterial({ color: 0xf2e6c8, roughness: 0.4 });
+  const mEye = new THREE.MeshBasicMaterial({ color: 0xfff060 });
+  const sph = new THREE.SphereGeometry(1, 14, 10), cone = new THREE.ConeGeometry(1, 1, 6), cyl = new THREE.CylinderGeometry(1, 1, 1, 6);
+  // gövde boğumları (boyun → göğüs → kuyruk)
+  const N = 18, segs = [], prof = (i) => (i < 3 ? 0.55 + i * 0.13 : i < 7 ? 1 : Math.max(0.12, 1 - (i - 6) / (N - 6) * 0.95));
+  for (let i = 0; i < N; i++) {
+    const r = S * 0.075 * prof(i), seg = new THREE.Group();
+    const m = new THREE.Mesh(sph, mBody); m.scale.set(r, r * 0.9, r * 1.7); seg.add(m);
+    const b = new THREE.Mesh(sph, mBelly); b.scale.set(r * 0.75, r * 0.6, r * 1.5); b.position.y = -r * 0.38; seg.add(b);
+    if (i > 1) { const sp = new THREE.Mesh(cone, mHorn); sp.scale.set(r * 0.28, r * 0.8, r * 0.28); sp.position.y = r * 0.95; sp.rotation.x = -0.5; seg.add(sp); }
+    seg.userData.r = r; group.add(seg); segs.push(seg);
+  }
+  // kuyruk ucu: ok başı
+  const tip = new THREE.Mesh(cone, mBody); tip.scale.set(S * 0.05, S * 0.12, S * 0.015); tip.rotation.x = Math.PI / 2; segs[N - 1].add(tip); tip.position.z = -S * 0.06;
+  // baş
+  const head = new THREE.Group(); group.add(head);
+  const skull = new THREE.Mesh(sph, mBody); skull.scale.set(S * 0.07, S * 0.06, S * 0.08); head.add(skull);
+  const snout = new THREE.Mesh(sph, mBody); snout.scale.set(S * 0.045, S * 0.035, S * 0.09); snout.position.set(0, S * 0.005, S * 0.1); head.add(snout);
+  const jaw = new THREE.Group(); jaw.position.set(0, -S * 0.025, S * 0.03); head.add(jaw);
+  const jm = new THREE.Mesh(sph, mBelly); jm.scale.set(S * 0.038, S * 0.018, S * 0.085); jm.position.z = S * 0.07; jaw.add(jm);
+  for (const sx of [-1, 1]) {
+    const hn = new THREE.Mesh(cone, mHorn); hn.scale.set(S * 0.02, S * 0.13, S * 0.02); hn.position.set(sx * S * 0.04, S * 0.06, -S * 0.04); hn.rotation.set(-1.1, 0, sx * 0.35); head.add(hn);
+    const e = new THREE.Mesh(sph, mEye); e.scale.setScalar(S * 0.013); e.position.set(sx * S * 0.042, S * 0.025, S * 0.05); head.add(e);
+    const eg = spr(0xffd040, S * 0.07, 0.8); eg.position.copy(e.position); head.add(eg);
+  }
+  // kanatlar: omuzdan yelpaze biçiminde zar + kemikler
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const pivot = new THREE.Group(); group.add(pivot);
+    const arm = new THREE.Group(); pivot.add(arm);
+    const W = S * 0.85;
+    const P = [[0, 0, 0.06], [sx * 0.42, 0.1, 0.02], [sx * 0.95, 0.06, -0.12], [sx * 0.72, 0.02, -0.22], [sx * 0.8, 0.0, -0.42], [sx * 0.52, 0.0, -0.4], [sx * 0.5, -0.02, -0.62], [sx * 0.25, 0, -0.42], [0, 0, -0.3]].map(([x, y, z]) => new THREE.Vector3(x * W, y * W, z * W));
+    const pos = []; for (let i = 1; i < P.length - 1; i++) pos.push(...P[0].toArray(), ...P[i].toArray(), ...P[i + 1].toArray());
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.computeVertexNormals();
+    const mem = new THREE.Mesh(geo, mWing); mem.castShadow = true; arm.add(mem);
+    const bone = (a, b, th) => { const m = new THREE.Mesh(cyl, mBone), d = b.clone().sub(a); m.scale.set(th, d.length(), th); m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); arm.add(m); };
+    bone(P[0], P[1], S * 0.014); for (const k of [2, 4, 6]) bone(P[1], P[k], S * 0.008);
+    wings.push({ pivot, sx });
+  }
+  const tmpQ = new THREE.Quaternion(), tmpM = new THREE.Matrix4(), up = new THREE.Vector3(0, 1, 0);
+  const D = { group, phase: 0, mouthLocal: new THREE.Vector3(0, -S * 0.01, S * 0.2) };
+  const sample = (trail, dist) => { let acc = 0; for (let i = 1; i < trail.length; i++) { const d = trail[i].distanceTo(trail[i - 1]); if (acc + d >= dist) return trail[i - 1].clone().lerp(trail[i], (dist - acc) / d); acc += d; } return trail[trail.length - 1].clone(); };
+  const look = (obj, from, to, roll = 0) => { tmpM.lookAt(to, from, up); obj.quaternion.setFromRotationMatrix(tmpM); if (roll) obj.quaternion.multiply(tmpQ.setFromAxisAngle(new THREE.Vector3(0, 0, 1), roll)); };
+  D.pose = ({ head: hp, fwd, trail, bank, fold, jaw: jw, t }) => {
+    // baş: hafif sallanır, ateşte geriye kalkar
+    head.position.copy(hp);
+    const tgt = hp.clone().add(fwd.clone().add(new THREE.Vector3(0, -0.15 + jw * 0.25 + Math.sin(t * 2.3) * 0.05, 0)));
+    look(head, tgt, hp, -bank * 0.5); head.rotateY(Math.PI);
+    jaw.rotation.x = 0.1 + jw * 0.75;
+    // gövde: başın izinden, her boğum bir öncekine bakar; yılan gibi yana dalgalanır
+    let prev = hp.clone().addScaledVector(fwd, -S * 0.07);
+    for (let i = 0; i < N; i++) {
+      const p = sample(trail, S * (0.09 + i * 0.052));
+      const side = new THREE.Vector3().crossVectors(fwd, up).normalize();
+      p.addScaledVector(side, Math.sin(t * 3 - i * 0.55) * S * 0.012 * (i / N));
+      segs[i].position.copy(p); look(segs[i], prev, p, -bank * (1 - i / N)); segs[i].rotateY(Math.PI);
+      prev = p;
+    }
+    // kanatlar göğüste (3. boğum), çırpma + katlanma
+    const chest = segs[3];
+    const f = Math.sin(D.phase), flap = (0.15 + 0.85 * fold) * f * 0.95, foldA = (1 - fold) * 1.25;
+    for (const w of wings) {
+      w.pivot.position.copy(chest.position).add(new THREE.Vector3(0, chest.userData.r * 0.5, 0).applyQuaternion(chest.quaternion));
+      w.pivot.quaternion.copy(chest.quaternion);
+      w.pivot.children[0].rotation.set(0, w.sx * foldA * 0.6, w.sx * (flap + foldA));
+    }
+  };
+  D.mouth = () => { group.updateWorldMatrix(true, true); const w = head.localToWorld(D.mouthLocal.clone()); return group.parent ? group.parent.worldToLocal(w) : w; };
+  return D;
 }
 export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
   const g = new THREE.Group(); g.name = 'skinfx'; let tick = () => {};
@@ -160,18 +241,73 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
       dust.geometry.attributes.position.needsUpdate = true; L.intensity = 16 + Math.sin(t * 1.3) * 6;
     };
   } else if (id === 'dragon') {
-    // ateş girdabı, köşelerde alev sütunları, yükselen korlar
-    const N = 54, flames = [];
-    for (let i = 0; i < N; i++) { const s = spr(i % 3 ? 0xff6a20 : 0xffc040, R * rnd(0.4, 0.75), 0.8); g.add(s); flames.push({ s, a: i / N * Math.PI * 2 * 3, o: i / N }); }
-    const pillars = []; for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + Math.PI / 4, p = []; for (let j = 0; j < 5; j++) { const s = spr(j < 2 ? 0xffd060 : 0xff4a10, R * (0.55 - j * 0.07), 0.9); s.position.set(Math.cos(a) * R * 1.3, 0.4 + j * H * 0.14, Math.sin(a) * R * 1.3); g.add(s); p.push(s); } pillars.push(p); }
-    const EN = 90, emb = points(EN, 0xffffff, H * 0.11); g.add(emb); const ep = emb.geometry.attributes.position.array, ec = emb.geometry.attributes.color.array, es = [];
-    for (let i = 0; i < EN; i++) { es.push([rnd(0, 6.28), rnd(0.3, 1.5), rnd(0, 1)]); ec[i * 3] = 1; ec[i * 3 + 1] = rnd(0.3, 0.7); ec[i * 3 + 2] = 0.1; }
-    const L = new THREE.PointLight(0xff5a20, 18, R * 5, 1.6); L.position.y = H * 0.5; g.add(L);
-    tick = (t) => {
-      for (const f of flames) { const k = (f.o + t * 0.18) % 1, a = f.a + t * 2.2; const r = R * (1.25 - k * 0.55); f.s.position.set(Math.cos(a) * r, 0.3 + k * H * 1.3, Math.sin(a) * r); f.s.material.opacity = Math.sin(k * Math.PI) * 0.6; f.s.scale.setScalar(R * (0.75 - k * 0.4)); }
-      pillars.forEach((p, k) => p.forEach((s, j) => { const q = 0.8 + Math.sin(t * 12 + k * 3 + j) * 0.2; s.scale.setScalar(R * (0.55 - j * 0.07) * q); s.position.y = 0.4 + j * H * 0.14 * (0.9 + Math.sin(t * 6 + k) * 0.15); }));
-      for (let i = 0; i < EN; i++) { const [a, r, o] = es[i], k = (t * 0.3 + o) % 1; ep[i * 3] = Math.cos(a + k * 2) * R * r; ep[i * 3 + 1] = k * H * 2.2; ep[i * 3 + 2] = Math.sin(a + k * 2) * R * r; }
-      emb.geometry.attributes.position.needsUpdate = true; L.intensity = 14 + Math.sin(t * 17) * 4 + Math.sin(t * 7) * 3;
+    // Canlı ejderha: binanın tepesinde durur → kanat çırparak havalanır → binanın etrafında
+    // süzülerek döner ve ateş püskürtür → geri konar. Gövde yılan gibi başı izler.
+    const top = H * 1.32, S = H * 0.95; // kostüm tepesi, ejderha boyu
+    const D = makeDragon(S); g.add(D.group);
+    // ateş nefesi: sprite havuzu
+    const fire = [], FN = 90;
+    for (let i = 0; i < FN; i++) { const s = spr(0xffa030, S * 0.2, 0); g.add(s); fire.push({ s, life: 0, v: new THREE.Vector3() }); }
+    const sparks = points(60, 0xffffff, H * 0.12); g.add(sparks); const spA = sparks.geometry.attributes.position.array, spC = sparks.geometry.attributes.color.array, spV = new Float32Array(180), spL = new Float32Array(60);
+    for (let i = 0; i < 60; i++) { spC[i * 3] = 1; spC[i * 3 + 1] = 0.6; spC[i * 3 + 2] = 0.15; spA[i * 3 + 1] = -999; }
+    const mouthL = new THREE.PointLight(0xff7a20, 0, S * 2.5, 1.6); g.add(mouthL);
+    const EN = 50, emb = points(EN, 0xffffff, H * 0.1); g.add(emb); const ep = emb.geometry.attributes.position.array, ec = emb.geometry.attributes.color.array, es = [];
+    for (let i = 0; i < EN; i++) { es.push([rnd(0, 6.28), rnd(0.4, 1.3), rnd(0, 1)]); ec[i * 3] = 1; ec[i * 3 + 1] = rnd(0.3, 0.7); ec[i * 3 + 2] = 0.1; }
+    const L = new THREE.PointLight(0xff5a20, 10, R * 4, 1.6); L.position.y = H * 0.5; g.add(L);
+    // uçuş durumu
+    const CYC = 24, st = { a: Math.random() * 6.28, w: 0, prev: new THREE.Vector3(), fwd: new THREE.Vector3(1, 0, 0), trail: [], bank: 0 };
+    const ss = (x) => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+    const breathes = [[4.2, 1.0, 'up'], [8.5, 1.5, 'in'], [12.5, 1.5, 'in'], [16.5, 1.6, 'in']];
+    let fireAcc = 0;
+    const head0 = new THREE.Vector3(0, top, 0);
+    for (let i = 0; i < 40; i++) st.trail.push(new THREE.Vector3(-i * S * 0.03, top - i * S * 0.012, 0)); // başlangıçta gövde çatıya uzanır
+    tick = (t, dt) => {
+      dt = Math.min(dt, 0.05);
+      const c = t % CYC;
+      // faz zarfları: 0-3 tünek, 3-6 kalkış, 6-19 uçuş, 19-23 iniş, 23-24 tünek
+      const up = ss((c - 3) / 3), down = ss((c - 19) / 4), air = up * (1 - down), orbit = ss((c - 6) / 1.5) * (1 - ss((c - 18) / 1.5));
+      const wT = 0.62 * air; st.w += (wT - st.w) * Math.min(1, dt * 2); st.a += st.w * dt;
+      const r = R * (0.12 + 1.45 * air + 0.2 * orbit * Math.sin(t * 0.7));
+      const h = top * (1 - 0.25 * orbit) + (H * 0.12 + H * 0.12 * orbit * Math.sin(t * 0.9)) * air + Math.sin(t * 6) * S * 0.015 * air;
+      const pos = new THREE.Vector3(Math.cos(st.a) * r, h, Math.sin(st.a) * r);
+      const mv = pos.clone().sub(st.prev);
+      if (mv.lengthSq() > 1e-6) { const nf = mv.clone().normalize(); st.fwd.lerp(nf, Math.min(1, dt * 6)).normalize(); }
+      st.prev.copy(pos);
+      if (!st.trail.length || st.trail[0].distanceTo(pos) > S * 0.012) { st.trail.unshift(pos.clone()); if (st.trail.length > 140) st.trail.pop(); }
+      // yatış: dönüş yönüne doğru
+      st.bank += ((air > 0.3 ? 0.45 : 0) - st.bank) * Math.min(1, dt * 2);
+      // kanat: tünekte katlı, kalkışta hızlı, uçuşta orta, süzülürken yavaş
+      const flapSpd = 3 + 7 * up * (1 - orbit) + 4 * orbit + 6 * down * (1 - ss((c - 22.5) / 0.5)), glide = orbit * (Math.sin(t * 0.5) > 0.6 ? 1 : 0);
+      D.phase += dt * flapSpd * (1 - glide * 0.85);
+      const fold = ss((c - 2.6) / 0.6) * (1 - ss((c - 22.4) / 0.6)); // 1: kanatlar açık, 0: katlı
+      // ateş
+      let breath = 0, mode = 'in';
+      for (const [bt, bd, m] of breathes) if (c >= bt && c < bt + bd) { breath = Math.sin((c - bt) / bd * Math.PI); mode = m; }
+      D.pose({ head: pos, fwd: st.fwd, trail: st.trail, bank: st.bank * air, fold, jaw: breath, t });
+      const mouth = D.mouth();
+      mouthL.position.copy(mouth); mouthL.intensity = breath * 40 + (breath ? Math.random() * 10 : 0);
+      if (breath > 0.05) {
+        fireAcc += dt * 110;
+        // hedef: binanın tepesi (içe) ya da gökyüzü (kükreme)
+        const aim = mode === 'up' ? st.fwd.clone().add(new THREE.Vector3(0, 1.4, 0)).normalize() : new THREE.Vector3(0, top * 0.7, 0).sub(mouth).normalize().lerp(st.fwd, 0.25).normalize();
+        while (fireAcc > 1) { fireAcc--; const f = fire.find((q) => q.life <= 0); if (!f) break; f.life = f.max = rnd(0.5, 0.8); f.hot = Math.random(); f.s.position.copy(mouth); f.v.copy(aim).multiplyScalar(S * rnd(1.4, 2.0)).add(new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).multiplyScalar(S * 0.22)); }
+      }
+      for (const f of fire) {
+        if (f.life <= 0) { f.s.material.opacity = 0; continue; }
+        f.life -= dt; const k = 1 - f.life / f.max;
+        f.s.position.addScaledVector(f.v, dt); f.v.multiplyScalar(0.97); f.v.y += S * 0.25 * dt;
+        f.s.material.color.setHSL(Math.max(0, 0.11 - k * 0.12 - f.hot * 0.02), 1, 0.55 - k * 0.3); f.s.material.opacity = Math.sin(Math.min(1, k * 1.25) * Math.PI) * (0.55 - k * 0.2);
+        f.s.scale.setScalar(S * (0.06 + k * 0.32) * (0.8 + f.hot * 0.4));
+        // binaya çarpan alevden kıvılcım
+        if (mode === 'in' && f.s.position.y < top * 0.95 && f.s.position.length() < R * 1.4 && Math.random() < 0.3) {
+          for (let j = 0; j < 60; j++) if (spL[j] <= 0) { spL[j] = 0.6; spA[j * 3] = f.s.position.x; spA[j * 3 + 1] = f.s.position.y; spA[j * 3 + 2] = f.s.position.z; spV[j * 3] = rnd(-1, 1) * S * 0.6; spV[j * 3 + 1] = rnd(0.2, 1.2) * S * 0.6; spV[j * 3 + 2] = rnd(-1, 1) * S * 0.6; break; }
+          f.life = 0;
+        }
+      }
+      for (let j = 0; j < 60; j++) { if (spL[j] > 0) { spL[j] -= dt; spV[j * 3 + 1] -= S * 1.2 * dt; spA[j * 3] += spV[j * 3] * dt; spA[j * 3 + 1] += spV[j * 3 + 1] * dt; spA[j * 3 + 2] += spV[j * 3 + 2] * dt; if (spL[j] <= 0) spA[j * 3 + 1] = -999; } }
+      sparks.geometry.attributes.position.needsUpdate = true;
+      for (let i = 0; i < EN; i++) { const [a, rr, o] = es[i], k = (t * 0.25 + o) % 1; ep[i * 3] = Math.cos(a + k * 2) * R * rr; ep[i * 3 + 1] = k * H * 1.6; ep[i * 3 + 2] = Math.sin(a + k * 2) * R * rr; }
+      emb.geometry.attributes.position.needsUpdate = true; L.intensity = 8 + Math.sin(t * 17) * 2 + breath * 6;
     };
   } else if (id === 'shuttle') {
     // binanın etrafında dönen uzay mekiği, motor alevi, hologram halkaları, yıldız tozu
