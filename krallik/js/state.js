@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP } from './data.js';
+import { campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -61,6 +61,7 @@ export function load() {
   S.marches ||= [];
   S.scouts ||= []; S.scoutReports ||= [];
   S.items ||= {};
+  S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {};
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
@@ -118,6 +119,31 @@ export function buySpeedup(id) {
   const p = SPEED_SHOP.find((q) => q.id === id); if (!p) return { ok: false, why: 'Bulunamadı' };
   if (S.res.gold < p.gold) return { ok: false, why: 'Yetersiz altın', needGold: true };
   S.res.gold -= p.gold; addItem(id, 1); save(); emit('items'); return { ok: true };
+}
+// ---- Avatar çerçeveleri ----
+export const frameOwned = (id) => !!FRAME_BY_ID[id] && (FRAME_BY_ID[id].free || !!S.frames[id]);
+export function setFrame(id) { if (!frameOwned(id)) return false; S.frame = id; save(); emit('frame'); return true; }
+export function buyFrame(id) {
+  const f = FRAME_BY_ID[id]; if (!f || f.free || S.frames[id]) return { ok: false, why: 'Zaten sende' };
+  if (S.res.gold < f.gold) return { ok: false, why: 'Yetersiz altın', needGold: true };
+  S.res.gold -= f.gold; S.frames[id] = true; S.frame = id; save(); emit('frame'); return { ok: true };
+}
+// ---- Teklif paketleri (demo mağaza: ödeme alınmaz) ----
+export const offerLeft = (o) => o.limit - (S.offers[o.id] || 0);
+export function buyOffer(id) {
+  const o = OFFERS.find((q) => q.id === id); if (!o || offerLeft(o) <= 0) return { ok: false, why: 'Bu paketi alma hakkın bitti' };
+  S.offers[o.id] = (S.offers[o.id] || 0) + 1;
+  if (o.gold) S.res.gold += o.gold;
+  if (o.res) gainRes(o.res);
+  for (const k in o.items || {}) addItem(k, o.items[k]);
+  const heroes = [];
+  for (let i = 0; i < (o.hero5 || 0); i++) {
+    const pool = HEROES.filter((h) => h.rarity === 5), fresh = pool.filter((h) => !S.heroes[h.id] && !heroes.includes(h.id)), h = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length || pool.length))];
+    if (!S.heroes[h.id]) S.heroes[h.id] = { level: 1, copies: 0 }; else S.heroes[h.id].copies = Math.min(5, S.heroes[h.id].copies + 1);
+    heroes.push(h.id);
+  }
+  for (const f of o.frames || []) S.frames[f] = true;
+  save(); emit('offer', o); return { ok: true, heroes };
 }
 export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }
 export const dailyProg = (d) => Math.min(d.n, S.daily.c[d.stat] || 0);

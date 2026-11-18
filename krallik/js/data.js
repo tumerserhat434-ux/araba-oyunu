@@ -265,6 +265,32 @@ export const DROP_CHEST = [['s5m', 30, [2, 3]], ['s15m', 25, [1, 2]], ['s1h', 22
 export const SPEED_SHOP = [
   { id: 's1h', gold: 400 }, { id: 's5h', gold: 760 }, { id: 's24h', gold: 2100, tag: 'Popüler' }, { id: 's2d', gold: 3900 }, { id: 's3d', gold: 5600, tag: 'Kraliyet' },
 ];
+// ---- Avatar çerçeveleri (görünüm) ----
+export const FRAMES = [
+  { id: 'wood', name: 'Sarmaşıklı Ahşap', free: true },
+  { id: 'bronze', name: 'Bronz Kalkan', free: true },
+  { id: 'silver', name: 'Gümüş Kılıçlar', free: true },
+  { id: 'iron', name: 'Dövme Demir', free: true },
+  { id: 'emerald', name: 'Zümrüt Yaprak', free: true },
+  { id: 'sapphire', name: 'Kraliyet Safiri', free: true },
+  { id: 'laurel', name: 'Altın Defne Tacı', gold: 1800, tier: 4 },
+  { id: 'crystal', name: 'Buz Kristali', gold: 2600, tier: 4 },
+  { id: 'phoenix', name: 'Anka Ateşi', gold: 3800, tier: 5 },
+  { id: 'shadow', name: 'Gölge Lordu', gold: 5200, tier: 5 },
+  { id: 'dragon', name: 'Ejder Kral', gold: 7500, tier: 5, pro: true },
+];
+export const FRAME_BY_ID = Object.fromEntries(FRAMES.map((f) => [f.id, f]));
+// ---- Teklif paketleri (demo: gerçek ödeme alınmaz) ----
+// içerik: gold, res {food,wood,stone}, items {sXX: adet}, hero5 (rastgele 5★ kahraman), frames [id]
+export const OFFERS = [
+  { id: 'o1', name: 'Başlangıç Paketi', price: '₺49,99', limit: 1, tag: 'Bir kez', tier: 2, gold: 500, res: { food: 20000, wood: 20000, stone: 10000 }, items: { s5m: 10, s1m: 20 } },
+  { id: 'o2', name: 'Hızlandırma Sandığı', price: '₺99,99', limit: 3, tier: 3, gold: 300, items: { s1h: 5, s5m: 30, s1m: 50 } },
+  { id: 'o3', name: 'Savaş Lordu', price: '₺149,99', limit: 2, tier: 3, gold: 1000, res: { food: 100000, wood: 100000, stone: 50000 }, items: { s5h: 2, s24h: 1 } },
+  { id: 'o4', name: 'Kahraman Paketi', price: '₺249,99', limit: 1, tag: 'Popüler', tier: 4, gold: 1500, hero5: 1, items: { s24h: 1, s1h: 5 } },
+  { id: 'o5', name: 'Kraliyet Hazinesi', price: '₺349,99', limit: 1, tier: 4, gold: 3000, items: { s24h: 2, s2d: 1, s15m: 20 }, frames: ['laurel'] },
+  { id: 'o6', name: 'Efsane Paketi', price: '₺499,99', limit: 1, tag: 'En iyi değer', tier: 5, gold: 2000, hero5: 1, items: { s3d: 2, s1m: 100 }, frames: ['dragon'] },
+  { id: 'o7', name: 'İmparator Paketi', price: '₺999,99', limit: 1, tag: 'Kraliyet', tier: 5, gold: 10000, hero5: 2, res: { food: 1000000, wood: 1000000, stone: 500000 }, items: { s3d: 5, s24h: 10, s1h: 30 }, frames: ['phoenix', 'shadow'] },
+];
 export const DAILY_CHEST = { need: 4, reward: { gold: 100, food: 3000, wood: 3000 } };
 export const LOGIN_REWARDS = [
   { food: 2000, wood: 2000 }, { gold: 50 }, { stone: 2000, food: 2000 }, { gold: 100 }, { food: 5000, wood: 5000, stone: 2000 }, { gold: 150 }, { gold: 300 },

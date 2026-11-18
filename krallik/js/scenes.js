@@ -252,8 +252,8 @@ export function openBattle(opts) {
     <div class="bt-plaque">${opts.mode === 'attack' ? 'Savaş Alanı' : 'Şehir Savunması'}</div>
     <div class="ov-bottom bt-bottom" id="bHud">
       <div class="bt-ctrl" id="bCtrl"><div class="bt-units"><i>👥</i><div><small>Birlikler</small><b>${G.fmt(T0.blue)}</b></div></div>
-        <button class="bt-start" id="bStart"><i>⚔</i>Savaşı Başlat</button>
-        <button class="bt-skip" id="bSkip" title="Geç">⏭</button></div>
+        <button class="bt-start" id="bStart"><i>⚔</i><span>Savaşı Başlat</span></button>
+        <button class="bt-skip" id="bSkip" title="Geç"><i>⏭</i><span>Geç</span></button></div>
       <div class="bt-bars hidden" id="bBars">
         <div class="armybar blue"><span>🔵 <b id="bBlue">${T0.blue}</b></span><div class="hp"><span id="bBlueHp" style="width:100%"></span></div></div>
         <div class="armybar red"><span>🔴 <b id="bRed">${T0.red}</b></span><div class="hp"><span id="bRedHp" style="width:100%"></span></div></div>

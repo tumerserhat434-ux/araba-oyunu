@@ -8,7 +8,7 @@ import * as ASSETS from './assets.js';
 import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js';
 import { serverPlayers, assignServer } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT } from './data.js';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
 import { campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { getAvatar } from './scenes.js';
@@ -554,10 +554,12 @@ function floaty(text, x, y, color = '#fff') {
 }
 const costHtml = (cost) => Object.entries(cost).filter(([, v]) => v > 0).map(([r, v]) => `<span class="${G.S.res[r] >= v ? '' : 'no'}">${icon(r, 20)} ${G.fmt(v)}</span>`).join('');
 const stars = (n) => '★'.repeat(n);
-let avatarFor = null;
+let avatarFor = null, frameFor = null;
 function updateTop() {
   for (const r of ['food', 'wood', 'stone', 'gold']) $('r_' + r).textContent = G.fmt(G.S.res[r]);
-  $('power').textContent = G.fmt(G.cityPower());
+  const pw = G.cityPower(); $('power').textContent = G.fmt(pw);
+  { const steps = [0, 5e3, 1e4, 2.5e4, 5e4, 1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8, 1e9, 2.5e9]; let i = steps.findIndex((v) => v > pw); if (i < 0) i = steps.length - 1; const lo = steps[i - 1] || 0; $('powBar').style.width = Math.min(100, (pw - lo) / Math.max(1, steps[i] - lo) * 100).toFixed(1) + '%'; }
+  if (frameFor !== G.S.frame) { frameFor = G.S.frame; $('frameImg').src = UI('fr_' + G.S.frame); }
   $('kname').textContent = G.S.name;
   $('thLvl').textContent = G.thLevel();
   $('logDot').classList.toggle('hidden', !G.loginPending());
@@ -593,17 +595,19 @@ function upgradeBlock(id) {
   if (p.key === 'townhall') {
     const reqs = thRequirements(b.level + 1);
     if (reqs.length) reqHtml = `<div class="req-box"><div class="req-h">Sv.${b.level + 1} için gerekenler</div>${reqs.map(([rk, rl]) => { const have = G.maxLevelOf(rk), ok = have >= rl; return `<div class="req-row ${ok ? 'ok' : ''}"><span class="req-ic">${ok ? '✓' : '✗'}</span><b>${BUILDINGS[rk].name} Sv.${rl}</b><small>Şu an Sv.${have}</small>${ok ? '' : `<button class="w-btn" data-gobld="${rk}">Git</button>`}</div>`; }).join('')}</div>`;
-  } else if (b.level + 1 > G.thLevel()) reqHtml = `<div class="req-box"><div class="req-row"><span class="req-ic">✗</span><b>Belediye Binası Sv.${b.level + 1}</b><small>Şu an Sv.${G.thLevel()}</small><button class="w-btn" data-gobld="townhall">Git</button></div></div>`;
+  } else if (b.level + 1 > G.thLevel()) reqHtml = `<div class="req-box"><div class="req-row big"><span class="req-bimg">${BUILDINGS.townhall.icon}</span><div class="req-t"><b>Belediye Binası Sv.${b.level + 1}</b><small>Şu an Sv.${G.thLevel()}</small></div><button class="w-btn" data-gobld="townhall">Git »</button></div></div>`;
   const c = G.canUpgrade(id), cost = upgradeCost(p.key, b.level + 1), time = G.upgradeTime(p.key, b.level + 1);
   return `${reqHtml}<div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
     ${c.ok || c.req ? '' : `<div class="why">${c.why}</div>`}
     <button class="btn" style="width:100%" data-act="upgrade" ${c.ok ? '' : 'disabled'}>${b.level ? `⬆ Seviye ${b.level + 1}'e yükselt` : '🔨 İnşa et'}</button>`;
 }
+const STAT_ICONS = [[/kapasite|sınır/i, '⛺'], [/şehirdeki|hazır ordu|birlik/i, '👥'], [/sefer/i, '⛑️'], [/eğitim/i, '📜'], [/güç/i, '⚔️'], [/zafer/i, '🏆'], [/depo|korunan/i, '📦'], [/kule|hasar|savunma/i, '🏹'], [/hız|süre|sonraki/i, '⏱️'], [/üretim|saatlik/i, '⚙️'], [/iksir/i, '🧪'], [/yaralı|iyileş/i, '💚'], [/kahraman/i, '🛡️'], [/şans|garanti/i, '🔮'], [/ganimet|kaynak|toplanacak|birikmiş/i, '💰'], [/tank/i, '⚙️']];
+const statIcon = (k) => (STAT_ICONS.find(([re]) => re.test(k)) || [0, '✦'])[1];
 function renderSheet() {
   if (!sheetId) return;
   const id = sheetId, p = PLOTS.find((q) => q.id === id), key = p.key, def = BUILDINGS[key], b = G.S.buildings[id], L = b.level, t = Date.now() / 1000;
   let body = '';
-  const stat = (k, v, up) => `<div class="stat"><small>${k}</small><b>${v}${up ? ` <span class="up">→ ${up}</span>` : ''}</b></div>`;
+  const stat = (k, v, up) => `<div class="stat"><i class="st-ic">${statIcon(k)}</i><div><small>${k}</small><b>${v}${up ? ` <span class="up">→ ${up}</span>` : ''}</b></div></div>`;
   if (L > 0) {
     if (key === 'townhall') body += `<div class="stats">${stat('Krallık gücü', G.fmt(G.cityPower()))}${stat('Bina seviye sınırı', L)}${stat('Depo sınırı', G.fmt(G.storageCap()))}${stat('Zafer / Yenilgi', `${G.S.stats.wins} / ${G.S.stats.losses}`)}</div>`;
     if (def.prod) {
@@ -645,7 +649,7 @@ function campBar() {
   return `<div class="campbar ${full ? 'full' : ''}"><span>🏕️ Ordu kampları</span><b>${G.fmt(have)} / ${G.fmt(cap)}</b><i style="width:${pct.toFixed(1)}%"></i></div>${full ? '<p class="desc camp-warn">Kamplar dolu! Yeni birlik eğitmek için Ordu Kampı yükselt ya da yeni kamp aç.</p>' : ''}`;
 }
 function campUI(L) {
-  const stat = (k, v, up) => `<div class="stat"><small>${k}</small><b>${v}${up ? ` <span class="up">→ ${up}</span>` : ''}</b></div>`;
+  const stat = (k, v, up) => `<div class="stat"><i class="st-ic">${statIcon(k)}</i><div><small>${k}</small><b>${v}${up ? ` <span class="up">→ ${up}</span>` : ''}</b></div></div>`;
   const camps = PLOTS.filter((p) => p.key === 'camp');
   const rows = camps.map((p, i) => { const l = G.lvl(p.id); return `<div class="camp-row ${l ? '' : 'off'}"><span>🏕️ Kamp ${i + 1}</span><em>${l ? 'Sv.' + l : '🔒 Belediye Sv.' + p.reqTH}</em><b>${l ? G.fmt(campCap(l)) : '—'}</b></div>`; }).join('');
   const nx = L < maxLevel('camp') ? campCap(L + 1) : 0;
@@ -653,6 +657,8 @@ function campUI(L) {
   return campBar() + `<div class="stats">${stat('Bu kampın kapasitesi', G.fmt(campCap(L)), nx ? G.fmt(nx) : '')}${stat('Şehirdeki birlikler', G.fmt(G.totalTroops(G.S.troops)))}${stat('Seferdeki', G.fmt(away))}${stat('Eğitimdeki', G.fmt(train))}</div>
     <div class="camp-list">${rows}</div>`;
 }
+const TROOP_IMG = { infantry: 'u_infantry', spearman: 'u_spearman', archer: 'u_archer', cavalry: 'u_cavalry', tank: 'b_tank' };
+const troopImg = (k) => `<img class="tp-img" src="${UI(TROOP_IMG[k])}" alt="">`;
 function barracksUI() {
   const t = Date.now() / 1000;
   if (G.S.training) {
@@ -669,11 +675,11 @@ function barracksUI() {
   for (const k in TROOPS) {
     if (TROOPS[k].building) continue;
     const d = TROOPS[k], un = G.troopUnlocked(k);
-    cards += `<div class="troop ${k === trainSel ? 'sel' : ''} ${un ? '' : 'locked'}" data-troop="${k}"><span class="ti">${d.icon}</span>${d.short}<small>${un ? G.fmt(G.S.troops[k]) : '🔒 Kışla ' + d.reqBarracks}</small></div>`;
+    cards += `<div class="troop tp ${k === trainSel ? 'sel' : ''} ${un ? '' : 'locked'}" data-troop="${k}">${troopImg(k)}<span class="tp-n">${d.short}</span><small>${un ? G.fmt(G.S.troops[k]) : '🔒 Kışla ' + d.reqBarracks}</small></div>`;
   }
   const d = TROOPS[trainSel], cost = G.trainCost(trainSel, trainQty), time = d.time * trainQty / G.trainSpeed();
   return campBar() + `<div class="troops">${cards}</div>
-    <p class="desc" style="margin-bottom:6px"><b>${d.name}</b> — ${d.desc}<br><small>⚔ ${d.atk} &nbsp; 🛡 ${d.def} &nbsp; ❤ ${d.hp} &nbsp; 🎒 ${d.load}</small></p>
+    <div class="tp-card">${troopImg(trainSel)}<div><b>${d.name}</b><p>${d.desc}</p><div class="tp-st"><span>⚔️ ${d.atk}</span><span>🛡️ ${d.def}</span><span>❤️ ${d.hp}</span><span>🎒 ${d.load}</span></div></div></div>
     <div class="qty"><span>Miktar</span><span>${trainQty} / ${max}</span></div>
     <input id="qtySlider" class="slider" type="range" min="1" max="${max}" value="${trainQty}">
     <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
@@ -719,7 +725,7 @@ function academyUI() {
 function hospitalUI() {
   const t = Date.now() / 1000, cap = G.hospitalCap(), w = G.totalWounded();
   let s = `<div class="stats"><div class="stat"><small>Yaralılar</small><b>${G.fmt(w)} / ${G.fmt(cap)}</b></div><div class="stat"><small>İksir</small><b>🧪 ${G.S.potions}</b></div></div>`;
-  s += `<div class="troops">${Object.keys(TROOPS).map((k) => `<div class="troop"><span class="ti">${TROOPS[k].icon}</span>${TROOPS[k].short}<small>🤕 ${G.S.wounded[k]}</small></div>`).join('')}</div>`;
+  s += `<div class="troops t5">${Object.keys(TROOPS).map((k) => `<div class="troop tp">${troopImg(k)}<span class="tp-n">${TROOPS[k].short}</span><small>🤕 ${G.S.wounded[k]}</small></div>`).join('')}</div>`;
   if (G.S.healing) {
     const hl = G.S.healing, pct = (t - hl.start) / (hl.end - hl.start) * 100;
     s += `<div class="progress green"><span style="width:${pct}%"></span><em>💚 ${G.totalTroops(hl.counts)} asker iyileşiyor • ${G.fmtTime(hl.end - t)}</em></div><button class="btn speedbtn" style="width:100%;margin-bottom:8px" data-act="spd" data-tg="heal">⏩ Hızlandır ${spCountTxt()}</button>`;
@@ -784,7 +790,8 @@ export function closeModal() { lastModalKey = ''; $('modal').classList.remove('o
 $('modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') closeModal(); });
 function setNav(go) { document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.go === go)); }
 document.querySelectorAll('nav button, #rside .rbtn').forEach((b) => b.addEventListener('click', () => navigate(b.dataset.go)));
-$('goldBtn').onclick = () => navigate('shop');
+$('goldBtn').onclick = (e) => { e.stopPropagation(); shopTab = 'gold'; navigate('shop'); };
+document.querySelectorAll('#top .res[data-r]').forEach((el) => (el.onclick = () => { shopTab = 'res'; navigate('shop'); }));
 $('profileBtn').onclick = () => navigate('profile');
 $('chipTroops').onclick = () => navigate('army');
 $('chipRaid').onclick = () => toast('Düşman yaklaşıyor! Asker eğit ve kulelerini güçlendir.');
@@ -795,7 +802,7 @@ export function navigate(go) {
   setNav(go);
   if (go === 'city') { closeModal(); return; }
   if (go === 'events') { questTab = 'daily'; go = 'quests'; }
-  if (go === 'offers') go = 'shop';
+
   if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); tutEvent('summonOpen'); return; }
   if (go === 'world') { tutEvent('worldOpen'); if (G.S.tut === 'done') { closeModal(); setNav('world'); sfx('open'); openWorldMap(); return; } }
   sfx('open');
@@ -830,6 +837,7 @@ function renderModalInner() {
   if (k === 'attack') return openModal(attackUI());
   if (k === 'scout') return openModal(scoutUI(scoutRep));
   if (k === 'speed') return openModal(speedUI());
+  if (k === 'offers') return openModal(offersUI());
 }
 const allEnemies = () => G.S.enemies.concat(G.ONLINE.enemies);
 function worldUI() {
@@ -1031,6 +1039,24 @@ function speedShopHtml() {
     <div class="w-card sp-bag"><h4>🎒 Çantam</h4>${owned.length ? `<div class="sp-bag-list">${owned.map((k) => spIcon(k, 54, G.S.items[k])).join('')}</div>` : '<p class="desc" style="margin:0">Henüz hızlandırman yok.</p>'}</div>
     <div class="w-card sp-odds"><h4>🎲 Nereden kazanılır?</h4><table><tr><th></th><th>Ana görev</th><th>Etkinlik</th></tr>${SPEED_ORDER.filter((k) => !['s2d', 's3d'].includes(k)).map((k) => `<tr><td>${spIcon(k, 30)}</td><td>${pct(DROP_QUEST, k)}</td><td>${pct(DROP_EVENT, k)}</td></tr>`).join('')}</table><p class="desc" style="margin:6px 0 0">2 ve 3 günlük hızlandırmalar yalnızca markette.</p></div>`;
 }
+// ---- Teklif paketleri ----
+function offersUI() {
+  const chip = (img, txt, cls = '') => `<span class="of-it ${cls}">${img}<b>${txt}</b></span>`;
+  const cards = OFFERS.map((o) => {
+    const left = G.offerLeft(o), items = [];
+    if (o.hero5) items.push(chip('<img src="' + UI('ic_summon') + '" alt="">', `${o.hero5}× 5★ Kahraman`, 'hero'));
+    for (const f of o.frames || []) items.push(chip(`<img class="of-fr" src="${UI('fr_' + f)}" alt="">`, FRAME_BY_ID[f].name + ' çerçevesi', 'frame'));
+    for (const k of SPEED_ORDER.slice().reverse()) if (o.items?.[k]) items.push(chip(spIcon(k, 34), `${o.items[k]}× ${SPEEDUPS[k].short}`));
+    if (o.gold) items.push(chip(resImg('gold', 30), G.fmt(o.gold)));
+    for (const r in o.res || {}) items.push(chip(resImg(r, 30), G.fmt(o.res[r])));
+    return `<div class="of-card t${o.tier} ${left ? '' : 'done'}">${o.tag ? `<span class="of-tag">${o.tag}</span>` : ''}
+      <div class="of-head"><b>${o.name}</b><small>${left ? `Kalan: ${left}/${o.limit}` : 'Satın alındı'}</small></div>
+      <div class="of-items">${items.join('')}</div>
+      <button class="w-btn gold of-buy" data-offer="${o.id}" ${left ? '' : 'disabled'}>${left ? o.price : '✓ Alındı'}</button></div>`;
+  }).join('');
+  return head('Teklifler', 'ic_gift') + `<div class="w-banner" style="background-image:url(${UI('banner_shop')})"><div><div class="bt">Kraliyet Teklifleri</div><div class="bs">Kahraman, hızlandırma ve özel çerçeveler</div></div></div>
+    <div class="of-list">${cards}</div><p class="demo">⚠️ Demo mağaza: gerçek ödeme alınmaz, içerik ücretsiz eklenir.</p>`;
+}
 function shopUI() {
   let body = `<div class="w-banner" style="background-image:url(${UI('banner_shop')})"><div><div class="bt">Kraliyet Hazinesi</div><div class="bs">Altın paketleri ve kaynaklar</div></div></div>`;
   if (shopTab === 'gold') body += `<div class="shop">${SHOP.map((p) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="pg"><img src="${UI('res_gold')}" width="54" height="54" alt=""></div><b>${G.fmt(p.gold)}</b>${p.bonus ? `<small>+${p.bonus} bonus</small>` : '<small>&nbsp;</small>'}<button class="w-btn gold" style="width:100%" data-buy="${p.id}">${p.price}</button></div>`).join('')}</div>`;
@@ -1114,7 +1140,7 @@ function profileUI() {
       { n: 'Kâşif', i: 'nav_world', ok: G.S.stats.kills >= 500 }, { n: 'Efsane', i: 'ic_gift', ok: Object.keys(G.S.heroes).some((x) => HERO_BY_ID[x].rarity === 5) },
     ];
     body = `<div class="w-banner" style="background-image:url(${UI('banner_profile')});min-height:140px;align-items:center">
-      <div class="w-prof"><div class="w-ava"><img src="assets/heroes/${G.S.commander}_a.webp" alt=""></div><div><div class="nm">${G.S.name}</div><div class="sub">ID: ${id} • Komutan: ${h ? h.name : '-'}</div>
+      <div class="w-prof"><div class="w-ava framed"><img src="assets/heroes/${G.S.commander}_a.webp" alt=""><img class="aframe" src="${UI('fr_' + G.S.frame)}" alt=""></div><div><div class="nm">${G.S.name}</div><div class="sub">ID: ${id} • Komutan: ${h ? h.name : '-'}</div>
       <div class="w-xp"><span class="lvl">${th}</span><div class="bar"><span style="width:${th * 10}%"></span></div></div></div></div></div>
       <div class="w-stats">
         <div class="w-stat"><img src="${UI('nav_heroes')}"><div><small>Güç</small><b>${G.fmt(G.cityPower())}</b></div></div>
@@ -1122,6 +1148,14 @@ function profileUI() {
         <div class="w-stat"><img src="${UI('nav_world')}"><div><small>Öldürülen düşman</small><b>${G.fmt(G.S.stats.kills)}</b></div></div>
         <div class="w-stat"><img src="${UI('ic_summon')}"><div><small>Toplam çağırma</small><b>${G.S.totalPulls}</b></div></div></div>
       <div class="w-card"><h4><img src="${UI('ic_trophy')}">Rozetlerim</h4><div class="w-badges">${badges.map((b) => `<div class="w-badge ${b.ok ? '' : 'off'}"><img src="${UI(b.i)}" alt="">${b.n}</div>`).join('')}</div></div>`;
+  } else if (profTab === 'frame') {
+    const cur = FRAME_BY_ID[G.S.frame] || FRAMES[0];
+    const tile = (f) => { const own = G.frameOwned(f.id), on = G.S.frame === f.id;
+      return `<div class="fr-tile ${on ? 'on' : ''} ${f.free ? '' : 'prem t' + f.tier}" data-frame="${f.id}"><div class="fr-prev"><img class="fr-av" src="assets/heroes/${G.S.commander}_a.webp" alt=""><img class="fr-img" src="${UI('fr_' + f.id)}" alt=""></div>
+        <b>${f.name}</b>${on ? '<em class="fr-st on">✓ Takılı</em>' : own ? '<em class="fr-st">Tak</em>' : `<em class="fr-st buy">🪙 ${G.fmt(f.gold)}</em>`}${f.pro ? '<i class="fr-pro">PRO</i>' : ''}</div>`; };
+    body = `<div class="fr-hero"><div class="fr-prev big"><img class="fr-av" src="assets/heroes/${G.S.commander}_a.webp" alt=""><img class="fr-img" src="${UI('fr_' + cur.id)}" alt=""></div><div><small>Takılı çerçeve</small><b>${cur.name}</b><span>${cur.free ? 'Ücretsiz' : 'Özel çerçeve'}</span></div></div>
+      <h4 class="fr-h">Ücretsiz çerçeveler</h4><div class="fr-grid">${FRAMES.filter((f) => f.free).map(tile).join('')}</div>
+      <h4 class="fr-h prem">✨ Özel çerçeveler</h4><div class="fr-grid">${FRAMES.filter((f) => !f.free).map(tile).join('')}</div>`;
   } else {
     body = `<div class="w-card"><h4><img src="${UI('nav_city')}">Krallık adı</h4>
       <input data-name maxlength="16" value="${G.S.name.replace(/"/g, '')}" style="width:100%;padding:11px;border-radius:12px;background:#120a30;color:#fff;border:1px solid var(--wline);font-weight:800;font-size:15px;margin-bottom:8px">
@@ -1133,7 +1167,7 @@ function profileUI() {
       <div class="w-card"><h4><img src="${UI('nav_reports')}">Ses</h4><div class="row"><button class="w-btn" style="flex:1" data-m="sound">${audioState().sfxOn ? '🔊 Efekt açık' : '🔇 Efekt kapalı'}</button><button class="w-btn" style="flex:1" data-m="music">${audioState().musicOn ? '🎵 Müzik açık' : '🔇 Müzik kapalı'}</button></div></div>
       <button class="w-btn red" style="width:100%;padding:12px" data-m="reset">Oyunu sıfırla</button>`;
   }
-  return head('Profil', 'nav_heroes', [{ id: 'me', label: 'Profilim', icon: 'nav_heroes' }, { id: 'set', label: 'Ayarlar', icon: 'nav_quest' }], profTab) + body;
+  return head('Profil', 'nav_heroes', [{ id: 'me', label: 'Profilim', icon: 'nav_heroes' }, { id: 'frame', label: 'Çerçeve', icon: 'crown' }, { id: 'set', label: 'Ayarlar', icon: 'nav_quest' }], profTab) + body;
 }
 $('modalBox').addEventListener('input', (e) => {
   const s = e.target.dataset.slider;
@@ -1179,6 +1213,10 @@ $('modalBox').addEventListener('click', (e) => {
   if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
   const ta = e.target.closest('[data-tall]');
   if (ta) { const m2 = ta.dataset.tall; for (const t in TROOPS) atk.troops[t] = m2 === 'all' ? G.S.troops[t] : m2 === 'half' ? Math.floor(G.S.troops[t] / 2) : 0; return renderModal(); }
+  const fr = e.target.closest('[data-frame]');
+  if (fr) { const id = fr.dataset.frame; if (G.frameOwned(id)) { G.setFrame(id); sfx('click'); toast('🖼️ Çerçeve takıldı'); } else { const r = G.buyFrame(id); if (!r.ok) { if (r.needGold) needGold(); else toast(r.why, true); return; } sfx('reveal'); toast(`✨ ${FRAME_BY_ID[id].name} çerçevesi alındı`); } updateTop(); return renderModal(); }
+  const ob = e.target.closest('[data-offer]');
+  if (ob) { const r = G.buyOffer(ob.dataset.offer); if (!r.ok) { toast(r.why, true); return; } sfx('reveal5'); toast('🎁 Paket eklendi!' + (r.heroes.length ? ' ' + r.heroes.map((h) => '★5 ' + HERO_BY_ID[h].name).join(', ') : '')); updateTop(); return renderModal(); }
   const su = e.target.closest('[data-spuse]');
   if (su) { const [k, n] = su.dataset.spuse.split(':'); const r = G.useSpeedup(speedTarget, k, +n); if (!r.ok) toast(r.why, true); else { sfx('coin'); toast(`⏩ ${SPEEDUPS[k].short}${r.count > 1 ? ' ×' + r.count : ''} kullanıldı`); } return afterSpeed(r); }
   if (e.target.closest('[data-spbest]')) { const n = G.useBest(speedTarget); if (n) { sfx('coin'); toast(`⏩ ${n} hızlandırma kullanıldı`); } return afterSpeed({ done: !G.timerLeft(speedTarget) }); }
@@ -1403,4 +1441,4 @@ async function boot() {
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
 window.__dsShowDrop = (it) => showItemDrop(it);
-window.__ds = { online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };
+window.__ds = { openBattle, online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };

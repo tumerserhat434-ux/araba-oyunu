@@ -425,6 +425,16 @@ cd araba-oyunu && python3 -m http.server 8000
 - Arayüz: her "Hemen bitir"in üstünde "⏩ Hızlandır" (eşya sayısıyla), `speedUI` penceresi (Akıllı kullan, tek tek/×N, Market, Altınla bitir). Görev satırlarında "?" hızlandırma rozeti. Tier ≥3 düşünce tam ekran kutlama (`showItemDrop`, 6 sn ya da dokununca kapanır).
 - Not: Playwright/SwiftShader'da sayfa çok yavaş; CSS animasyonları ve zamanlayıcılar ekran görüntüsünü yanıltabiliyor.
 
+### 5.19 Arayüz v3: üst çubuk, bina paneli, savaş düğmeleri, çerçeveler, teklifler
+- **Üst çubuk** (`index.html header#top`, `style.css` "Üst bilgi çubuğu v2"): çerçeveli yuvarlak avatar (`#frameImg`), seviye kalkanı, taçlı isim + güç + güç basamağı çubuğu (`#powBar`), 2×2 kaynak kutusu, her birinde artı düğmesi (kaynak → Mağaza/Kaynak, altın → Mağaza/Altın), altın kenarlı sol çipler.
+- **Bina paneli** (`#sheet` kapsamlı CSS "Bina paneli v3"): altın çerçeveli koyu lacivert şablon, yuvarlak portre, simgeli istatistik kartları (`statIcon` etiketten simge seçer), köşeleri kesik altın kenarlı butonlar (`--face`), gereksinim kartında bina simgesi.
+- **Asker portreleri**: `assets/ui/u_infantry|u_spearman|u_archer|u_cavalry.webp` (Higgsfield), tank `b_tank`. Kışla kartları ve asker detay kartı (`tp-card`), hastane listesi.
+- **Savaş ekranı**: Birlikler / Savaşı Başlat / Geç aynı altın çerçeveli set (`.bt-ctrl`).
+- **Avatar çerçeveleri**: `FRAMES` (6 ücretsiz: wood, bronze, silver, iron, emerald, sapphire; 5 ücretli: laurel 1800, crystal 2600, phoenix 3800, shadow 5200, dragon 7500 [PRO]). Görseller `assets/ui/fr_<id>.webp` (iç delik çıktının %56'sı, `scratchpad/tools2/frame.py` ile kesildi). `S.frame` (varsayılan bronze), `S.frames`. Profil > Çerçeve sekmesi.
+- **Teklifler** (`OFFERS`, sağdaki Teklifler düğmesi → `offersUI`): 7 paket ₺49,99–999,99 (Başlangıç, Hızlandırma Sandığı, Savaş Lordu, Kahraman, Kraliyet Hazinesi, Efsane [5★ + 2×3 gün + 100×1 dk + Ejder Kral çerçevesi, ₺499,99], İmparator). Satın alma limiti `S.offers`. DEMO: ödeme alınmaz. `buyOffer` 5★ kahraman verir (önce sahip olunmayan).
+- Higgsfield: ~24 görsel (4 asker, 11 çerçeve; 4 kullanılmayan avatar portresi — kullanıcı "avatar" ile çerçeveyi kastetmişti), ~6–7 kredi. Hız sınırı (429) yüzünden 3'erli gruplarla gönderildi.
+- Hata ayıklama: `window.__ds.openBattle`, `window.__dsShowDrop`.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
