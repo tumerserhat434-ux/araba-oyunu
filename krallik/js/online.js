@@ -178,14 +178,14 @@ export async function joinAlliance(id, me) {
     const a = await getAlliance(id); if (!a) return { ok: false, why: 'İttifak bulunamadı' };
     if (!a.open) return { ok: false, why: 'Bu ittifak kapalı' };
     if (Object.keys(a.members || {}).length >= ALLIANCE_MAX) return { ok: false, why: 'İttifak dolu' };
-    await FS.updateDoc(aRef(id), { [`members.${user.uid}`]: { ...me, role: 'member', joined: Date.now() } });
+    await FS.updateDoc(aRef(id), { [`members.${user.uid}`]: { ...me, role: 'member', rank: 1, joined: Date.now() } });
     return { ok: true };
   } catch (e) { return { ok: false, why: errOf(e) }; }
 }
 // kendi üye bilgimi güncelle (güç, seviye, çerçeve)
-export async function updateMember(id, me, role, joined) {
+export async function updateMember(id, me, role, joined, rank) {
   if (!ready || !id) return;
-  try { await FS.updateDoc(aRef(id), { [`members.${user.uid}`]: { ...me, role, joined } }); } catch (e) { lastErr = errOf(e); }
+  try { await FS.updateDoc(aRef(id), { [`members.${user.uid}`]: { ...me, role, joined, rank: rank || 1 } }); } catch (e) { lastErr = errOf(e); }
 }
 export async function leaveAlliance(a) {
   if (!ready) return { ok: false, why: 'Çevrimdışısın' };
@@ -193,14 +193,19 @@ export async function leaveAlliance(a) {
     const others = Object.entries(a.members || {}).filter(([u]) => u !== user.uid);
     if (a.leader === user.uid) {
       if (!others.length) { await FS.deleteDoc(aRef(a.id)); return { ok: true, deleted: true }; }
-      const [nu, nm] = others.sort((x, y) => (y[1].power || 0) - (x[1].power || 0))[0];
-      await FS.updateDoc(aRef(a.id), { leader: nu, [`members.${nu}`]: { ...nm, role: 'leader' }, [`members.${user.uid}`]: FS.deleteField() });
+      // liderlik en yüksek rütbeliye (eşitse en güçlüye) geçer
+      const [nu, nm] = others.sort((x, y) => (y[1].rank || 1) - (x[1].rank || 1) || (y[1].power || 0) - (x[1].power || 0))[0];
+      await FS.updateDoc(aRef(a.id), { leader: nu, [`members.${nu}`]: { ...nm, role: 'leader', rank: 5 }, [`members.${user.uid}`]: FS.deleteField() });
     } else await FS.updateDoc(aRef(a.id), { [`members.${user.uid}`]: FS.deleteField() });
     return { ok: true };
   } catch (e) { return { ok: false, why: errOf(e) }; }
 }
+// Rütbe işlemleri: lastOp hedefi Firestore kurallarının yetki kontrolü için yazılır
 export async function kickMember(id, uid) {
-  try { await FS.updateDoc(aRef(id), { [`members.${uid}`]: FS.deleteField() }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+  try { await FS.updateDoc(aRef(id), { [`members.${uid}`]: FS.deleteField(), lastOp: { by: user.uid, target: uid, t: Date.now() } }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function setRank(id, uid, rank) {
+  try { await FS.updateDoc(aRef(id), { [`members.${uid}.rank`]: rank, lastOp: { by: user.uid, target: uid, t: Date.now() } }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
 }
 export async function editAlliance(id, fields) {
   try { await FS.updateDoc(aRef(id), fields); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }

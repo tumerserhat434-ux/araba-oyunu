@@ -527,6 +527,12 @@ cd araba-oyunu && python3 -m http.server 8000
 - `data.js → ALLIANCE_SHOP`: market fiyatının yarısı, altınla, yalnızca ittifak üyeleri. 1 dk 5 altın (30/hafta), 5 dk 20 (10/hafta), 24 sa 1.050 (2/hafta), 3 gün 2.800 (1/hafta), 20 bin yiyecek/odun 120, 20 bin taş 200 (her biri 20/hafta). 1 dk/5 dk markette olmadığından "normal fiyat" 1 saat = 400 altın oranından alındı.
 - `state.js`: `buyAlShop`, `alShopLeft`, `S.alShop = { week, bought }`; hafta Pazartesi 00:00 (yerel saat) yenilenir. Arayüz: İttifak › Dükkan sekmesi ve ana sayfada "İttifak Dükkanı" afişi (`ic_alshop.webp`), tek alım ve ×5.
 
+### 5.31c İttifak rütbeleri (R1–R5)
+- `members[uid].rank` (1–4; yoksa 1), lider her zaman R5 (`a.leader`). Yeni katılan R1. Lider ayrılırsa liderlik en yüksek rütbeliye (eşitse en güçlüye) geçer.
+- Yetkiler (`main.js → rankOptions`, `canKick`): R5 herkese R1–R4 verir, herkesi çıkarır; R4 R1–R3 arasındakilere R1–R3 verir ve onları çıkarır (R4/R5'e dokunamaz); R3 yalnızca R1'i R2 yapar; R2/R1 yetkisiz.
+- Sunucu tarafı: `online.js → setRank`, `kickMember` işlem hedefini `lastOp { by, target, t }` alanına yazar; `firestore.rules` içindeki `officerEdit()` bu hedefe göre yetkiyi denetler, `selfEdit()` üyenin kendi rütbesini/rolünü değiştirmesini engeller. **Kurallar yeniden yayınlanmalı.**
+- Arayüz: Üyeler sekmesi rütbe gruplarına ayrılmış (rozetler `rk_1..5.webp`), yetkili olunan üyeye dokununca rütbe ver / çıkar penceresi; işlemler ittifak sohbetine duyurulur. Ana sayfada "Rütben".
+
 ### 5.32 Yayın ve önbellek
 - GitHub Pages **`claude/selam-naber-ilicoo`** dalından yayınlanıyor (kullanıcının ekran görüntüsüyle doğrulandı). Yayın durumu `mcp__github__actions_list` → "pages build and deployment" çalışmalarından görülebilir.
 - Şu an tüm dallar (`main`, `claude/selam-naber-ilicoo`, `claude/laughing-hamilton-eaghgm`, `claude/forest-parkour-mobile-game-9oxplw`, çalışma dalı) aynı commit'te tutuluyor; yayın için en az `claude/selam-naber-ilicoo`'ya gönder.

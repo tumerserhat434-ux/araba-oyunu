@@ -2,26 +2,26 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611181738';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181738';
-import * as ASSETS from './assets.js?v=2611181738';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181738';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181738';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181738';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181738';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181738';
-import * as G from './state.js?v=2611181738';
-import { getAvatar } from './scenes.js?v=2611181738';
-import { initCampaign, openCampaign } from './campui.js?v=2611181738';
-import { campIdx, stageLabel } from './campaign.js?v=2611181738';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181738';
-import { createGrass } from './grass.js?v=2611181738';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181738';
-import { initTutorial, tutEvent } from './tut.js?v=2611181738';
-import { icon } from './icons.js?v=2611181738';
-import { paintCity } from './terrain.js?v=2611181738';
-import { createLife, createVillager, animVillager } from './life.js?v=2611181738';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181738';
+import * as BLD from './buildings.js?v=2611181758';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181758';
+import * as ASSETS from './assets.js?v=2611181758';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181758';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181758';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181758';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181758';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181758';
+import * as G from './state.js?v=2611181758';
+import { getAvatar } from './scenes.js?v=2611181758';
+import { initCampaign, openCampaign } from './campui.js?v=2611181758';
+import { campIdx, stageLabel } from './campaign.js?v=2611181758';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181758';
+import { createGrass } from './grass.js?v=2611181758';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181758';
+import { initTutorial, tutEvent } from './tut.js?v=2611181758';
+import { icon } from './icons.js?v=2611181758';
+import { paintCity } from './terrain.js?v=2611181758';
+import { createLife, createVillager, animVillager } from './life.js?v=2611181758';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181758';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1082,7 +1082,7 @@ async function alRefresh() {
   if (G.S.alliance) {
     const a = await getAlliance(G.S.alliance.id);
     if (!a || !a.members?.[online.uid]) { AL.doc = null; G.setAlliance(null); toast('🏳️ Artık bir ittifakta değilsin'); }
-    else { AL.doc = a; G.setAlliance(a); const m = a.members[online.uid], me = G.myMember(); if (Math.abs((m.power || 0) - me.power) > me.power * 0.03 || m.frame !== me.frame || m.name !== me.name || m.th !== me.th) { updateMember(a.id, me, m.role, m.joined); a.members[online.uid] = { ...m, ...me }; } }
+    else { AL.doc = a; G.setAlliance(a); const m = a.members[online.uid], me = G.myMember(); if (Math.abs((m.power || 0) - me.power) > me.power * 0.03 || m.frame !== me.frame || m.name !== me.name || m.th !== me.th) { updateMember(a.id, me, m.role, m.joined, m.rank); a.members[online.uid] = { ...m, ...me }; } }
   } else AL.list = (await listAlliances(G.S.server || 1)).sort((x, y) => alPower(y) - alPower(x));
   helpWatch();
   alRerender();
@@ -1115,7 +1115,7 @@ function allianceUI() {
   const a = AL.doc, me = online.uid, lead = a && a.leader === me;
   if (!a) return H('<div class="al-off">Yükleniyor…</div>');
   const mem = Object.entries(a.members || {}).sort((x, y) => (y[1].role === 'leader') - (x[1].role === 'leader') || (y[1].power || 0) - (x[1].power || 0));
-  if (AL.tab === 'members') return H(`<div class="al-mh">👥 ${mem.length}/${ALLIANCE_MAX} üye • ⚔ ${G.fmt(alPower(a))}</div><div class="al-mem">${mem.map(([u, m]) => `<div class="al-mrow ${u === me ? 'me' : ''}">${frameHtml(m.hero, m.frame, 42)}<div class="al-mi"><b>${m.role === 'leader' ? '👑 ' : ''}${(m.name || 'Oyuncu').replace(/</g, '')}${u === me ? ' <small>(sen)</small>' : ''}</b><small>Belediye Sv.${m.th || 1} • ⚔ ${G.fmt(m.power || 0)}</small></div>${lead && u !== me ? `<button class="w-btn red" data-alkick="${u}">Çıkar</button>` : ''}</div>`).join('')}</div>`);
+  if (AL.tab === 'members') return H(membersHtml(a, mem, me));
   if (AL.tab === 'rally') {
     if (!AL.runsub) { AL.rallies = null; AL.runsub = watchRallies(a.id, (list, err) => { AL.rallies = list || []; AL.rallyErr = err || ''; alRerender(); }); }
     const nowMs = Date.now(), list = (AL.rallies || []).filter((r) => r.endsAt > nowMs).sort((x, y) => x.endsAt - y.endsAt);
@@ -1156,6 +1156,7 @@ function allianceUI() {
         <div class="al2-name"><b>${a.name.replace(/</g, '')}</b></div>
         <div><span>Lider:</span><b>👑 ${ld}</b></div>
         <div><span>Savaş gücü:</span><b class="g">⚔ ${G.fmt(alPower(a))}</b></div>
+        <div><span>Rütben:</span><b class="al2-rk"><img src="${UI('rk_' + rankOf(a, me))}" alt="">R${rankOf(a, me)} ${RANKS[rankOf(a, me)]}</b></div>
         <div><span>Üye:</span><b>${mem.length}/${ALLIANCE_MAX}</b><small class="al2-srv">#${a.server} • ${a.open ? '🔓' : '🔒'}</small></div>
         <button class="al2-mail" data-algo="chat">💬 Sohbete git</button>
       </div>
@@ -1221,6 +1222,53 @@ async function doHelp(list) {
   HELP.busy = false;
   if (ok) { sfx('coin'); toast(`🤝 ${ok} müttefikine yardım ettin!`); } else if (err) toast(err, true);
   alRerender();
+}
+// =====================================================================
+//  İttifak rütbeleri (R5 lider … R1 acemi)
+// =====================================================================
+const RANKS = { 5: 'Lider', 4: 'Komutan', 3: 'Şövalye', 2: 'Asker', 1: 'Acemi' };
+const RANK_DESC = { 5: 'İttifakın sahibi, her yetkiye sahip', 4: 'Lider atar • üye çıkarır, R1–R3 rütbesi verir', 3: "R1'leri R2'ye yükseltir", 2: 'Deneyimli üye', 1: 'Yeni katılan üyeler' };
+const rankOf = (a, uid) => (uid === a.leader ? 5 : Math.min(4, Math.max(1, a.members?.[uid]?.rank || 1)));
+// actor, target üyesine hangi rütbeleri verebilir?
+function rankOptions(a, actor, target) {
+  if (actor === target || target === a.leader) return [];
+  const A = rankOf(a, actor), T = rankOf(a, target);
+  if (A === 5) return [4, 3, 2, 1].filter((r) => r !== T);
+  if (A === 4 && T <= 3) return [3, 2, 1].filter((r) => r !== T);
+  if (A === 3 && T === 1) return [2];
+  return [];
+}
+function canKick(a, actor, target) { if (actor === target || target === a.leader) return false; const A = rankOf(a, actor), T = rankOf(a, target); return A === 5 || (A === 4 && T <= 3); }
+function membersHtml(a, mem, me) {
+  const groups = [5, 4, 3, 2, 1].map((r) => [r, mem.filter(([u]) => rankOf(a, u) === r)]);
+  const myR = rankOf(a, me);
+  const rows = (list) => list.sort((x, y) => (y[1].power || 0) - (x[1].power || 0)).map(([u, m]) => {
+    const can = rankOptions(a, me, u).length || canKick(a, me, u);
+    return `<button class="al-mrow rk-row ${u === me ? 'me' : ''} ${can ? 'can' : ''}" ${can ? `data-almem="${u}"` : ''}>${frameHtml(m.hero, m.frame, 42)}<div class="al-mi"><b>${(m.name || 'Oyuncu').replace(/</g, '')}${u === me ? ' <small>(sen)</small>' : ''}</b><small>Belediye Sv.${m.th || 1} • ⚔ ${G.fmt(m.power || 0)}</small></div>${can ? '<i class="rk-more">⋯</i>' : ''}</button>`; }).join('');
+  const sel = AL.sel && a.members?.[AL.sel] ? AL.sel : null;
+  let pop = '';
+  if (sel) {
+    const m = a.members[sel], T = rankOf(a, sel), opts = rankOptions(a, me, sel);
+    pop = `<div class="rk-pop" data-alpopx><div class="rk-box">
+      <div class="rk-ph">${frameHtml(m.hero, m.frame, 56)}<div><b>${(m.name || 'Oyuncu').replace(/</g, '')}</b><small><img src="${UI('rk_' + T)}" alt="">R${T} ${RANKS[T]} • ⚔ ${G.fmt(m.power || 0)}</small></div></div>
+      ${opts.length ? `<div class="rk-ol">Rütbe ver</div><div class="rk-opts">${opts.map((r) => `<button data-alrank="${r}" class="${r > T ? 'up' : 'down'}"><img src="${UI('rk_' + r)}" alt=""><b>R${r}</b><small>${RANKS[r]}</small><em>${r > T ? '▲' : '▼'}</em></button>`).join('')}</div>` : ''}
+      ${canKick(a, me, sel) ? `<button class="w-btn red" style="width:100%;margin-top:8px" data-alkick="${sel}">👢 İttifaktan çıkar</button>` : ''}
+      <button class="w-btn" style="width:100%;margin-top:6px" data-alpopx>Kapat</button></div></div>`;
+  }
+  return `<div class="al-mh">👥 ${mem.length}/${ALLIANCE_MAX} üye • ⚔ ${G.fmt(alPower(a))} <span class="rk-me"><img src="${UI('rk_' + myR)}" alt="">Rütben: R${myR}</span></div>
+    ${groups.map(([r, list]) => `<div class="rk-sec r${r}"><div class="rk-h"><img src="${UI('rk_' + r)}" alt=""><div><b>R${r} • ${RANKS[r]}</b><small>${RANK_DESC[r]}</small></div><span>${list.length}</span></div>
+      ${list.length ? `<div class="al-mem">${rows(list)}</div>` : '<div class="rk-empty">Bu rütbede kimse yok</div>'}</div>`).join('')}
+    ${pop}`;
+}
+async function doSetRank(uid, r) {
+  const a = AL.doc; if (!a || !rankOptions(a, online.uid, uid).includes(r)) return toast('Bu işlem için yetkin yok', true);
+  const nm = a.members[uid]?.name || 'Üye', old = rankOf(a, uid);
+  return alAction(async () => {
+    const res = await setRank(a.id, uid, r); if (!res.ok) { toast(res.why, true); return; }
+    sfx(r > old ? 'reveal5' : 'click'); toast(`${r > old ? '⬆️' : '⬇️'} ${nm} artık R${r} ${RANKS[r]}`);
+    sendChat(a.id, `${r > old ? '⬆️' : '⬇️'} ${nm}, R${r} ${RANKS[r]} rütbesine ${r > old ? 'yükseltildi' : 'düşürüldü'}.`, G.myMember());
+    AL.sel = null; await alRefresh();
+  });
 }
 // =====================================================================
 //  İttifak dükkanı
@@ -1501,11 +1549,14 @@ $('modalBox').addEventListener('click', (e) => {
     if (jn) return alAction(async () => { const r = await joinAlliance(jn.dataset.aljoin, G.myMember()); if (!r.ok) { toast(r.why, true); return; } const a = await getAlliance(jn.dataset.aljoin); G.setAlliance(a); AL.doc = a; AL.tab = 'main'; sfx('built'); toast(`🤝 [${a.tag}] ${a.name} ittifakına katıldın!`); syncSoon(); });
     if (e.target.closest('[data-alleave]')) { if (!confirm('İttifaktan ayrılmak istiyor musun?')) return; return alAction(async () => { const r = await leaveAlliance(AL.doc); if (!r.ok) { toast(r.why, true); return; } alStopChat(); AL.doc = null; G.setAlliance(null); AL.tab = 'find'; AL.list = null; toast(r.deleted ? '🏳️ İttifak dağıtıldı' : '🏳️ İttifaktan ayrıldın'); syncSoon(); await alRefresh(); }); }
     const kk = e.target.closest('[data-alkick]');
-    if (kk) { const nm = AL.doc.members[kk.dataset.alkick]?.name; if (!confirm(`${nm} ittifaktan çıkarılsın mı?`)) return; return alAction(async () => { const r = await kickMember(AL.doc.id, kk.dataset.alkick); if (!r.ok) { toast(r.why, true); return; } toast('👢 Üye çıkarıldı'); await alRefresh(); }); }
+    if (kk) { const uid = kk.dataset.alkick, nm = AL.doc.members[uid]?.name; if (!canKick(AL.doc, online.uid, uid)) return toast('Üye çıkarma yetkin yok', true); if (!confirm(`${nm} ittifaktan çıkarılsın mı?`)) return; return alAction(async () => { const r = await kickMember(AL.doc.id, uid); if (!r.ok) { toast(r.why, true); return; } AL.sel = null; toast('👢 Üye çıkarıldı'); sendChat(AL.doc.id, `👢 ${nm} ittifaktan çıkarıldı.`, G.myMember()); await alRefresh(); }); }
     const ag = e.target.closest('[data-algo]'); if (ag) { const v = ag.dataset.algo; if (v !== 'chat' && v !== 'rally') alStopChat(); else if (AL.tab !== v) alStopChat(); AL.tab = v; sfx('click'); return renderModal(); }
     if (e.target.closest('[data-alann]')) { AL.annOpen = !AL.annOpen; return renderModal(); }
     const hp = e.target.closest('[data-alhelp]'); if (hp) { const d = HELP.list.find((q) => q.id === hp.dataset.alhelp); if (d) doHelp([d]); return; }
     if (e.target.closest('[data-alhelpall]')) return doHelp(helpPending());
+    const mm = e.target.closest('[data-almem]'); if (mm) { AL.sel = mm.dataset.almem; sfx('click'); return renderModal(); }
+    if (e.target.closest('[data-alpopx]') && (e.target.matches('[data-alpopx]') || e.target.closest('button[data-alpopx]'))) { AL.sel = null; return renderModal(); }
+    const rr = e.target.closest('[data-alrank]'); if (rr) return doSetRank(AL.sel, +rr.dataset.alrank);
     const sb = e.target.closest('[data-alshop]'); if (sb) { const r = G.buyAlShop(sb.dataset.alshop, +sb.dataset.n || 1); if (!r.ok) { if (r.needGold) return needGold(); return toast(r.why, true); } sfx('coin'); toast(`🛒 Satın alındı${r.n > 1 ? ' ×' + r.n : ''}`); updateTop(); return renderModal(); }
     if (e.target.closest('[data-alsave]')) return alAction(async () => { const d = ($('alEditDesc')?.value || '').trim().slice(0, 140); const r = await editAlliance(AL.doc.id, { desc: d }); if (!r.ok) toast(r.why, true); else { toast('💾 Kaydedildi'); await alRefresh(); } });
     if (e.target.closest('[data-altoggle]')) return alAction(async () => { const r = await editAlliance(AL.doc.id, { open: !AL.doc.open }); if (!r.ok) toast(r.why, true); else await alRefresh(); });
