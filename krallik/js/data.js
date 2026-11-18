@@ -295,6 +295,13 @@ export const FRAMES = [
   { id: 'phoenix', name: 'Anka Ateşi', gold: 3800, tier: 5 },
   { id: 'shadow', name: 'Gölge Lordu', gold: 5200, tier: 5 },
   { id: 'dragon', name: 'Ejder Kral', gold: 7500, tier: 5, pro: true },
+  // belediye efekti paketleriyle gelen çerçeveler (yalnızca tekliflerde)
+  { id: 'festival', name: 'Havai Fişek', tier: 5, pro: true, offer: true },
+  { id: 'royal', name: 'Kraliyet Tacı', tier: 5, pro: true, offer: true },
+  { id: 'xmas', name: 'Yılbaşı Çelengi', tier: 5, pro: true, offer: true },
+  { id: 'aurora', name: 'Kuzey Işığı', tier: 5, pro: true, offer: true },
+  { id: 'inferno', name: 'Cehennem Ejderi', tier: 5, pro: true, offer: true },
+  { id: 'galaxy', name: 'Galaksi', tier: 5, pro: true, offer: true },
 ];
 export const FRAME_BY_ID = Object.fromEntries(FRAMES.map((f) => [f.id, f]));
 // ---- Teklif paketleri (demo: gerçek ödeme alınmaz) ----
@@ -306,6 +313,13 @@ export const OFFERS = [
   { id: 'o4', name: 'Kahraman Paketi', price: '₺249,99', limit: 1, tag: 'Popüler', tier: 4, gold: 1500, hero5: 1, items: { s24h: 1, s1h: 5 } },
   { id: 'o5', name: 'Kraliyet Hazinesi', price: '₺349,99', limit: 1, tier: 4, gold: 3000, items: { s24h: 2, s2d: 1, s15m: 20 }, frames: ['laurel'] },
   { id: 'o6', name: 'Efsane Paketi', price: '₺499,99', limit: 1, tag: 'En iyi değer', tier: 5, gold: 2000, hero5: 1, items: { s3d: 2, s1m: 100 }, frames: ['dragon'] },
+  // Belediye efekti paketleri: efekt + PRO çerçeve + altın + kaynak + hızlandırma
+  { id: 'sk_shuttle', skin: 'shuttle', name: 'Galaksi Mekiği Paketi', price: '₺1.999,99', limit: 1, tag: 'Efsanevi', tier: 5, gold: 16000, res: { food: 2500000, wood: 2500000, stone: 1200000 }, items: { s3d: 5, s24h: 8, s1h: 40 }, frames: ['galaxy'] },
+  { id: 'sk_dragon', skin: 'dragon', name: 'Ejder Alevi Paketi', price: '₺1.499,99', limit: 1, tier: 5, gold: 12000, res: { food: 1600000, wood: 1600000, stone: 800000 }, items: { s3d: 3, s24h: 5, s1h: 30 }, frames: ['inferno'] },
+  { id: 'sk_aurora', skin: 'aurora', name: 'Kuzey Işıkları Paketi', price: '₺1.249,99', limit: 1, tier: 5, gold: 9000, res: { food: 1200000, wood: 1200000, stone: 600000 }, items: { s3d: 2, s24h: 4, s1h: 20 }, frames: ['aurora'] },
+  { id: 'sk_xmas', skin: 'xmas', name: 'Yılbaşı Şenliği Paketi', price: '₺999,99', limit: 1, tag: 'Yılbaşı Özel', tier: 5, gold: 7000, res: { food: 800000, wood: 800000, stone: 400000 }, items: { s3d: 1, s24h: 3, s1h: 20 }, frames: ['xmas'] },
+  { id: 'sk_crown', skin: 'crown', name: 'Altın Taç Paketi', price: '₺749,99', limit: 1, tier: 5, gold: 5000, res: { food: 500000, wood: 500000, stone: 250000 }, items: { s24h: 3, s1h: 15, s5m: 30 }, frames: ['royal'] },
+  { id: 'sk_fireworks', skin: 'fireworks', name: 'Havai Fişek Paketi', price: '₺499,99', limit: 1, tier: 5, gold: 3000, res: { food: 300000, wood: 300000, stone: 150000 }, items: { s24h: 2, s1h: 10, s5m: 30 }, frames: ['festival'] },
   { id: 'o7', name: 'İmparator Paketi', price: '₺999,99', limit: 1, tag: 'Kraliyet', tier: 5, gold: 10000, hero5: 2, res: { food: 1000000, wood: 1000000, stone: 500000 }, items: { s3d: 5, s24h: 10, s1h: 30 }, frames: ['phoenix', 'shadow'] },
 ];
 export const DAILY_CHEST = { need: 4, reward: { gold: 100, food: 3000, wood: 3000 } };
