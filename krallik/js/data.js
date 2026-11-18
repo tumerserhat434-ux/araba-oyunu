@@ -271,6 +271,17 @@ export const DROP_CHEST = [['s5m', 30, [2, 3]], ['s15m', 25, [1, 2]], ['s1h', 22
 export const SPEED_SHOP = [
   { id: 's1h', gold: 400 }, { id: 's5h', gold: 760 }, { id: 's24h', gold: 2100, tag: 'Popüler' }, { id: 's2d', gold: 3900 }, { id: 's3d', gold: 5600, tag: 'Kraliyet' },
 ];
+// ---- İttifak dükkanı: market fiyatının yarısı, haftalık alım sınırı (her Pazartesi yenilenir) ----
+// base = normal market fiyatı (1 dk/5 dk markette yok: 1 saat = 400 altın oranından), gold = ittifak fiyatı
+export const ALLIANCE_SHOP = [
+  { id: 'as_s1m', item: 's1m', base: 10, gold: 5, limit: 30 },
+  { id: 'as_s5m', item: 's5m', base: 40, gold: 20, limit: 10 },
+  { id: 'as_s24h', item: 's24h', base: 2100, gold: 1050, limit: 2 },
+  { id: 'as_s3d', item: 's3d', base: 5600, gold: 2800, limit: 1 },
+  { id: 'as_food', res: { food: 20000 }, base: 240, gold: 120, limit: 20 },
+  { id: 'as_wood', res: { wood: 20000 }, base: 240, gold: 120, limit: 20 },
+  { id: 'as_stone', res: { stone: 20000 }, base: 400, gold: 200, limit: 20 },
+];
 // ---- Avatar çerçeveleri (görünüm) ----
 export const FRAMES = [
   { id: 'wood', name: 'Sarmaşıklı Ahşap', free: true },

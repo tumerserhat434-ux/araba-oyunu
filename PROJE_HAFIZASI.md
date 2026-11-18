@@ -523,6 +523,10 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Yeni ana sayfa (Top War tarzı, koyu):** üstte asılı sancak üzerinde arma + bilgiler (`bg_alliance.webp`), [Duyuru] satırı (lider ▼ ile düzenler), altında büyük afiş butonları: İttifak Yardımı (`ic_alhelp`), Ralliler (`ic_rally`), Üyeler (`ic_almembers`), İttifak Sohbeti (`ic_alchat`). Sol sekmelere "Yardım" eklendi.
 - Test: `online.js` yerine sahte modül (scratchpad `mock_online.js`) ile, gerçek Firebase'e bağlanmadan.
 
+### 5.31b İttifak Dükkanı
+- `data.js → ALLIANCE_SHOP`: market fiyatının yarısı, altınla, yalnızca ittifak üyeleri. 1 dk 5 altın (30/hafta), 5 dk 20 (10/hafta), 24 sa 1.050 (2/hafta), 3 gün 2.800 (1/hafta), 20 bin yiyecek/odun 120, 20 bin taş 200 (her biri 20/hafta). 1 dk/5 dk markette olmadığından "normal fiyat" 1 saat = 400 altın oranından alındı.
+- `state.js`: `buyAlShop`, `alShopLeft`, `S.alShop = { week, bought }`; hafta Pazartesi 00:00 (yerel saat) yenilenir. Arayüz: İttifak › Dükkan sekmesi ve ana sayfada "İttifak Dükkanı" afişi (`ic_alshop.webp`), tek alım ve ×5.
+
 ### 5.32 Yayın ve önbellek
 - GitHub Pages **`claude/selam-naber-ilicoo`** dalından yayınlanıyor (kullanıcının ekran görüntüsüyle doğrulandı). Yayın durumu `mcp__github__actions_list` → "pages build and deployment" çalışmalarından görülebilir.
 - Şu an tüm dallar (`main`, `claude/selam-naber-ilicoo`, `claude/laughing-hamilton-eaghgm`, `claude/forest-parkour-mobile-game-9oxplw`, çalışma dalı) aynı commit'te tutuluyor; yayın için en az `claude/selam-naber-ilicoo`'ya gönder.

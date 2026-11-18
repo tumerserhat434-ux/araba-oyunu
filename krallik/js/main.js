@@ -2,26 +2,26 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611181621';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181621';
-import * as ASSETS from './assets.js?v=2611181621';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181621';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181621';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181621';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181621';
-import { STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181621';
-import * as G from './state.js?v=2611181621';
-import { getAvatar } from './scenes.js?v=2611181621';
-import { initCampaign, openCampaign } from './campui.js?v=2611181621';
-import { campIdx, stageLabel } from './campaign.js?v=2611181621';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181621';
-import { createGrass } from './grass.js?v=2611181621';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181621';
-import { initTutorial, tutEvent } from './tut.js?v=2611181621';
-import { icon } from './icons.js?v=2611181621';
-import { paintCity } from './terrain.js?v=2611181621';
-import { createLife, createVillager, animVillager } from './life.js?v=2611181621';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181621';
+import * as BLD from './buildings.js?v=2611181738';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611181738';
+import * as ASSETS from './assets.js?v=2611181738';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js?v=2611181738';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, requestHelp, giveHelp, deleteHelp, watchHelps } from './online.js?v=2611181738';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611181738';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181738';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611181738';
+import * as G from './state.js?v=2611181738';
+import { getAvatar } from './scenes.js?v=2611181738';
+import { initCampaign, openCampaign } from './campui.js?v=2611181738';
+import { campIdx, stageLabel } from './campaign.js?v=2611181738';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611181738';
+import { createGrass } from './grass.js?v=2611181738';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611181738';
+import { initTutorial, tutEvent } from './tut.js?v=2611181738';
+import { icon } from './icons.js?v=2611181738';
+import { paintCity } from './terrain.js?v=2611181738';
+import { createLife, createVillager, animVillager } from './life.js?v=2611181738';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611181738';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1088,7 +1088,7 @@ async function alRefresh() {
   alRerender();
 }
 function openAlliance() { modalKind = 'alliance'; AL.tab = G.S.alliance ? 'main' : 'find'; lastModalKey = ''; renderModal(); alRefresh(); }
-function alTabs() { return G.S.alliance ? [{ id: 'main', label: 'İttifakım', icon: 'ic_alliance' }, { id: 'help', label: 'Yardım', icon: 'ic_alhelp', dot: helpPending().length > 0 }, { id: 'members', label: 'Üyeler', icon: 'nav_heroes' }, { id: 'rally', label: 'Ralli', icon: 'ic_rally' }, { id: 'chat', label: 'Sohbet', icon: 'nav_quest' }] : [{ id: 'find', label: 'İttifak Ara', icon: 'nav_world' }, { id: 'create', label: 'İttifak Kur', icon: 'ic_alliance' }]; }
+function alTabs() { return G.S.alliance ? [{ id: 'main', label: 'İttifakım', icon: 'ic_alliance' }, { id: 'help', label: 'Yardım', icon: 'ic_alhelp', dot: helpPending().length > 0 }, { id: 'shop', label: 'Dükkan', icon: 'ic_alshop' }, { id: 'members', label: 'Üyeler', icon: 'nav_heroes' }, { id: 'rally', label: 'Ralli', icon: 'ic_rally' }, { id: 'chat', label: 'Sohbet', icon: 'nav_quest' }] : [{ id: 'find', label: 'İttifak Ara', icon: 'nav_world' }, { id: 'create', label: 'İttifak Kur', icon: 'ic_alliance' }]; }
 function allianceUI() {
   const H = (b) => head('İttifak', 'ic_alliance', alTabs(), AL.tab) + b;
   if (!online.ready) return H(`<div class="al-off">🌐 İttifak özellikleri için çevrimiçi olmalısın.<br><small>${online.failed ? 'Sunucuya bağlanılamadı.' : 'Bağlanılıyor…'}</small></div>`);
@@ -1140,10 +1140,12 @@ function allianceUI() {
       <div class="al-send"><input id="alChatIn" maxlength="300" placeholder="Mesaj yaz…"><button class="w-btn gold" data-alsend>Gönder</button></div>`);
   }
   if (AL.tab === 'help') return H(helpTabHtml(a));
+  if (AL.tab === 'shop') return H(alShopHtml());
   // Ana sayfa: üstte arma ve bilgiler, duyuru, altında özellik afişleri
   const pend = helpPending().length, ld = (a.members?.[a.leader]?.name || '-').replace(/</g, '');
   const feats = [
     { tab: 'help', img: 'ic_alhelp', t: 'İttifak Yardımı', s: 'Yükseltmelere yardım et, süreleri kısalt', n: pend, c: '#6a1e30' },
+    { tab: 'shop', img: 'ic_alshop', t: 'İttifak Dükkanı', s: 'Yarı fiyatına hızlandırma ve kaynak', c: '#5a3a12' },
     { tab: 'rally', img: 'ic_rally', t: 'Ralliler', s: 'Devleri birlikte kesin', c: '#6a3a10' },
     { tab: 'members', img: 'ic_almembers', t: 'Üyeler', s: `${mem.length}/${ALLIANCE_MAX} üye • ⚔ ${G.fmt(alPower(a))}`, c: '#173a6e' },
     { tab: 'chat', img: 'ic_alchat', t: 'İttifak Sohbeti', s: 'Müttefiklerinle konuş', c: '#1e4a36' },
@@ -1219,6 +1221,27 @@ async function doHelp(list) {
   HELP.busy = false;
   if (ok) { sfx('coin'); toast(`🤝 ${ok} müttefikine yardım ettin!`); } else if (err) toast(err, true);
   alRerender();
+}
+// =====================================================================
+//  İttifak dükkanı
+// =====================================================================
+function alShopHtml() {
+  const card = (p) => {
+    const left = G.alShopLeft(p.id), bought = G.alShopBought(p.id), r = p.res && Object.keys(p.res)[0];
+    const ic = p.item ? spIcon(p.item, 64) : `<span class="as-res">${resImg(r, 56)}</span>`;
+    const name = p.item ? SPEEDUPS[p.item].name : `${p.res[r].toLocaleString('tr-TR')} ${RES[r]?.name || r}`;
+    const can = left > 0, rich = G.S.res.gold >= p.gold;
+    return `<div class="as-card ${can ? '' : 'out'}"><em class="as-off">−%50</em>${ic}
+      <b class="as-n">${name}</b>
+      <small class="as-lim">Bu hafta: <u>${bought}/${p.limit}</u></small>
+      <div class="as-pr"><s>${resImg('gold', 14)} ${G.fmt(p.base)}</s></div>
+      ${can ? `<div class="as-btns"><button class="w-btn gold" data-alshop="${p.id}" data-n="1" ${rich ? '' : 'disabled'}>${resImg('gold', 16)} ${G.fmt(p.gold)}</button>${left >= 5 ? `<button class="w-btn" data-alshop="${p.id}" data-n="5" ${G.S.res.gold >= p.gold * 5 ? '' : 'disabled'}>×5</button>` : ''}</div>` : '<div class="as-sold">Sınır doldu</div>'}</div>`;
+  };
+  const rs = G.alShopResetIn(), d = Math.floor(rs / 86400), h = Math.floor(rs % 86400 / 3600);
+  return `<div class="hp-head as-head"><img src="${UI('ic_alshop')}" alt=""><div><b>İttifak Dükkanı</b><small>İttifak üyelerine özel: her şey market fiyatının <u class="as-half">yarısına</u>. Alım sınırları her Pazartesi yenilenir.</small></div></div>
+    <div class="as-reset">⏳ Yenilenmeye: ${d ? d + ' gün ' : ''}${h} saat <span>${resImg('gold', 16)} ${G.fmt(G.S.res.gold)}</span></div>
+    <h4 class="rl-h">Hızlandırmalar</h4><div class="as-grid">${ALLIANCE_SHOP.filter((p) => p.item).map(card).join('')}</div>
+    <h4 class="rl-h">Kaynaklar</h4><div class="as-grid">${ALLIANCE_SHOP.filter((p) => p.res).map(card).join('')}</div>`;
 }
 function helpTabHtml(a) {
   const me = online.uid, nowMs = Date.now();
@@ -1483,6 +1506,7 @@ $('modalBox').addEventListener('click', (e) => {
     if (e.target.closest('[data-alann]')) { AL.annOpen = !AL.annOpen; return renderModal(); }
     const hp = e.target.closest('[data-alhelp]'); if (hp) { const d = HELP.list.find((q) => q.id === hp.dataset.alhelp); if (d) doHelp([d]); return; }
     if (e.target.closest('[data-alhelpall]')) return doHelp(helpPending());
+    const sb = e.target.closest('[data-alshop]'); if (sb) { const r = G.buyAlShop(sb.dataset.alshop, +sb.dataset.n || 1); if (!r.ok) { if (r.needGold) return needGold(); return toast(r.why, true); } sfx('coin'); toast(`🛒 Satın alındı${r.n > 1 ? ' ×' + r.n : ''}`); updateTop(); return renderModal(); }
     if (e.target.closest('[data-alsave]')) return alAction(async () => { const d = ($('alEditDesc')?.value || '').trim().slice(0, 140); const r = await editAlliance(AL.doc.id, { desc: d }); if (!r.ok) toast(r.why, true); else { toast('💾 Kaydedildi'); await alRefresh(); } });
     if (e.target.closest('[data-altoggle]')) return alAction(async () => { const r = await editAlliance(AL.doc.id, { open: !AL.doc.open }); if (!r.ok) toast(r.why, true); else await alRefresh(); });
     if (e.target.closest('[data-rnew]')) { closeModal(); setNav('world'); sfx('open'); openWorldMap({ search: 'giant' }); return; }

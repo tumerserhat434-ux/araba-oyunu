@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181621';
+import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611181738';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -157,6 +157,22 @@ export function buyOffer(id) {
 // ---- İttifak ----
 export const ALLIANCE_COST = 300;
 export const myMember = () => ({ name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), hero: S.commander || null, frame: S.frame || 'bronze' });
+// ---- İttifak dükkanı: haftalık sınır (hafta Pazartesi 00:00'da başlar, yerel saat) ----
+export function weekStart(d = new Date()) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+const weekKey = () => { const w = weekStart(); return `${w.getFullYear()}-${w.getMonth()}-${w.getDate()}`; };
+function alShopState() { const k = weekKey(); if (!S.alShop || S.alShop.week !== k) S.alShop = { week: k, bought: {} }; return S.alShop; }
+export const alShopBought = (id) => alShopState().bought[id] || 0;
+export function alShopLeft(id) { const p = ALLIANCE_SHOP.find((q) => q.id === id); return p ? Math.max(0, p.limit - alShopBought(id)) : 0; }
+export const alShopResetIn = () => (weekStart().getTime() + 7 * 864e5 - Date.now()) / 1000;
+export function buyAlShop(id, n = 1) {
+  const p = ALLIANCE_SHOP.find((q) => q.id === id); if (!p) return { ok: false, why: 'Bulunamadı' };
+  if (!S.alliance) return { ok: false, why: 'İttifak dükkanı yalnızca ittifak üyelerine açık' };
+  n = Math.min(n, alShopLeft(id)); if (n <= 0) return { ok: false, why: 'Bu haftalık alım sınırı doldu' };
+  if (S.res.gold < p.gold * n) return { ok: false, why: 'Yetersiz altın', needGold: true };
+  S.res.gold -= p.gold * n; alShopState().bought[id] = alShopBought(id) + n;
+  if (p.item) addItem(p.item, n); else for (const r in p.res) S.res[r] += p.res[r] * n;
+  save(); emit('items'); return { ok: true, n };
+}
 // ---- İttifak yardımı: her yardım yükseltmeyi toplam sürenin %2,5'i kadar kısaltır (en az 1 dk), en fazla 20 yardım ----
 export const HELP_MAX = 20;
 export const helpPer = (dur) => Math.max(60, Math.round(dur * 0.025));

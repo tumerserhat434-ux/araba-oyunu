@@ -1528,3 +1528,24 @@ header#top > .profile { margin-left: 8px; }
 .al2-info b { font-size: 15px; }
 .al2-srv { position: static !important; margin-left: auto; font-family: 'Nunito', sans-serif; font-size: 11px; color: #b8b0d8; }
 .al2-mail { padding: 6px 12px; font-size: 14px; }
+
+/* İttifak dükkanı */
+.as-head { background: linear-gradient(100deg, #5a3a12, #160e26); }
+.as-reset { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; border-radius: 10px; margin-bottom: 4px; font-size: 12px; font-weight: 900; color: #e0d0f0; background: rgba(8,6,24,.75); box-shadow: inset 0 0 0 1px rgba(200,170,90,.3); }
+.as-reset span { display: flex; align-items: center; gap: 4px; color: #ffd860; font-family: 'Lilita One', sans-serif; font-size: 14px; font-weight: 400; }
+.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.as-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px 8px; border-radius: 12px; text-align: center;
+  background: linear-gradient(180deg, #2a1e4a, #120c26); box-shadow: inset 0 0 0 1.5px rgba(200,170,90,.45), 0 3px 8px rgba(0,0,0,.45); }
+.as-card.out { filter: grayscale(.7) brightness(.7); }
+.as-off { position: absolute; top: 6px; left: -4px; font-style: normal; font-family: 'Lilita One', sans-serif; font-size: 12px; padding: 1px 7px; border-radius: 0 8px 8px 0; color: #fff; background: linear-gradient(180deg, #ff4a3a, #b8100a); box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+.as-res { position: relative; display: grid; place-items: center; width: 64px; height: 64px; }
+.as-res img { filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); }
+.as-res b { position: absolute; bottom: -2px; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 14px; text-shadow: 0 1px 0 #000, 0 0 4px #000; }
+.as-n { font-size: 13px; line-height: 1.15; min-height: 30px; display: flex; align-items: center; }
+.as-lim { font-size: 11px; font-weight: 800; color: #b8b0d8; } .as-lim u { text-decoration: none; color: #fff; }
+.as-pr s { display: flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 800; color: #9a8ab8; text-decoration-color: #ff5a4a; text-decoration-thickness: 2px; }
+.as-btns { display: flex; gap: 4px; width: 100%; margin-top: 2px; }
+.as-btns .w-btn { flex: 1; padding: 6px 4px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+.as-btns .w-btn + .w-btn { flex: 0 0 38px; }
+.as-sold { margin-top: 4px; font-size: 12px; font-weight: 900; color: #ff8a7a; padding: 6px; }
+.as-half { text-decoration: none; font-weight: 900; color: #ffd860; }
