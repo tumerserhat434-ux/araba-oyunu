@@ -97,8 +97,11 @@ export async function saveCloud(state, profile) {
 // ---- Dünya: herkese açık oyuncu profilleri (players/{uid}) ----
 export async function topPlayers(n = 50) {
   if (!ready) return [];
-  try { const q = FS.query(FS.collection(db, 'players'), FS.orderBy('power', 'desc'), FS.limit(n)); const s = await FS.getDocs(q); return s.docs.map((d) => ({ uid: d.id, ...d.data() })); } catch (e) { lastErr = e.code || e.message; return []; }
+  try { const q = FS.query(FS.collection(db, 'players'), FS.orderBy('power', 'desc'), FS.limit(n)); const s = await FS.getDocs(q); return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => !ghost(p)); } catch (e) { lastErr = e.code || e.message; return []; }
 }
+// Hiç ilerlememiş hesaplar (varsayılan isim, Belediye Sv.1, zafer yok) listelerde gösterilmez:
+// yeni oyunculara başlangıç koruması olur ve terk edilmiş misafir/test hesapları haritayı kirletmez.
+const ghost = (p) => (p.name || 'Krallığım') === 'Krallığım' && (p.th || 1) <= 1 && !p.wins;
 // Güce yakın rakipler (son 14 günde aktif olanlar)
 export async function rivals(power, n = 6) {
   if (!ready) return [];
@@ -106,7 +109,7 @@ export async function rivals(power, n = 6) {
     const lo = Math.round(power * 0.35), hi = Math.round(power * 2.2);
     const q = FS.query(FS.collection(db, 'players'), FS.where('power', '>=', lo), FS.where('power', '<=', hi), FS.orderBy('power', 'desc'), FS.limit(30));
     const s = await FS.getDocs(q), since = Date.now() - 14 * 86400000;
-    return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => p.uid !== user.uid && (p.updated || 0) > since && !(p.shieldUntil > Date.now())).sort(() => Math.random() - 0.5).slice(0, n);
+    return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => p.uid !== user.uid && !ghost(p) && (p.updated || 0) > since && !(p.shieldUntil > Date.now())).sort(() => Math.random() - 0.5).slice(0, n);
   } catch (e) { lastErr = e.code || e.message; return []; }
 }
 // Saldırı sonucu savunana iletilir (players/{uid}/inbox) — savunan oyunu açınca işlenir
@@ -128,7 +131,7 @@ export async function serverPlayers(server, n = 200) {
   try {
     const q = FS.query(FS.collection(db, 'players'), FS.where('server', '==', server), FS.limit(n));
     const s = await FS.getDocs(q), since = Date.now() - 30 * 86400000;
-    return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => p.uid !== user.uid && (p.updated || 0) > since);
+    return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => p.uid !== user.uid && !ghost(p) && (p.updated || 0) > since);
   } catch (e) { lastErr = e.code || e.message; return []; }
 }
 // Yeni oyuncu için sunucu seç: en yeni sunucu 500 oyuncuya ulaştıysa bir sonrakini aç

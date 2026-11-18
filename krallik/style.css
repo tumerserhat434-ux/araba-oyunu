@@ -720,3 +720,95 @@ nav#nav .dot::after { content: '!'; position: absolute; inset: 0; display: grid;
 .wm-mr.sc { box-shadow: 0 0 0 1.5px #4ad0ff; } .wm-mr.sc b { color: #8ae8ff; }
 .wm-cb .btn { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 .wm-cost { display: block; font-size: 11px; opacity: .9; line-height: 1; margin-top: 1px; }
+/* ---- Ordu kampı ---- */
+.campbar { position: relative; display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 8px; border-radius: 12px; overflow: hidden; background: rgba(0,0,0,.35); border: 1px solid #6ad06a88; font-weight: 900; font-size: 13px; }
+.campbar span, .campbar b { position: relative; z-index: 1; text-shadow: 0 1px 2px #000; } .campbar b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 15px; }
+.campbar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #2a8a3a, #5ad06a); opacity: .55; }
+.campbar.full { border-color: #ff6a5a; } .campbar.full i { background: linear-gradient(90deg, #a82a1a, #ff5a3a); }
+.camp-warn { color: #ffb8a8 !important; font-weight: 800; }
+.camp-list { display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px; }
+.camp-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; background: rgba(255,255,255,.07); font-weight: 800; font-size: 13px; }
+.camp-row span { flex: 1; } .camp-row em { font-style: normal; color: #ffe08a; } .camp-row b { min-width: 70px; text-align: right; font-family: 'Lilita One', sans-serif; font-weight: 400; }
+.camp-row.off { opacity: .55; }
+
+/* =====================================================================
+   Dünya haritası arayüzü v2 — süslü pencere ve metalik butonlar
+   ===================================================================== */
+:root { --wm-gold: linear-gradient(180deg, #fff2b8 0%, #f0c050 22%, #b8761a 52%, #7a4808 70%, #e8b040 100%); }
+/* --- pencere --- */
+.wm-card { position: relative; margin-top: 18px; padding: 26px 12px 12px; border-radius: 20px; color: #fff; border: 3px solid transparent;
+  background: radial-gradient(120% 90% at 50% 0%, #3a2a7a 0%, #1c1648 45%, #0e0b26 100%) padding-box, var(--wm-gold) border-box;
+  box-shadow: 0 0 0 1.5px #1a0e02, 0 0 0 4px rgba(255, 210, 110, .18), 0 14px 30px rgba(0,0,0,.65), inset 0 0 0 1px rgba(255, 225, 150, .3), inset 0 0 40px rgba(110, 80, 255, .18); }
+.wm-card::before, .wm-card::after { content: ''; position: absolute; top: 8px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6c8, #e0a830 45%, #6a4008); box-shadow: 0 1px 2px #000; }
+.wm-card::before { left: 8px; } .wm-card::after { right: 8px; }
+.wm-card.enemy { background: radial-gradient(120% 90% at 50% 0%, #5a1a2a 0%, #24123a 45%, #0e0b26 100%) padding-box, var(--wm-gold) border-box; }
+.wm-card.mine { background: radial-gradient(120% 90% at 50% 0%, #1e4a7a 0%, #16224a 45%, #0b1026 100%) padding-box, var(--wm-gold) border-box; }
+.wm-crown { position: absolute; left: 50%; top: -26px; width: 56px; height: 44px; transform: translateX(-50%); background: url('assets/ui/crown.webp') center/contain no-repeat; filter: drop-shadow(0 3px 4px rgba(0,0,0,.6)); pointer-events: none; }
+.wm-ch { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 2px 10px; }
+.wm-ch b { font-family: 'Cinzel', serif; font-weight: 900; font-size: 19px; line-height: 1.1; letter-spacing: .3px; background: linear-gradient(180deg, #fff6d0, #f3c24a 55%, #c8861c); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 rgba(0,0,0,.7)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wm-badge { flex-shrink: 0; padding: 4px 10px; border-radius: 10px; font-family: 'Lilita One', sans-serif; font-size: 12.5px; color: #ffe9b0; border: 1.5px solid transparent; background: linear-gradient(180deg, #2a1e50, #150f30) padding-box, var(--wm-gold) border-box; box-shadow: 0 2px 4px rgba(0,0,0,.5); }
+.wm-desc { margin: 0 2px 10px; font-size: 13px; font-weight: 800; line-height: 1.45; color: #d8d0ff; }
+/* --- istatistik kutuları --- */
+.wm-cs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.wm-st { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 14px; background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.25)); border: 1px solid rgba(255, 210, 120, .35); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -8px 16px rgba(0,0,0,.25); min-width: 0; }
+.wm-st > i { font-style: normal; font-size: 24px; width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #4a3a9a, #1a1240); box-shadow: 0 0 0 1.5px #d8a840, 0 2px 4px rgba(0,0,0,.6); }
+.wm-st > div { min-width: 0; }
+.wm-st small { display: block; font-size: 11px; font-weight: 800; color: #b8b0e8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wm-st b { display: block; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 17px; color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.5); white-space: nowrap; }
+.wm-diff { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 8px; font-style: normal; font-size: 11.5px; font-weight: 900; }
+.wm-diff.easy { background: #1e6a2e; color: #b8ffb8; } .wm-diff.mid { background: #7a6010; color: #fff0a0; } .wm-diff.hard { background: #8a3a10; color: #ffd0a8; } .wm-diff.vhard { background: #8a1a1a; color: #ffc0b8; }
+.wm-times { display: flex; gap: 6px; margin-top: 2px; font-style: normal; } .wm-times span { padding: 1px 6px; border-radius: 7px; background: rgba(0,0,0,.35); font-size: 11.5px; font-weight: 900; color: #ffe08a; }
+.wm-shield { margin: -2px 0 10px; padding: 6px 10px; border-radius: 10px; background: rgba(40, 110, 220, .3); border: 1px solid #7ac0ff88; font-weight: 900; font-size: 12.5px; }
+/* --- metalik butonlar (köşeleri kesik, altın çerçeve, taş yüzey) --- */
+.wm-cb { display: flex; gap: 8px; } .wm-cb + .wm-cb { margin-top: 8px; }
+.wm-btn { --face: linear-gradient(180deg, #8a8aa0, #4a4a5e 55%, #2e2e40); --glow: rgba(255,255,255,.35);
+  position: relative; flex: 1; min-width: 0; height: 50px; padding: 0 8px; border: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; color: #fff;
+  font-family: 'Lilita One', sans-serif; font-size: 16px; letter-spacing: .3px; text-shadow: 0 2px 0 rgba(0,0,0,.55), 0 0 6px rgba(0,0,0,.4);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px);
+  background: var(--wm-gold); transition: transform .08s, filter .12s; }
+.wm-btn::before { content: ''; position: absolute; inset: 2.5px; z-index: 0; background: var(--face);
+  clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px);
+  box-shadow: inset 0 -5px 0 rgba(0,0,0,.28); }
+.wm-btn::after { content: ''; position: absolute; left: 10%; right: 10%; top: 5px; height: 38%; z-index: 0; border-radius: 0 0 50% 50% / 0 0 100% 100%; background: linear-gradient(180deg, var(--glow), rgba(255,255,255,0)); pointer-events: none; }
+.wm-btn > * { position: relative; z-index: 1; }
+.wm-btn i { font-style: normal; font-size: 18px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.5)); }
+.wm-btn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .wm-btn span small { font-size: 12px; opacity: .85; }
+.wm-btn:active { transform: translateY(2px) scale(.98); filter: brightness(1.1); }
+.wm-btn[disabled] { filter: grayscale(.85) brightness(.6); pointer-events: none; }
+.wm-btn.steel { --face: linear-gradient(180deg, #9a96a8, #5a566c 55%, #36324a); }
+.wm-btn.violet { --face: linear-gradient(180deg, #a07aff, #6a3ad8 55%, #3a1a8a); --glow: rgba(230, 210, 255, .45); }
+.wm-btn.crimson { --face: linear-gradient(180deg, #ff7a5a, #d0301e 55%, #7a120a); --glow: rgba(255, 220, 200, .45); }
+.wm-btn.sapphire { --face: linear-gradient(180deg, #6ab0ff, #2a62d8 55%, #142c80); --glow: rgba(210, 235, 255, .45); }
+.wm-btn.gold { --face: linear-gradient(180deg, #ffe07a, #e0a020 55%, #8a5400); --glow: rgba(255, 250, 220, .6); color: #3a1e00; text-shadow: 0 1px 0 rgba(255,240,190,.6); }
+.wm-btn.wide { flex: 1 1 100%; }
+.wm-cost { display: inline-flex; align-items: center; gap: 2px; margin-left: 2px; padding: 2px 6px; border-radius: 8px; font-style: normal; font-size: 12.5px; background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 1px rgba(255, 220, 140, .45); text-shadow: 0 1px 0 #000; }
+.wm-btn.gold .wm-cost { background: rgba(80, 40, 0, .25); color: #3a1e00; text-shadow: none; }
+/* --- üst çubuk --- */
+.wm-top { gap: 8px; }
+.wm-srv { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 14px 0 6px; border: 2px solid transparent; border-radius: 22px; color: #fff; font-family: 'Lilita One', sans-serif; font-size: 15px; text-shadow: 0 2px 0 rgba(0,0,0,.5);
+  background: linear-gradient(180deg, #3a62e0, #1a2e8a) padding-box, var(--wm-gold) border-box; box-shadow: 0 4px 10px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.35); }
+.wm-srv i { font-style: normal; font-size: 22px; } .wm-srv em { font-style: normal; color: #ffe08a; } .wm-srv small { font-size: 11px; opacity: .8; }
+.wm-xy { flex: 1; display: flex; justify-content: center; }
+.wm-xy > * { display: inline-flex; }
+.wm-xy { align-items: center; gap: 4px; max-width: 170px; margin: 0 auto; height: 36px; padding: 0 12px; border-radius: 18px; border: 2px solid transparent; background: linear-gradient(180deg, #1e1a3e, #0c0a20) padding-box, var(--wm-gold) border-box; box-shadow: 0 4px 10px rgba(0,0,0,.5); }
+.wm-xy i { font-style: normal; font-size: 16px; } .wm-xy b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 14px; color: #fff; }
+.wm-x { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; border: 3px solid transparent; color: #fff; font-size: 18px; font-weight: 900; text-shadow: 0 2px 0 rgba(0,0,0,.5); cursor: pointer;
+  background: radial-gradient(circle at 40% 30%, #ff7a5a, #c8281a 55%, #6a0e06) padding-box, var(--wm-gold) border-box; box-shadow: 0 4px 10px rgba(0,0,0,.55), inset 0 2px 0 rgba(255,255,255,.35); }
+/* --- yan küreler --- */
+.wm-side { gap: 12px; }
+.wm-orb { position: relative; width: 58px !important; height: 58px !important; padding: 0; border: 3px solid transparent !important; border-radius: 50%; cursor: pointer; display: grid; place-items: center;
+  background: radial-gradient(circle at 40% 28%, #7a9aff, #2a42c8 50%, #101a60) padding-box, var(--wm-gold) border-box !important; box-shadow: 0 5px 12px rgba(0,0,0,.6), inset 0 3px 0 rgba(255,255,255,.35), inset 0 -6px 10px rgba(0,0,0,.35) !important; }
+.wm-orb.ruby { background: radial-gradient(circle at 40% 28%, #c87aff, #6a2ad0 50%, #2a0a6a) padding-box, var(--wm-gold) border-box !important; }
+.wm-orb i { font-style: normal; font-size: 26px; filter: drop-shadow(0 2px 1px rgba(0,0,0,.5)); margin-top: -6px; }
+.wm-orb span { position: absolute; bottom: -9px; left: 50%; transform: translateX(-50%); padding: 1px 7px; border-radius: 7px; font-family: 'Lilita One', sans-serif; font-size: 11px; color: #ffe9b0; white-space: nowrap; background: #140e30; box-shadow: 0 0 0 1.5px #d8a840; }
+.wm-orb:active { transform: scale(.94); }
+/* --- sefer ve gözetleme satırları --- */
+.wm-mr { gap: 8px; padding: 6px 8px 6px 6px; border-radius: 14px; border: 2px solid transparent; background: linear-gradient(180deg, #1e2a66, #0e1436) padding-box, var(--wm-gold) border-box; box-shadow: 0 3px 8px rgba(0,0,0,.5); }
+.wm-mr > i { font-style: normal; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: radial-gradient(circle at 40% 30%, #ff8a5a, #a8281a); font-size: 15px; box-shadow: 0 0 0 1.5px #ffd060; }
+.wm-mr.sc > i { background: radial-gradient(circle at 40% 30%, #6ae0ff, #1a6ab0); }
+.wm-mr button { border-radius: 10px; background: linear-gradient(180deg, #8a5aff, #4a22b0); box-shadow: 0 0 0 1.5px #d8a840; font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 12px; }
+.wm-cb .wm-btn.steel { flex: .8; } .wm-cb .wm-btn.violet { flex: 1.35; }
+.wm-btn { gap: 4px; padding: 0 6px; }
+.wm-btn .wm-cost { white-space: nowrap; font-size: 11.5px; padding: 2px 5px; }
+.wm-btn.violet { flex-wrap: wrap; align-content: center; row-gap: 0; line-height: 1.05; }
+.wm-btn.violet .wm-cost { flex-basis: 100%; justify-content: center; margin: 1px 0 0; padding: 0; background: none; box-shadow: none; font-size: 11.5px; color: #ffe9a0; }

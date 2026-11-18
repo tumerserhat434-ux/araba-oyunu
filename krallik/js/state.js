@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
+import { campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -22,7 +22,7 @@ function freshState() {
   const t = now();
   const buildings = {};
   for (const p of PLOTS) buildings[p.id] = { level: 0, busyUntil: 0, busyStart: 0, collectedAt: t };
-  for (const id of ['townhall', 'barracks', 'farm1', 'lumber1', 'heroes', 'summon']) buildings[id].level = 1;
+  for (const id of ['townhall', 'barracks', 'farm1', 'lumber1', 'heroes', 'summon', 'camp1']) buildings[id].level = 1;
   return {
     v: 1, created: t, lastSeen: t,
     name: 'Krallığım',
@@ -60,6 +60,8 @@ export function load() {
   if (S.mapX == null) { S.mapX = Math.round(rand(220, 780)); S.mapY = Math.round(rand(220, 780)); }
   S.marches ||= [];
   S.scouts ||= []; S.scoutReports ||= [];
+  // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
+  if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
   S.tankTraining ??= null;
   dailyReset();
@@ -163,6 +165,7 @@ export function canUpgrade(id) {
   if (to > maxLevel(key)) return { ok: false, why: 'En yüksek seviye' };
   if (key === 'townhall') for (const [rk, rl] of thRequirements(to)) if (maxLevelOf(rk) < rl) return { ok: false, why: `Önce ${BUILDINGS[rk].name} Sv.${rl} olmalı`, req: rk };
   if (key !== 'townhall' && to > thLevel()) return { ok: false, why: `Belediye Binası Sv.${to} gerekli` };
+  if (b.level === 0 && p.reqTH > thLevel()) return { ok: false, why: `Belediye Binası Sv.${p.reqTH} gerekli` };
   if (key !== 'townhall' && b.level === 0 && BUILDINGS[key].reqTH > thLevel()) return { ok: false, why: `Belediye Binası Sv.${BUILDINGS[key].reqTH} gerekli` };
   if (b.level === 0 && BUILDINGS[key].reqB) for (const rk in BUILDINGS[key].reqB) if (maxLevelOf(rk) < BUILDINGS[key].reqB[rk]) return { ok: false, why: `${BUILDINGS[rk].name} Sv.${BUILDINGS[key].reqB[rk]} gerekli` };
   if (busyBuilders() >= builders()) return { ok: false, why: 'Tüm inşaatçılar meşgul' };
@@ -209,6 +212,15 @@ export function pending(id) {
 //  Askerler ve hastane
 // ---------------------------------------------------------------------
 export const barracksLevel = () => maxLevelOf('barracks');
+// ---- Ordu kampı kapasitesi ----
+// şehirdeki + seferdeki + eğitimdeki birlikler (yaralılar hastanede, sayılmaz)
+export function armyTotal() {
+  let n = totalTroops(S.troops) + totalTroops(troopsAway());
+  if (S.training) n += S.training.n; if (S.tankTraining) n += S.tankTraining.n;
+  return n;
+}
+export const armyCap = () => PLOTS.filter((p) => p.key === 'camp').reduce((s, p) => s + campCap(S.buildings[p.id]?.level || 0), 0);
+export const campRoom = () => Math.max(0, armyCap() - armyTotal());
 export const trainBatchMax = () => 40 + barracksLevel() * 30;
 export const trainSpeed = () => (1 + barracksLevel() * 0.12) * (1 + rb('drill'));
 export const hospitalCap = () => Math.round(maxLevelOf('hospital') * 180 * (1 + rb('medic')));
@@ -228,7 +240,8 @@ export const rallyLoadBonus = () => rallyLevel() * 0.08;
 export function startTankTraining(n) {
   if (S.tankTraining) return { ok: false, why: 'Atölye zaten üretimde' };
   if (!troopUnlocked('tank')) return { ok: false, why: 'Önce Tank Atölyesi inşa et' };
-  n = Math.max(1, Math.min(n, tankBatchMax()));
+  if (campRoom() <= 0) return { ok: false, why: '🏕️ Ordu kampları dolu! Kampları yükselt.' };
+  n = Math.max(1, Math.min(n, tankBatchMax(), campRoom()));
   const cost = trainCost('tank', n);
   if (!canAfford(cost)) return { ok: false, why: 'Yetersiz kaynak' };
   pay(cost);
@@ -249,7 +262,8 @@ export function startTraining(type, n) {
   if (S.training) return { ok: false, why: 'Kışla zaten eğitimde' };
   if (TROOPS[type].building) return { ok: false, why: 'Bu birlik başka binada üretilir' };
   if (!troopUnlocked(type)) return { ok: false, why: `Kışla Sv.${TROOPS[type].reqBarracks} gerekli` };
-  n = Math.min(n, trainBatchMax());
+  n = Math.min(n, trainBatchMax(), campRoom());
+  if (n <= 0) return { ok: false, why: '🏕️ Ordu kampları dolu! Kampları yükselt.' };
   const cost = trainCost(type, n);
   if (!canAfford(cost)) return { ok: false, why: 'Yetersiz kaynak' };
   pay(cost);

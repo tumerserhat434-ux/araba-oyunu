@@ -9,7 +9,7 @@ import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldma
 import { serverPlayers, assignServer } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
-import { RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
+import { campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { getAvatar } from './scenes.js';
 import { initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js';
@@ -519,7 +519,7 @@ function updateLabels(force) {
     let html = '';
     if (b.busyUntil > t) html += `<div class="tm">🔨 ${G.fmtTime(b.busyUntil - t)}</div>`;
     else if (b.level === 0) {
-      const req = def.reqTH, reqOk = !def.reqB || Object.entries(def.reqB).every(([rk, rl]) => G.maxLevelOf(rk) >= rl);
+      const req = Math.max(def.reqTH, p.reqTH || 0), reqOk = !def.reqB || Object.entries(def.reqB).every(([rk, rl]) => G.maxLevelOf(rk) >= rl);
       html += G.thLevel() >= req && reqOk ? `<div class="build">＋ ${def.name}</div>` : `<div class="lock">🔒 ${def.name}</div>`;
     } else {
       if (id === 'barracks' && G.S.training) html += `<div class="tm">${TROOPS[G.S.training.type].icon} ${G.fmtTime(G.S.training.end - t)}</div>`;
@@ -616,6 +616,7 @@ function renderSheet() {
     if (key === 'summon') body += `<div class="stats">${stat('5★ şansı', '%0,6')}${stat('5★ garanti', `${G.S.pity5} / ${SUMMON.pity5}`)}</div><button class="btn purple" style="width:100%;margin-bottom:10px" data-go="summon">🔮 Çağırma ekranını aç</button>`;
     if (key === 'barracks') body += barracksUI();
     if (key === 'tankyard') body += tankyardUI();
+    if (key === 'camp') body += campUI(L);
     if (key === 'forge') body += `<div class="stats">${stat('Birlik savunması', '+' + Math.round(G.forgeDefBonus() * 100) + '%', L < maxLevel(key) ? '+' + Math.round((L + 1) * 2.5) + '%' : '')}${stat('Tank üretim hızı', '+' + L * 8 + '%', L < maxLevel(key) ? '+' + (L + 1) * 8 + '%' : '')}</div>`;
     if (key === 'rally') body += `<div class="stats">${stat('Saldırı gücü', '+' + L * 3 + '%', L < maxLevel(key) ? '+' + (L + 1) * 3 + '%' : '')}${stat('Ganimet kapasitesi', '+' + L * 8 + '%', L < maxLevel(key) ? '+' + (L + 1) * 8 + '%' : '')}${stat('Hazır ordu', G.fmt(G.totalTroops(G.S.troops)))}${stat('Tanklar', G.fmt(G.S.troops.tank || 0))}</div><button class="btn red" style="width:100%;margin-bottom:10px" data-go="world">⚔ Sefere çık</button>`;
     if (key === 'academy') body += academyUI();
@@ -637,6 +638,20 @@ function renderSheet() {
 }
 let soon = 0;
 function renderSheetSoon() { clearTimeout(soon); soon = setTimeout(renderSheet, 30); }
+// Ordu kampları doluluk çubuğu (kışla, tank atölyesi ve kamp panelinde)
+function campBar() {
+  const have = G.armyTotal(), cap = G.armyCap(), pct = Math.min(100, have / Math.max(1, cap) * 100), full = have >= cap;
+  return `<div class="campbar ${full ? 'full' : ''}"><span>🏕️ Ordu kampları</span><b>${G.fmt(have)} / ${G.fmt(cap)}</b><i style="width:${pct.toFixed(1)}%"></i></div>${full ? '<p class="desc camp-warn">Kamplar dolu! Yeni birlik eğitmek için Ordu Kampı yükselt ya da yeni kamp aç.</p>' : ''}`;
+}
+function campUI(L) {
+  const stat = (k, v, up) => `<div class="stat"><small>${k}</small><b>${v}${up ? ` <span class="up">→ ${up}</span>` : ''}</b></div>`;
+  const camps = PLOTS.filter((p) => p.key === 'camp');
+  const rows = camps.map((p, i) => { const l = G.lvl(p.id); return `<div class="camp-row ${l ? '' : 'off'}"><span>🏕️ Kamp ${i + 1}</span><em>${l ? 'Sv.' + l : '🔒 Belediye Sv.' + p.reqTH}</em><b>${l ? G.fmt(campCap(l)) : '—'}</b></div>`; }).join('');
+  const nx = L < maxLevel('camp') ? campCap(L + 1) : 0;
+  const away = G.totalTroops(G.troopsAway()), train = (G.S.training?.n || 0) + (G.S.tankTraining?.n || 0);
+  return campBar() + `<div class="stats">${stat('Bu kampın kapasitesi', G.fmt(campCap(L)), nx ? G.fmt(nx) : '')}${stat('Şehirdeki birlikler', G.fmt(G.totalTroops(G.S.troops)))}${stat('Seferdeki', G.fmt(away))}${stat('Eğitimdeki', G.fmt(train))}</div>
+    <div class="camp-list">${rows}</div>`;
+}
 function barracksUI() {
   const t = Date.now() / 1000;
   if (G.S.training) {
@@ -645,7 +660,7 @@ function barracksUI() {
       <div class="progress green"><span style="width:${pct}%"></span><em>${G.fmtTime(tr.end - t)}</em></div>
       <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedtrain">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(tr.end - t)}</button>`;
   }
-  const max = G.trainBatchMax();
+  const room = G.campRoom(), max = Math.max(1, Math.min(G.trainBatchMax(), room));
   trainQty = clamp(trainQty, 1, max);
   let cards = '';
   if (TROOPS[trainSel].building) trainSel = 'infantry';
@@ -655,12 +670,12 @@ function barracksUI() {
     cards += `<div class="troop ${k === trainSel ? 'sel' : ''} ${un ? '' : 'locked'}" data-troop="${k}"><span class="ti">${d.icon}</span>${d.short}<small>${un ? G.fmt(G.S.troops[k]) : '🔒 Kışla ' + d.reqBarracks}</small></div>`;
   }
   const d = TROOPS[trainSel], cost = G.trainCost(trainSel, trainQty), time = d.time * trainQty / G.trainSpeed();
-  return `<div class="troops">${cards}</div>
+  return campBar() + `<div class="troops">${cards}</div>
     <p class="desc" style="margin-bottom:6px"><b>${d.name}</b> — ${d.desc}<br><small>⚔ ${d.atk} &nbsp; 🛡 ${d.def} &nbsp; ❤ ${d.hp} &nbsp; 🎒 ${d.load}</small></p>
     <div class="qty"><span>Miktar</span><span>${trainQty} / ${max}</span></div>
     <input id="qtySlider" class="slider" type="range" min="1" max="${max}" value="${trainQty}">
     <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
-    <button class="btn red" style="width:100%;margin-bottom:10px" data-act="train" ${G.troopUnlocked(trainSel) && G.canAfford(cost) ? '' : 'disabled'}>⚔ Eğit</button>`;
+    <button class="btn red" style="width:100%;margin-bottom:10px" data-act="train" ${G.troopUnlocked(trainSel) && G.canAfford(cost) && room > 0 ? '' : 'disabled'}>⚔ Eğit</button>`;
 }
 let tankQty = 2;
 function tankyardUI() {
@@ -672,13 +687,13 @@ function tankyardUI() {
       <div class="progress green"><span style="width:${pct}%"></span><em>${G.fmtTime(tr.end - t)}</em></div>
       <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedtank">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(tr.end - t)}</button>`;
   }
-  const max = G.tankBatchMax(); tankQty = clamp(tankQty, 1, max);
+  const room = G.campRoom(), max = Math.max(1, Math.min(G.tankBatchMax(), room)); tankQty = clamp(tankQty, 1, max); s += campBar();
   const cost = G.trainCost('tank', tankQty), time = d.time * tankQty / G.tankSpeed();
   return s + `<div class="tankcard"><img src="assets/ui/b_tank.webp" alt=""><div><b>${d.name}</b><br>${d.desc}<br><small>⚔ ${d.atk} &nbsp; 🛡 ${d.def} &nbsp; ❤ ${d.hp} &nbsp; 🎒 ${d.load}</small></div></div>
     <div class="qty"><span>Miktar</span><span>${tankQty} / ${max}</span></div>
     <input id="tankSlider" class="slider" type="range" min="1" max="${max}" value="${tankQty}">
     <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
-    <button class="btn red" style="width:100%;margin-bottom:10px" data-act="traintank" ${G.canAfford(cost) ? '' : 'disabled'}>⚙️ Tank üret</button>`;
+    <button class="btn red" style="width:100%;margin-bottom:10px" data-act="traintank" ${G.canAfford(cost) && room > 0 ? '' : 'disabled'}>⚙️ Tank üret</button>`;
 }
 function academyUI() {
   const t = Date.now() / 1000, cur = G.S.research.cur;

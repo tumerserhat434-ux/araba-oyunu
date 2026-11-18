@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as A from './assets.js';
 
-export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8, tankyard: 9, rally: 9, forge: 7 };
+export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8, tankyard: 9, rally: 9, forge: 7, camp: 8.5 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
@@ -852,12 +852,13 @@ const KKMAP = {
   tankyard: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15] },
   rally: { m: () => KB('barracks') },
   forge: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15], glow: 0xff8a30 },
+  camp: { m: () => 'tent', fill: 0.5 },
 };
 const PROP_S = 4.2;
 const HF_SMOKE = { potion: [0.18, 0.9, -0.1], farm: [-0.15, 0.75, -0.05], lumber: [-0.3, 0.85, -0.15], hospital: [-0.25, 0.8, -0.2] };
 // gelişmiş modele geçiş seviyeleri (en yüksek seviyenin ~%40'ı)
-const TIER2 = { barracks: 12, archery: 12, farm: 12, lumber: 12, quarry: 12, warehouse: 12, hospital: 10, academy: 10, forge: 10, rally: 10, tankyard: 10, potion: 8, heroes: 4, summon: 4 };
-const HF_FILL = { townhall: 0.9, archery: 0.78, summon: 0.82, farm: 0.92, quarry: 0.92 };
+const TIER2 = { barracks: 12, archery: 12, farm: 12, lumber: 12, quarry: 12, warehouse: 12, hospital: 10, academy: 10, forge: 10, rally: 10, tankyard: 10, potion: 8, heroes: 4, summon: 4, camp: 12 };
+const HF_FILL = { camp: 0.95, townhall: 0.9, archery: 0.78, summon: 0.82, farm: 0.92, quarry: 0.92 };
 function prop(name, x, z, ry = 0, s = 1, parent) { const m = A.model(name); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(PROP_S * s); parent.add(m); return m; }
 function kkBuilding(key, L) {
   const def = KKMAP[key]; if (!def || !(A.ready.models || A.hasHF(key))) return null;
@@ -1072,6 +1073,18 @@ function hfAnimate(k, key, L, S, fp) {
     k.anims.push((t) => { fg.material.opacity = 0.4 + Math.sin(t * 7) * 0.1 + Math.sin(t * 17) * 0.05; });
     particles(k, at(0.0, 0.18, 0.5), 0xffd060, 8, { spread: S.x * 0.08, rise: S.y * 0.25, life: 0.8, size: S.y * 0.02 });
     particles(k, at(0.28, 1.0, -0.2), 0x8a8a90, 6, { spread: S.x * 0.03, rise: S.y * 0.6, life: 3, size: S.y * 0.12, grow: 1.6, add: false, op: 0.5 });
+  }
+  if (key === 'camp') {
+    // kamp ateşi ve ateş başında bekleyen askerler (seviye arttıkça çoğalır)
+    flames(k, at(0, 0.05, 0.1), S.y * 0.16);
+    const cf = glowSprite(0xff9a40, S.y * 0.55, 0.45); cf.position.copy(at(0, 0.1, 0.1)); k.group.add(cf);
+    k.anims.push((t) => { cf.material.opacity = 0.35 + Math.sin(t * 8) * 0.08 + Math.sin(t * 19) * 0.04; });
+    const spots = [[-0.17, 0.24, 0.5, 'infantry'], [0.18, 0.22, -0.5, 'spearman'], [-0.05, 0.3, 0.1, 'archer'], [0.08, -0.08, 3, 'infantry']];
+    for (let i = 0; i < Math.min(4, 2 + Math.floor(L / 4)); i++) {
+      const [x, z, ry, ty] = spots[i], u = createSoldierRef && createSoldierRef(ty, 'blue'); if (!u) break;
+      u.scale.setScalar(Math.min(0.62, S.y * 0.3 / 1.85)); u.position.copy(at(x, 0.03, z)); u.rotation.y = Math.PI + ry; k.group.add(u);
+      const ph = Math.random() * 3; k.anims.push((t, dt) => animRef(u, 'idle', t + ph, dt));
+    }
   }
   if (key === 'rally') {
     flames(k, at(0, 0.06, 0.12), S.y * 0.22);

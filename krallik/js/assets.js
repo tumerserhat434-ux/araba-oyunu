@@ -18,7 +18,7 @@ export const MODEL_LIST = [
 ];
 export const CHAR_LIST = ['Knight', 'Barbarian', 'Rogue', 'Rogue_Hooded', 'Mage'];
 // Higgsfield ile özel tasarlanan binalar (assets/hf/<anahtar>.glb)
-export const HF_LIST = ['townhall', 'barracks', 'archery', 'hospital', 'potion', 'heroes', 'summon', 'farm', 'lumber', 'quarry', 'warehouse', 'academy', 'tankyard', 'rally', 'forge'];
+export const HF_LIST = ['townhall', 'barracks', 'archery', 'hospital', 'potion', 'heroes', 'summon', 'farm', 'lumber', 'quarry', 'warehouse', 'academy', 'tankyard', 'rally', 'forge', 'camp'];
 const hf = new Map(), hfSizes = new Map();
 export const PART_LIST = ['p_sails', 'p_wheel', 'p_saw', 'p_fountain', 'p_crystal', 'p_armillary', 'p_cart', 'u_tank', 'p_portal'];
 const CENTERED = new Set(['p_sails', 'p_wheel', 'p_saw', 'p_crystal']);

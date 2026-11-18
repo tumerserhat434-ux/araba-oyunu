@@ -416,32 +416,36 @@ export function openWorldMap(opts = {}) {
   const render = () => {
     const c = sel;
     let card = '';
+    // ortak parçalar: süslü pencere, istatistik kutuları, metalik butonlar
+    const B = (cls, id, icon, label, extra = '', dis = false) => `<button class="wm-btn ${cls}" id="${id}" ${dis ? 'disabled' : ''}><i>${icon}</i><span>${label}</span>${extra}</button>`;
+    const cost = (ic, v) => `<em class="wm-cost">${ic}${v}</em>`;
+    const win = (title, badge, body, kind = '') => `<div class="wm-card ${kind}"><div class="wm-crown"></div><div class="wm-ch"><b>${title}</b>${badge ? `<span class="wm-badge">${badge}</span>` : ''}</div>${body}</div>`;
+    const stat = (ic, label, val, sub = '') => `<div class="wm-st"><i>${ic}</i><div><small>${label}</small><b>${val}</b>${sub}</div></div>`;
     if (c && c.throne) {
-      card = `<div class="wm-card"><div class="wm-ch"><b>👑 Demir Taht</b><span>Sunucu #${server}</span></div>
-        <p class="desc" style="margin:0 0 8px">Krallıkların ortasındaki kadim kale. Şu an <b>tarafsız</b>. Çevresine şehir kurulamaz.</p>
-        <div class="wm-cs"><div><small>Durum</small><b>Tarafsız</b></div><div><small>Konum</small><b>X:${TH.x} Y:${TH.y}</b></div></div>
-        <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button></div></div>`;
+      card = win('👑 Demir Taht', `Sunucu #${server}`, `<p class="wm-desc">Krallıkların ortasındaki kadim kale. Şu an <b>tarafsız</b>. Çevresine şehir kurulamaz.</p>
+        <div class="wm-cs">${stat('🏳️', 'Durum', 'Tarafsız')}${stat('📍', 'Konum', `X:${TH.x} Y:${TH.y}`)}</div>
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}</div>`, 'throne');
     } else if (c && !c.me && !c.ground) {
       const scouting = G.S.scouts.some((q) => q.target === c.id), last = G.lastScout(c.id), st = G.scoutTime(c);
       const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, ratio = c.power / Math.max(1, G.cityPower());
-      const diff = ratio < 0.6 ? ['Kolay', '#7dff9a'] : ratio < 1 ? ['Orta', '#ffe68a'] : ratio < 1.5 ? ['Zor', '#ffaa6a'] : ['Çok zor', '#ff6a5a'];
-      card = `<div class="wm-card"><div class="wm-ch"><b>${c.real ? '🌐 ' : ''}${c.name}</b><span>Belediye Sv.${c.th || 1}</span></div>
-        <div class="wm-cs"><div><small>${c.real ? 'Gerçek oyuncu' : c.lord}</small><b>⚔ ${G.fmt(c.power)}</b><em style="color:${diff[1]}">${diff[0]}</em></div><div><small>Konum</small><b>X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}</b><em>⏱ ${fmtT(t)} • 🚁 ${fmtT(st)}</em></div></div>
-        ${sh ? `<div class="why">🛡️ Kalkan aktif: ${G.fmtTime(c.shieldUntil - Date.now() / 1000)}</div>` : ''}
-        <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button><button class="btn blue" id="wmScout" ${sh || scouting ? 'disabled' : ''}>${scouting ? '🚁 Yolda…' : `👁 Gözetle<small class="wm-cost">🌾${G.SCOUT_COST.food}</small>`}</button><button class="btn red" id="wmAtk" ${sh ? 'disabled' : ''}>⚔ Saldır</button></div>
-        ${last ? `<button class="btn gold wm-tp" id="wmLastRep">📜 Son gözetleme raporu (${agoS(last.t)})</button>` : ''}
-        ${home ? `<button class="btn blue wm-tp" id="wmTpNear">📍 Yanına ışınlan • 🪙 ${G.TELEPORT_COST}</button>` : ''}</div>`;
+      const diff = ratio < 0.6 ? ['Kolay', 'easy'] : ratio < 1 ? ['Orta', 'mid'] : ratio < 1.5 ? ['Zor', 'hard'] : ['Çok zor', 'vhard'];
+      card = win(`${c.real ? '🌐 ' : '🏰 '}${c.name}`, `🏛️ Belediye Sv.${c.th || 1}`, `
+        <div class="wm-cs">${stat('⚔️', c.real ? 'Gerçek oyuncu' : c.lord, G.fmt(c.power), `<em class="wm-diff ${diff[1]}">${diff[0]}</em>`)}${stat('📍', 'Konum', `X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}`, `<em class="wm-times"><span>⏱ ${fmtT(t)}</span><span>🚁 ${fmtT(st)}</span></em>`)}</div>
+        ${sh ? `<div class="wm-shield">🛡️ Kalkan aktif: ${G.fmtTime(c.shieldUntil - Date.now() / 1000)}</div>` : ''}
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('violet', 'wmScout', scouting ? '🚁' : '👁', scouting ? 'Yolda…' : 'Gözetle', scouting ? '' : cost('🌾', G.SCOUT_COST.food), sh || scouting)}${B('crimson', 'wmAtk', '⚔', 'Saldır', '', sh)}</div>
+        ${last ? `<div class="wm-cb">${B('gold wide', 'wmLastRep', '📜', `Son gözetleme raporu <small>(${agoS(last.t)})</small>`)}</div>` : ''}
+        ${home ? `<div class="wm-cb">${B('sapphire wide', 'wmTpNear', '📍', 'Yanına Işınlan', cost('🪙', G.TELEPORT_COST))}</div>` : ''}`, 'enemy');
     } else if (c && c.ground) {
       const okSpot = G.spotFree(c.mapX, c.mapY);
-      card = `<div class="wm-card"><div class="wm-ch"><b>📍 Boş alan</b><span>X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}</span></div>
-        <p class="desc" style="margin:0 0 8px">${okSpot ? 'Şehrini buraya ışınlayabilirsin. Komşularına yakın ol, ittifak kur ya da saldırıya hazırlan!' : 'Burası başka bir şehre çok yakın, ışınlanamazsın.'}</p>
-        <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button><button class="btn blue" id="wmTpHere" ${okSpot ? '' : 'disabled'}>📍 Buraya ışınlan • 🪙 ${G.TELEPORT_COST}</button></div></div>`;
-    } else if (c && c.me) card = `<div class="wm-card"><div class="wm-ch"><b>🏰 ${G.S.name}</b><span>Belediye Sv.${G.thLevel()}</span></div><div class="wm-cs"><div><small>Güç</small><b>⚔ ${G.fmt(G.cityPower())}</b></div><div><small>Konum</small><b>X:${G.S.mapX} Y:${G.S.mapY}</b></div></div><div class="wm-cb"><button class="btn gold" id="wmCity">🏰 Şehre gir</button></div></div>`;
-    const marches = G.S.marches.map((m) => `<div class="wm-mr" data-mid="${m.id}"><span>${m.phase === 'go' ? '⚔' : '↩'} ${m.tname}</span><b data-mt="${m.id}">${fmtT(m.arrive - Date.now() / 1000)}</b>${m.phase === 'go' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
-    const scoutsRows = G.S.scouts.map((q) => `<div class="wm-mr sc"><span>🚁 ${q.phase === 'go' ? 'Gözetleme' : 'Dönüyor'} • ${q.tname}</span><b data-st="${q.id}">${fmtT(q.arrive - Date.now() / 1000)}</b></div>`).join('');
-    ov().innerHTML = `<div class="wm-vig"></div><div class="wm-top"><button class="wm-srv" id="wmSrv">🌐 Sunucu #${server}${home ? '' : ' (yabancı)'} ⇄</button><span class="wm-xy" id="wmXY"></span><button class="x" id="wmX">✕</button></div>
+      card = win('📍 Boş alan', `X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}`, `<p class="wm-desc">${okSpot ? 'Şehrini buraya ışınlayabilirsin. Komşularına yakın ol, ittifak kur ya da saldırıya hazırlan!' : 'Burası başka bir şehre çok yakın, ışınlanamazsın.'}</p>
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('sapphire', 'wmTpHere', '📍', 'Buraya Işınlan', cost('🪙', G.TELEPORT_COST), !okSpot)}</div>`);
+    } else if (c && c.me) card = win(`🏰 ${G.S.name}`, `🏛️ Belediye Sv.${G.thLevel()}`, `<div class="wm-cs">${stat('⚔️', 'Güç', G.fmt(G.cityPower()))}${stat('📍', 'Konum', `X:${G.S.mapX} Y:${G.S.mapY}`)}</div>
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('gold', 'wmCity', '🏰', 'Şehre Gir')}</div>`, 'mine');
+    const marches = G.S.marches.map((m) => `<div class="wm-mr" data-mid="${m.id}"><i>${m.phase === 'go' ? '⚔' : '↩'}</i><span>${m.tname}</span><b data-mt="${m.id}">${fmtT(m.arrive - Date.now() / 1000)}</b>${m.phase === 'go' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
+    const scoutsRows = G.S.scouts.map((q) => `<div class="wm-mr sc"><i>🚁</i><span>${q.phase === 'go' ? 'Gözetleme' : 'Dönüyor'} • ${q.tname}</span><b data-st="${q.id}">${fmtT(q.arrive - Date.now() / 1000)}</b></div>`).join('');
+    ov().innerHTML = `<div class="wm-vig"></div><div class="wm-top"><button class="wm-srv" id="wmSrv"><i>🌐</i><span>Sunucu #${server}${home ? '' : ' <small>(yabancı)</small>'}</span><em>⇄</em></button><span class="wm-xy"><i>📍</i><b id="wmXY">X:${Math.round(cam.tx)} Y:${Math.round(cam.tz)}</b></span><button class="wm-x" id="wmX">✕</button></div>
       ${home ? '' : '<div class="wm-war">⚔ Krallıklar arası savaş: bu sunucudaki krallıklara saldırabilirsin (yürüyüş uzun sürer).</div>'}
-      <div class="wm-side"><button id="wmHome" title="Şehrim">🏰</button><button id="wmThrone" title="Demir Taht">👑</button></div>
+      <div class="wm-side"><button id="wmHome" class="wm-orb sapphire"><i>🏰</i><span>Şehrim</span></button><button id="wmThrone" class="wm-orb ruby"><i>👑</i><span>Taht</span></button></div>
       <div class="wm-bottom">${marches || scoutsRows ? `<div class="wm-ms">${scoutsRows}${marches}</div>` : ''}${card}</div>`;
     $('wmX').onclick = closeWorld;
     $('wmHome').onclick = () => { const me = list.find((q) => q.me); if (me) flyTo(me.mapX, me.mapY, 230); else closeWorld(); };

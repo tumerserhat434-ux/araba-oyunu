@@ -25,12 +25,13 @@ export const BUILDINGS = {
   forge: { name: 'Demirhane', icon: '⚒️', img: 'b_forge', desc: 'Silah ve zırh döver. Her seviye tüm birliklerin savunmasını artırır ve tank üretimini hızlandırır.', base: { food: 160, wood: 220, stone: 260 }, time: 11, reqTH: 2, max: 25 },
   rally: { name: 'Toplanma Kampı', icon: '⛺', img: 'b_rally', desc: 'Ordular seferden önce burada toplanır. Her seviye saldırı gücünü ve ganimet taşıma kapasitesini artırır.', base: { food: 260, wood: 240, stone: 120 }, time: 11, reqTH: 2, max: 25 },
   tankyard: { name: 'Tank Atölyesi', icon: '⚙️', img: 'b_tankyard', desc: 'Demir tanklar burada üretilir. Seviye arttıkça bir seferde daha çok tank üretilir ve üretim hızlanır.', base: { food: 400, wood: 480, stone: 520 }, time: 16, reqTH: 3, reqB: { forge: 1 }, max: 25 },
+  camp: { name: 'Ordu Kampı', icon: '🏕️', img: 'b_camp', desc: 'Kışlada ve Tank Atölyesi\'nde eğitilen birlikler burada konaklar. Her seviye kamp kapasitesini artırır; kamplar doluysa yeni birlik eğitilemez.', base: { food: 220, wood: 280, stone: 140 }, time: 9, reqTH: 1, max: 30 },
   warehouse: { name: 'Ambar', icon: '📦', desc: 'Kaynak depolama sınırını artırır ve yağmada kaynaklarının bir kısmını korur.', base: { food: 120, wood: 150, stone: 80 }, time: 8, reqTH: 2, max: 30 },
 };
 export const MAX_LEVEL = 40; // Belediye Binası en yüksek seviyesi
 export const maxLevel = (key) => BUILDINGS[key].max || 10;
 // Belediye Binası gereksinimleri: her seviye için 2 (Sv.15+ için 3) bina belirli seviyede olmalı
-const TH_CYCLE = ['barracks', 'warehouse', 'archery', 'academy', 'hospital', 'farm', 'forge', 'lumber', 'rally', 'quarry', 'tankyard', 'potion'];
+const TH_CYCLE = ['barracks', 'warehouse', 'archery', 'academy', 'hospital', 'farm', 'forge', 'lumber', 'rally', 'quarry', 'tankyard', 'potion', 'camp'];
 export function thRequirements(toLevel) {
   if (toLevel < 3) return toLevel === 2 ? [['farm', 1]] : [];
   const out = [], n = TH_CYCLE.length;
@@ -64,7 +65,15 @@ export const PLOTS = [
   { id: 'tankyard', key: 'tankyard', x: -14, z: 28 },
   { id: 'rally', key: 'rally', x: -12, z: -30 },
   { id: 'forge', key: 'forge', x: 12, z: -30 },
+  // Ordu kampları: 4 arsa, Belediye seviyesiyle açılır
+  { id: 'camp1', key: 'camp', x: -23, z: 21, reqTH: 1 },
+  { id: 'camp2', key: 'camp', x: 22, z: 18.5, reqTH: 5 },
+  { id: 'camp3', key: 'camp', x: 0, z: 29.5, reqTH: 10 },
+  { id: 'camp4', key: 'camp', x: 0, z: -30, reqTH: 15 },
 ];
+// Ordu kampı kapasitesi: Sv.1 1.500 → Sv.10 ~21 bin → Sv.20 ~400 bin → Sv.30 ~7,3 milyon asker
+// 4 kamp Sv.30 ≈ 29 milyon asker ≈ 1 milyar birlik gücü
+export const campCap = (L) => (L > 0 ? Math.round(1500 * Math.pow(1.34, L - 1) / 100) * 100 : 0);
 
 // Maliyet: Sv.10'a kadar ×1.6, sonra çok daha dik artar (Sv.40 ≈ taban × 10.000)
 export function upgradeCost(key, toLevel) {
@@ -86,10 +95,10 @@ export function prodCap(key, level) { return prodPerHour(key, level) * 3; }
 
 // Askerler — taş/kağıt/makas: okçu > piyade & mızrakçı, süvari > okçu, mızrakçı > süvari, piyade dengeli
 export const TROOPS = {
-  infantry: { name: 'Kılıç Piyadesi', short: 'Piyade', icon: '🗡️', atk: 11, def: 13, hp: 32, load: 12, cost: { food: 30, wood: 20, stone: 5 }, time: 1.2, desc: 'Dengeli ön saf askeri. Zırhlı ve dayanıklı.' },
-  spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 30, wood: 30, stone: 0 }, time: 1.2, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
-  archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 25, wood: 35, stone: 0 }, time: 1.4, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
-  cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 60, wood: 30, stone: 20 }, time: 2.2, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
+  infantry: { name: 'Kılıç Piyadesi', short: 'Piyade', icon: '🗡️', atk: 11, def: 13, hp: 32, load: 12, cost: { food: 40, wood: 26, stone: 7 }, time: 1.6, desc: 'Dengeli ön saf askeri. Zırhlı ve dayanıklı.' },
+  spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 40, wood: 40, stone: 0 }, time: 1.6, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
+  archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 33, wood: 46, stone: 0 }, time: 1.9, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
+  cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 78, wood: 40, stone: 26 }, time: 3, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
   tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
 export const COUNTER = {

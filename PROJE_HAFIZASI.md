@@ -409,6 +409,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - `worldmap.js → makeHeli()`: prosedürel mavi helikopter (dönen ana/kuyruk pervanesi, yanıp sönen ışık, gölge), kalkış-iniş irtifası, mavi oklu yol şeridi.
 - Bilgisayar krallıklarında komutan yok (`e.hero` null) → raporda "Şehirde komutan yok". Gerçek oyuncularda profilindeki komutan görünür.
 
+### 5.17 Ordu Kampı, eğitim ayarı, harita arayüzü v2
+- **Ordu Kampı** (`camp`, 4 arsa): camp1 (-23,21) Belediye Sv.1, camp2 (22,18.5) Sv.5, camp3 (0,29.5) Sv.10, camp4 (0,-30) Sv.15 (`PLOTS[].reqTH`, `canUpgrade` arsa şartını da kontrol eder). En yüksek Sv.30. Belediye gereksinim döngüsüne eklendi.
+- Kapasite `campCap(L) = 1500 × 1,34^(L-1)` (Sv.10 ≈ 21 bin, Sv.20 ≈ 400 bin, Sv.30 ≈ 7,3 milyon). 4 kamp Sv.30 ≈ 29 milyon asker ≈ 1 milyar güç. `armyTotal()` = şehir + sefer + eğitim (yaralılar hariç); `armyCap()`, `campRoom()`. Kışla ve tank eğitimi kamp boşluğuyla sınırlı. Eski kayıtlarda camp1 mevcut orduyu alacak seviyede başlar.
+- Modeller: `assets/hf/camp.glb` (çit + çadırlar) ve `camp_2.glb` (taş surlu gelişmiş kamp, Sv.12+), Higgsfield gpt_image_2_6 + Tripo H3.1 (~19 kredi). Simge `assets/ui/b_camp.webp`. Kamp ateşi ve ateş başında 2–4 asker (`hfAnimate`).
+- Kışla birlikleri: süre ~%35, maliyet ~%30 arttı (`TROOPS`). Tank değişmedi.
+- **Harita arayüzü v2** (`worldmap.js render`, `style.css` sonu): altın çerçeveli pencere (`.wm-card`, üstte taç), istatistik kutuları (`.wm-st`), köşeleri kesik metalik butonlar (`.wm-btn` steel/violet/crimson/sapphire/gold), altın çerçeveli üst çubuk, yan küreler (`.wm-orb`).
+- **Hayalet şehirler**: Playwright testleri gerçek Firebase'e misafir hesap olarak bağlanıp Sunucu #1'e "Krallığım" adlı Sv.1 şehirler yazmıştı. `online.js → ghost()` varsayılan isimli, Belediye Sv.1, zaferi olmayan profilleri harita/rakip/sıralamadan gizler. Kayıtlar Firestore'da duruyor (sadece sahibi silebilir; Firebase Console'dan silinebilir). **Testlerde Firebase hostları `page.route` ile engellenmeli.**
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
