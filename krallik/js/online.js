@@ -147,3 +147,70 @@ export async function assignServer() {
     return n;
   } catch (e) { lastErr = e.code || e.message; return 1; }
 }
+
+// ---- İttifaklar ----
+// alliances/{id}: { name, tag, emblem, color, desc, open, server, leader, created, members: { uid: { name, power, th, hero, frame, role, joined } } }
+// alliances/{id}/chat/{mid}: { uid, name, text, t, hero, frame }
+export const ALLIANCE_MAX = 50;
+const aRef = (id) => FS.doc(db, 'alliances', id);
+const errOf = (e) => (e?.code === 'permission-denied' ? 'Sunucu izni yok (Firestore kuralları güncellenmeli)' : e?.code || e?.message || 'Hata');
+export async function listAlliances(server, n = 60) {
+  if (!ready) return [];
+  try { const s = await FS.getDocs(FS.query(FS.collection(db, 'alliances'), FS.where('server', '==', server), FS.limit(n))); return s.docs.map((d) => ({ id: d.id, ...d.data() })); } catch (e) { lastErr = errOf(e); return []; }
+}
+export async function getAlliance(id) {
+  if (!ready || !id) return null;
+  try { const s = await FS.getDoc(aRef(id)); return s.exists() ? { id: s.id, ...s.data() } : null; } catch (e) { lastErr = errOf(e); return null; }
+}
+export async function createAlliance(data, me) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try {
+    const dup = await FS.getDocs(FS.query(FS.collection(db, 'alliances'), FS.where('tag', '==', data.tag), FS.limit(1)));
+    if (!dup.empty) return { ok: false, why: `[${data.tag}] etiketi kullanılıyor` };
+    const ref = FS.doc(FS.collection(db, 'alliances'));
+    await FS.setDoc(ref, { ...data, leader: user.uid, created: Date.now(), members: { [user.uid]: { ...me, role: 'leader', joined: Date.now() } } });
+    return { ok: true, id: ref.id };
+  } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function joinAlliance(id, me) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try {
+    const a = await getAlliance(id); if (!a) return { ok: false, why: 'İttifak bulunamadı' };
+    if (!a.open) return { ok: false, why: 'Bu ittifak kapalı' };
+    if (Object.keys(a.members || {}).length >= ALLIANCE_MAX) return { ok: false, why: 'İttifak dolu' };
+    await FS.updateDoc(aRef(id), { [`members.${user.uid}`]: { ...me, role: 'member', joined: Date.now() } });
+    return { ok: true };
+  } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+// kendi üye bilgimi güncelle (güç, seviye, çerçeve)
+export async function updateMember(id, me, role, joined) {
+  if (!ready || !id) return;
+  try { await FS.updateDoc(aRef(id), { [`members.${user.uid}`]: { ...me, role, joined } }); } catch (e) { lastErr = errOf(e); }
+}
+export async function leaveAlliance(a) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try {
+    const others = Object.entries(a.members || {}).filter(([u]) => u !== user.uid);
+    if (a.leader === user.uid) {
+      if (!others.length) { await FS.deleteDoc(aRef(a.id)); return { ok: true, deleted: true }; }
+      const [nu, nm] = others.sort((x, y) => (y[1].power || 0) - (x[1].power || 0))[0];
+      await FS.updateDoc(aRef(a.id), { leader: nu, [`members.${nu}`]: { ...nm, role: 'leader' }, [`members.${user.uid}`]: FS.deleteField() });
+    } else await FS.updateDoc(aRef(a.id), { [`members.${user.uid}`]: FS.deleteField() });
+    return { ok: true };
+  } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function kickMember(id, uid) {
+  try { await FS.updateDoc(aRef(id), { [`members.${uid}`]: FS.deleteField() }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function editAlliance(id, fields) {
+  try { await FS.updateDoc(aRef(id), fields); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+export async function sendChat(id, text, me) {
+  if (!ready) return { ok: false, why: 'Çevrimdışısın' };
+  try { await FS.addDoc(FS.collection(db, 'alliances', id, 'chat'), { uid: user.uid, name: me.name, hero: me.hero || null, frame: me.frame || null, text: String(text).slice(0, 300), t: Date.now() }); return { ok: true }; } catch (e) { return { ok: false, why: errOf(e) }; }
+}
+// sohbeti canlı dinle (son 50 mesaj); dönen fonksiyon dinlemeyi kapatır
+export function watchChat(id, cb) {
+  if (!ready || !id) return () => {};
+  try { return FS.onSnapshot(FS.query(FS.collection(db, 'alliances', id, 'chat'), FS.orderBy('t', 'desc'), FS.limit(50)), (s) => cb(s.docs.map((d) => ({ id: d.id, ...d.data() })).reverse()), (e) => { lastErr = errOf(e); cb(null, lastErr); }); } catch (e) { return () => {}; }
+}

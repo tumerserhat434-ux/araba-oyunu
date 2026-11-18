@@ -435,6 +435,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - Higgsfield: ~24 görsel (4 asker, 11 çerçeve; 4 kullanılmayan avatar portresi — kullanıcı "avatar" ile çerçeveyi kastetmişti), ~6–7 kredi. Hız sınırı (429) yüzünden 3'erli gruplarla gönderildi.
 - Hata ayıklama: `window.__ds.openBattle`, `window.__dsShowDrop`.
 
+### 5.20 Sıralama avatarları, animasyonlu çerçeveler, İttifak
+- `main.js → frameHtml(hero, frame, size)`: çerçeveli avatar bileşeni (`.fav`). Özel çerçeveler animasyonlu (`.anim.fa-<id>`): maske ile parıltı süpürmesi (`.fav-sh`, `--m: url(çerçeve)`), laurel altın ışıma, crystal buz nabzı + yıldız, phoenix alev titremesi + kıvılcımlar, shadow yeşil ışıma + sallanma, dragon kırmızı ışıma + yıldız. Üst çubuk avatarı da aynı sınıfları alır.
+- Sıralama (`rankingUI`): numara yerine çerçeveli avatar + madalya (1–3 altın/gümüş/bronz), ittifak etiketi. Gerçek oyuncu profiline `frame` ve `alliance {id, tag}` eklendi (`publicProfile`); botlara isimden türetilmiş kahraman avatarı ve ücretsiz çerçeve.
+- **İttifak** (sağdaki İttifak düğmesi → `openAlliance`, `allianceUI`): kurma 300 altın (`G.ALLIANCE_COST`, ad 3–20, etiket 2–4 harf, 10 arma, 6 renk, açıklama, açık/kapalı), arama/katılma (açık ittifaklar, en fazla 50 üye), İttifakım (lider: açıklama düzenle, aç/kapat), Üyeler (lider üye çıkarır), Sohbet (canlı, `watchChat` onSnapshot, son 50 mesaj), ayrılma (lider ayrılırsa en güçlü üyeye devreder, tek kişiyse dağıtır).
+- Firestore: `alliances/{id}` (members haritası uid→{name,power,th,hero,frame,role,joined}), `alliances/{id}/chat`. `online.js`: listAlliances, getAlliance, createAlliance (etiket benzersiz), joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat. Kurallar `firestore.rules` (rules_version '2', üyeler yalnız kendi kaydını değiştirir). **Kullanıcının Firebase Console'da yeni kuralları yayınlaması gerekir.**
+- Harita: müttefik şehirler yeşil (`COL.ally`), etiket `[TAG]`, "🤝 Müttefik" (saldırı yok); `startMarch` müttefike seferi reddeder. `S.alliance` kayıtta; açılışta ve 5 dk'da bir doğrulanır, güç güncellenir.
+- Test: `scratchpad/mock/` bellekte sahte Firebase modülleri (app/auth/firestore), Playwright `page.route` ile gstatic firebasejs yerine verilir — canlı sunucuya dokunmadan çevrimiçi akış testi.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

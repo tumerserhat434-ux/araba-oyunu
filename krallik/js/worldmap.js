@@ -28,7 +28,8 @@ export const worldOpen = () => !!W;
 const MAP = 1000, MIN_D = 80, MAX_D = 700;
 const TH = G.THRONE; // { x, y, r }
 const HOUSES = ['building_home_A_blue', 'building_home_B_blue', 'building_well_blue', 'building_home_A_blue', 'building_tavern_blue'];
-const COL = { me: 0xffc83a, real: 0x3a9cff, bot: 0xff4a32, throne: 0xff3a2a };
+const COL = { me: 0xffc83a, real: 0x3a9cff, bot: 0xff4a32, ally: 0x3aff7a, throne: 0xff3a2a };
+const isAlly = (c) => !!(c.alliance && G.S.alliance && c.alliance.id === G.S.alliance.id);
 
 // ---------------------------------------------------------------------
 // yardımcılar
@@ -255,7 +256,7 @@ export function openWorldMap(opts = {}) {
   const baseMat = new THREE.MeshLambertMaterial({ color: 0x8a8478 }), baseGeo = new THREE.CylinderGeometry(9.6, 10.4, 0.8, 32);
   const labels = $('wmLabels') || (() => { const d = document.createElement('div'); d.id = 'wmLabels'; document.body.appendChild(d); return d; })();
   labels.innerHTML = ''; labels.classList.remove('hidden');
-  const kind = (c) => (c.me ? 'me' : c.real ? 'real' : 'bot');
+  const kind = (c) => (c.me ? 'me' : isAlly(c) ? 'ally' : c.real ? 'real' : 'bot');
   const makeCity = (c) => {
     if (inThrone(c.mapX, c.mapY, 10)) { const a = Math.atan2(c.mapY - TH.y, c.mapX - TH.x) || 1; c.mapX = TH.x + Math.cos(a) * (TH.r + 24); c.mapY = TH.y + Math.sin(a) * (TH.r + 24); }
     const col = COL[kind(c)];
@@ -274,7 +275,8 @@ export function openWorldMap(opts = {}) {
     let shield = null;
     if (c.shieldUntil > Date.now() / 1000) { shield = new THREE.Mesh(new THREE.SphereGeometry(13, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), shieldMat); g.add(shield); }
     const el = document.createElement('div'); el.className = 'wm-l ' + kind(c);
-    el.innerHTML = `<b>${c.th || 1}</b><span>${c.me ? 'Krallığım' : c.real ? '🌐 ' + c.name : c.name}</span>${shield ? '<i>🛡️</i>' : ''}`;
+    const tg = c.me ? G.S.alliance?.tag : c.alliance?.tag;
+    el.innerHTML = `<b>${c.th || 1}</b><span>${tg ? `<em class="wm-tag">[${tg}]</em> ` : ''}${c.me ? 'Krallığım' : (isAlly(c) ? '🤝 ' : c.real ? '🌐 ' : '') + c.name}</span>${shield ? '<i>🛡️</i>' : ''}`;
     labels.appendChild(el);
     return { c, g, el, shield, terr, y: 0 };
   };
@@ -429,10 +431,10 @@ export function openWorldMap(opts = {}) {
       const scouting = G.S.scouts.some((q) => q.target === c.id), last = G.lastScout(c.id), st = G.scoutTime(c);
       const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, ratio = c.power / Math.max(1, G.cityPower());
       const diff = ratio < 0.6 ? ['Kolay', 'easy'] : ratio < 1 ? ['Orta', 'mid'] : ratio < 1.5 ? ['Zor', 'hard'] : ['Çok zor', 'vhard'];
-      card = win(`${c.real ? '🌐 ' : '🏰 '}${c.name}`, `🏛️ Belediye Sv.${c.th || 1}`, `
+      card = win(`${c.alliance?.tag ? '[' + c.alliance.tag + '] ' : ''}${c.real ? '🌐 ' : '🏰 '}${c.name}`, `🏛️ Belediye Sv.${c.th || 1}`, `
         <div class="wm-cs">${stat('⚔️', c.real ? 'Gerçek oyuncu' : c.lord, G.fmt(c.power), `<em class="wm-diff ${diff[1]}">${diff[0]}</em>`)}${stat('📍', 'Konum', `X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}`, `<em class="wm-times"><span>⏱ ${fmtT(t)}</span><span>🚁 ${fmtT(st)}</span></em>`)}</div>
         ${sh ? `<div class="wm-shield">🛡️ Kalkan aktif: ${G.fmtTime(c.shieldUntil - Date.now() / 1000)}</div>` : ''}
-        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('violet', 'wmScout', scouting ? '🚁' : '👁', scouting ? 'Yolda…' : 'Gözetle', scouting ? '' : cost('🌾', G.SCOUT_COST.food), sh || scouting)}${B('crimson', 'wmAtk', '⚔', 'Saldır', '', sh)}</div>
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('violet', 'wmScout', scouting ? '🚁' : '👁', scouting ? 'Yolda…' : 'Gözetle', scouting ? '' : cost('🌾', G.SCOUT_COST.food), sh || scouting)}${isAlly(c) ? B('steel', 'wmAlly', '🤝', 'Müttefik', '', true) : B('crimson', 'wmAtk', '⚔', 'Saldır', '', sh)}</div>
         ${last ? `<div class="wm-cb">${B('gold wide', 'wmLastRep', '📜', `Son gözetleme raporu <small>(${agoS(last.t)})</small>`)}</div>` : ''}
         ${home ? `<div class="wm-cb">${B('sapphire wide', 'wmTpNear', '📍', 'Yanına Işınlan', cost('🪙', G.TELEPORT_COST))}</div>` : ''}`, 'enemy');
     } else if (c && c.ground) {

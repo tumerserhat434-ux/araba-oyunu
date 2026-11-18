@@ -62,6 +62,7 @@ export function load() {
   S.scouts ||= []; S.scoutReports ||= [];
   S.items ||= {};
   S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {};
+  S.alliance ??= null;
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
@@ -145,6 +146,11 @@ export function buyOffer(id) {
   for (const f of o.frames || []) S.frames[f] = true;
   save(); emit('offer', o); return { ok: true, heroes };
 }
+// ---- İttifak ----
+export const ALLIANCE_COST = 300;
+export const myMember = () => ({ name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), hero: S.commander || null, frame: S.frame || 'bronze' });
+export function setAlliance(a) { S.alliance = a ? { id: a.id, tag: a.tag, name: a.name, emblem: a.emblem, color: a.color } : null; save(); emit('alliance'); }
+export function payAlliance() { if (S.res.gold < ALLIANCE_COST) return false; S.res.gold -= ALLIANCE_COST; save(); return true; }
 export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }
 export const dailyProg = (d) => Math.min(d.n, S.daily.c[d.stat] || 0);
 export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; gainRes(d.reward); const items = [rollDrop(DROP_EVENT)]; save(); emit('quests'); return { ...d.reward, _items: items }; }
@@ -606,6 +612,7 @@ export function marchTime(e, troops) {
 }
 export function startMarch(enemyId, sent, heroIds) {
   const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
+  if (e.alliance && S.alliance && e.alliance.id === S.alliance.id) return { ok: false, why: '🤝 Müttefikine saldıramazsın' };
   if (S.marches.length >= 3) return { ok: false, why: 'En fazla 3 sefer aynı anda' };
   const troops = {}; let n = 0;
   for (const t in TROOPS) { troops[t] = Math.max(0, Math.min(sent[t] || 0, S.troops[t] || 0)); n += troops[t]; }
@@ -686,13 +693,13 @@ export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 export function publicProfile() {
   const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
-  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY };
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag } : null };
 }
 // Gerçek oyuncuyu haritadaki düşman biçimine çevir
 export function rivalToEnemy(p) {
   let hsh = 0; for (const ch of p.uid) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
   const ang = (hsh % 360) * Math.PI / 180, dist = 0.25 + ((hsh >> 9) % 60) / 100;
-  return { mapX: p.mapX ?? (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY ?? (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 1, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
+  return { alliance: p.alliance || null, frame: p.frame || null, mapX: p.mapX ?? (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY ?? (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 1, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
     troops: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0, ...(p.troops || {}) }, tower: (p.towerPow || 0) / 120, th: p.th || 1, hero: p.hero || null,
     res: { food: (p.lootable?.food || 0) / 0.6, wood: (p.lootable?.wood || 0) / 0.6, stone: (p.lootable?.stone || 0) / 0.6, gold: 0 }, power: p.power || 0, shieldUntil: (S.pvpCooldown?.[p.uid] || 0) };
 }

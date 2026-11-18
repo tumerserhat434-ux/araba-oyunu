@@ -6,7 +6,7 @@ import * as BLD from './buildings.js';
 import { createSoldier, createTank, animateUnit, createCitizen } from './units.js';
 import * as ASSETS from './assets.js';
 import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js';
-import { serverPlayers, assignServer } from './online.js';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js';
 import { campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
@@ -559,7 +559,7 @@ function updateTop() {
   for (const r of ['food', 'wood', 'stone', 'gold']) $('r_' + r).textContent = G.fmt(G.S.res[r]);
   const pw = G.cityPower(); $('power').textContent = G.fmt(pw);
   { const steps = [0, 5e3, 1e4, 2.5e4, 5e4, 1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8, 1e9, 2.5e9]; let i = steps.findIndex((v) => v > pw); if (i < 0) i = steps.length - 1; const lo = steps[i - 1] || 0; $('powBar').style.width = Math.min(100, (pw - lo) / Math.max(1, steps[i] - lo) * 100).toFixed(1) + '%'; }
-  if (frameFor !== G.S.frame) { frameFor = G.S.frame; $('frameImg').src = UI('fr_' + G.S.frame); }
+  if (frameFor !== G.S.frame) { frameFor = G.S.frame; $('frameImg').src = UI('fr_' + G.S.frame); const av = document.querySelector('#top .avatar'); av.className = 'avatar' + (isPremFrame(G.S.frame) ? ' anim fa-' + G.S.frame : ''); av.style.setProperty('--m', `url(${UI('fr_' + G.S.frame)})`); }
   $('kname').textContent = G.S.name;
   $('thLvl').textContent = G.thLevel();
   $('logDot').classList.toggle('hidden', !G.loginPending());
@@ -768,6 +768,8 @@ $('sheet').addEventListener('click', (e) => {
   if (act === 'potion') { const r = G.usePotion(); if (!r.ok) toast(r.why, true); else toast(`🧪 ${r.healed || ''} asker iyileşti`); }
   renderSheet(); updateTop(); updateLabels(true);
 });
+document.addEventListener('input', (e) => { if (e.target.id === 'alSearch') { AL.q = e.target.value; const q = AL.q.toLowerCase(); document.querySelectorAll('.al-card').forEach((c) => { c.style.display = !q || c.dataset.alk.includes(q) ? '' : 'none'; }); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'alChatIn') document.querySelector('[data-alsend]')?.click(); });
 function needGold() { toast('Yetersiz altın', true); setTimeout(() => navigate('shop'), 500); }
 
 // ---------------------------------------------------------------------
@@ -786,7 +788,7 @@ const ICON_MAP = { '🗺️': 'nav_world', '⚔️': 'nav_heroes', '🛡️': 'n
 const resImg = (r, sz = 18) => `<img src="${UI('res_' + r)}" width="${sz}" height="${sz}" alt="">`;
 const pill = (r, v) => `<span class="w-pill">${resImg(r)}+${G.fmt(v)}</span>`;
 function tabsHtml(tabs, active) { return `<aside class="w-side">${tabs.map((t) => `<button class="w-tab ${t.id === active ? 'on' : ''}" data-wtab="${t.id}"><img src="${UI(t.icon)}" alt=""><span>${t.label}</span>${t.dot ? '<em class="dot"></em>' : ''}</button>`).join('')}</aside>`; }
-export function closeModal() { lastModalKey = ''; $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; setNav('city'); }
+export function closeModal() { alStopChat(); lastModalKey = ''; $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; setNav('city'); }
 $('modal').addEventListener('pointerdown', (e) => { if (e.target.id === 'modal') closeModal(); });
 function setNav(go) { document.querySelectorAll('nav button').forEach((b) => b.classList.toggle('on', b.dataset.go === go)); }
 document.querySelectorAll('nav button, #rside .rbtn').forEach((b) => b.addEventListener('click', () => navigate(b.dataset.go)));
@@ -804,6 +806,7 @@ export function navigate(go) {
   if (go === 'events') { questTab = 'daily'; go = 'quests'; }
 
   if (go === 'summon') { closeModal(); setNav('summon'); openSummon(); tutEvent('summonOpen'); return; }
+  if (go === 'alliance') { closeModal(); setNav('alliance'); sfx('open'); openAlliance(); return; }
   if (go === 'world') { tutEvent('worldOpen'); if (G.S.tut === 'done') { closeModal(); setNav('world'); sfx('open'); openWorldMap(); return; } }
   sfx('open');
   modalKind = go;
@@ -838,6 +841,7 @@ function renderModalInner() {
   if (k === 'scout') return openModal(scoutUI(scoutRep));
   if (k === 'speed') return openModal(speedUI());
   if (k === 'offers') return openModal(offersUI());
+  if (k === 'alliance') return openModal(allianceUI());
 }
 const allEnemies = () => G.S.enemies.concat(G.ONLINE.enemies);
 function worldUI() {
@@ -914,6 +918,9 @@ function showItemDrop(it) {
   el.onclick = () => el.classList.add('hidden'); el.classList.remove('hidden');
   clearTimeout(showItemDrop.t); showItemDrop.t = setTimeout(() => el.classList.add('hidden'), 6000);
 }
+// Çerçeveli avatar (özel çerçeveler animasyonlu)
+const isPremFrame = (fr) => !!FRAME_BY_ID[fr] && !FRAME_BY_ID[fr].free;
+export const frameHtml = (hero, fr, sz = 48) => { fr = FRAME_BY_ID[fr] ? fr : 'bronze'; const f = UI('fr_' + fr); return `<span class="fav ${isPremFrame(fr) ? 'anim fa-' + fr : ''}" style="--s:${sz}px;--m:url(${f})"><img class="fav-a" src="assets/heroes/${hero || 'emre'}_a.webp" alt=""><span class="fav-fw"><img class="fav-f" src="${f}" alt=""><i class="fav-sh"></i></span></span>`; };
 // Hızlandırma simgesi: kum saati (nadirlik rengi) + süre rozeti
 export const spIcon = (id, sz = 56, n) => { const d = SPEEDUPS[id]; return `<span class="sp-ic t${d.tier}" style="--sz:${sz}px"><img src="${UI('sp_t' + d.tier)}" alt=""><b>${d.short}</b>${n != null ? `<em>×${G.fmt(n)}</em>` : ''}</span>`; };
 const rewardPills = (r) => Object.entries(r).map(([k, v]) => pill(k, v)).join('');
@@ -999,11 +1006,18 @@ setInterval(() => {
   const tr = $('newsTxt').parentElement; tr.innerHTML = ''; sp.id = 'newsTxt'; tr.appendChild(sp);
 }, 5200);
 function rankingUI() {
-  const me = { name: G.S.name, lord: 'Sen', power: G.cityPower(), me: true };
+  const hsh = (t) => { let h = 0; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+  const freeFr = FRAMES.filter((f) => f.free), heroIds = HEROES.map((h) => h.id);
+  const me = { name: G.S.name, sub: 'Sen', power: G.cityPower(), me: true, hero: G.S.commander, frame: G.S.frame, tag: G.S.alliance?.tag };
   if (online.ready && Date.now() - G.ONLINE.topAt > 60000) { G.ONLINE.topAt = Date.now(); topPlayers(50).then((l) => { G.ONLINE.top = l; if (modalKind === 'ranking') renderModal(); }); }
-  const real = G.ONLINE.top.filter((p) => p.uid !== online.uid).map((p) => ({ name: '🌐 ' + (p.name || 'Oyuncu'), lord: 'Gerçek oyuncu • Belediye Sv.' + (p.th || 1), power: p.power || 0 }));
-  const list = real.concat(G.S.enemies.map((e) => ({ name: e.name, lord: e.lord, power: Math.round(e.power * 1.6 + e.th * 2500) }))).concat([me]).sort((a, b) => b.power - a.power);
-  return head('Krallık Sıralaması', '🏆') + '<div>' + list.map((r, i) => `<div class="rankrow ${r.me ? 'me' : ''}"><span class="rk">${i + 1}</span><span class="rn">${r.name}<br><small style="color:#c8b48a">${r.lord}</small></span><span class="rp">⚔ ${G.fmt(r.power)}</span></div>`).join('') + '</div><p class="demo">' + (online.ready ? '🌐 Gerçek oyuncular ve bilgisayar krallıkları birlikte sıralanır.' : 'Çevrimdışı: sıralama bilgisayar krallıklarıyla gösterilir.') + '</p>';
+  const real = G.ONLINE.top.filter((p) => p.uid !== online.uid).map((p) => ({ name: p.name || 'Oyuncu', real: true, sub: 'Belediye Sv.' + (p.th || 1), power: p.power || 0, hero: p.hero?.id || heroIds[hsh(p.uid) % heroIds.length], frame: p.frame || freeFr[hsh(p.uid) % freeFr.length].id, tag: p.alliance?.tag }));
+  const bots = G.S.enemies.map((e) => ({ name: e.name, sub: e.lord, power: Math.round(e.power * 1.6 + e.th * 2500), hero: heroIds[hsh(e.name) % heroIds.length], frame: freeFr[hsh(e.lord) % freeFr.length].id }));
+  const list = real.concat(bots).concat([me]).sort((a, b) => b.power - a.power);
+  const medal = (i) => (i < 3 ? `<i class="rk-medal m${i + 1}">${i + 1}</i>` : `<i class="rk-num">${i + 1}</i>`);
+  return head('Krallık Sıralaması', '🏆') + '<div class="rk-list">' + list.map((r, i) => `<div class="rk-row ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''}">
+      <div class="rk-av">${frameHtml(r.hero, r.frame, 46)}${medal(i)}</div>
+      <div class="rk-n"><b>${r.tag ? `<em class="rk-tag">[${r.tag}]</em> ` : ''}${r.name}${r.real ? ' <span class="rk-real">🌐</span>' : ''}</b><small>${r.sub}</small></div>
+      <div class="rk-p">⚔ ${G.fmt(r.power)}</div></div>`).join('') + '</div><p class="desc" style="text-align:center;margin-top:10px">🌐 Gerçek oyuncular ve bilgisayar krallıkları birlikte sıralanır.</p>';
 }
 function armyUI() {
   let rows = '';
@@ -1039,6 +1053,70 @@ function speedShopHtml() {
     <div class="w-card sp-bag"><h4>🎒 Çantam</h4>${owned.length ? `<div class="sp-bag-list">${owned.map((k) => spIcon(k, 54, G.S.items[k])).join('')}</div>` : '<p class="desc" style="margin:0">Henüz hızlandırman yok.</p>'}</div>
     <div class="w-card sp-odds"><h4>🎲 Nereden kazanılır?</h4><table><tr><th></th><th>Ana görev</th><th>Etkinlik</th></tr>${SPEED_ORDER.filter((k) => !['s2d', 's3d'].includes(k)).map((k) => `<tr><td>${spIcon(k, 30)}</td><td>${pct(DROP_QUEST, k)}</td><td>${pct(DROP_EVENT, k)}</td></tr>`).join('')}</table><p class="desc" style="margin:6px 0 0">2 ve 3 günlük hızlandırmalar yalnızca markette.</p></div>`;
 }
+// =====================================================================
+//  İttifak
+// =====================================================================
+const AL_EMBLEMS = ['🦁', '🐺', '🦅', '🐉', '⚔️', '🌙', '🔥', '❄️', '🛡️', '👑'];
+const AL_COLORS = ['#c8281a', '#2a5ad8', '#2a9a3a', '#8a3ad8', '#e0a020', '#2a2a3a'];
+const AL = { doc: null, list: null, chat: null, chatErr: '', unsub: null, tab: 'find', q: '', form: { name: '', tag: '', emblem: 0, color: 1, desc: '', open: true }, busy: false, err: '' };
+const alEm = (e, c, sz = 46) => `<span class="al-em" style="--c:${AL_COLORS[c] || AL_COLORS[1]};--s:${sz}px"><i>${AL_EMBLEMS[e] || AL_EMBLEMS[0]}</i></span>`;
+const alPower = (a) => Object.values(a.members || {}).reduce((t, m) => t + (m.power || 0), 0);
+function alStopChat() { if (AL.unsub) { AL.unsub(); AL.unsub = null; } }
+function alRerender() { if (modalKind === 'alliance' && $('modal').classList.contains('open')) { const inp = $('alChatIn'), v = inp?.value; renderModal(); if (v && $('alChatIn')) $('alChatIn').value = v; } }
+// ittifak verisini sunucudan tazele; üyelik bittiyse kaydı temizle; gücümü güncelle
+async function alRefresh() {
+  if (!online.ready) return;
+  if (G.S.alliance) {
+    const a = await getAlliance(G.S.alliance.id);
+    if (!a || !a.members?.[online.uid]) { AL.doc = null; G.setAlliance(null); toast('🏳️ Artık bir ittifakta değilsin'); }
+    else { AL.doc = a; G.setAlliance(a); const m = a.members[online.uid], me = G.myMember(); if (Math.abs((m.power || 0) - me.power) > me.power * 0.03 || m.frame !== me.frame || m.name !== me.name || m.th !== me.th) { updateMember(a.id, me, m.role, m.joined); a.members[online.uid] = { ...m, ...me }; } }
+  } else AL.list = (await listAlliances(G.S.server || 1)).sort((x, y) => alPower(y) - alPower(x));
+  alRerender();
+}
+function openAlliance() { modalKind = 'alliance'; AL.tab = G.S.alliance ? 'main' : 'find'; lastModalKey = ''; renderModal(); alRefresh(); }
+function alTabs() { return G.S.alliance ? [{ id: 'main', label: 'İttifakım', icon: 'ic_alliance' }, { id: 'members', label: 'Üyeler', icon: 'nav_heroes' }, { id: 'chat', label: 'Sohbet', icon: 'nav_quest' }] : [{ id: 'find', label: 'İttifak Ara', icon: 'nav_world' }, { id: 'create', label: 'İttifak Kur', icon: 'ic_alliance' }]; }
+function allianceUI() {
+  const H = (b) => head('İttifak', 'ic_alliance', alTabs(), AL.tab) + b;
+  if (!online.ready) return H(`<div class="al-off">🌐 İttifak özellikleri için çevrimiçi olmalısın.<br><small>${online.failed ? 'Sunucuya bağlanılamadı.' : 'Bağlanılıyor…'}</small></div>`);
+  const ban = `<div class="w-banner al-ban" style="background-image:url(${UI('banner_alliance')})"><div><div class="bt">İttifaklar</div><div class="bs">Birlikte daha güçlüyüz</div></div></div>`;
+  if (!G.S.alliance) {
+    if (AL.tab === 'create') {
+      const f = AL.form;
+      return H(ban + `<div class="al-form">
+        <div class="al-prev">${alEm(f.emblem, f.color, 64)}<div><b>${f.tag ? `[${f.tag}] ` : ''}${f.name || 'İttifak adı'}</b><small>Lider: ${G.S.name}</small></div></div>
+        <label>İttifak adı</label><input id="alName" maxlength="20" value="${f.name.replace(/"/g, '')}" placeholder="ör. Demir Kurtlar">
+        <label>Etiket (2–4 harf)</label><input id="alTag" maxlength="4" value="${f.tag}" placeholder="ör. DMR" style="text-transform:uppercase">
+        <label>Arma</label><div class="al-pick">${AL_EMBLEMS.map((e, i) => `<button class="${i === f.emblem ? 'on' : ''}" data-alem="${i}">${e}</button>`).join('')}</div>
+        <label>Renk</label><div class="al-pick col">${AL_COLORS.map((c, i) => `<button class="${i === f.color ? 'on' : ''}" data-alcol="${i}" style="background:${c}"></button>`).join('')}</div>
+        <label>Açıklama</label><textarea id="alDesc" maxlength="140" rows="2" placeholder="İttifakını tanıt…">${f.desc.replace(/</g, '')}</textarea>
+        <label class="al-chk"><input type="checkbox" id="alOpen" ${f.open ? 'checked' : ''}> Herkes katılabilir (açık ittifak)</label>
+        ${AL.err ? `<div class="why">${AL.err}</div>` : ''}
+        <button class="w-btn gold al-go" data-alcreate ${AL.busy ? 'disabled' : ''}>🛡️ İttifak kur • 🪙 ${G.ALLIANCE_COST}</button></div>`);
+    }
+    const q = AL.q.toLowerCase(), list = (AL.list || []).filter((a) => !q || a.name.toLowerCase().includes(q) || a.tag.toLowerCase().includes(q));
+    return H(ban + `<input class="al-search" id="alSearch" placeholder="🔍 İttifak adı ya da etiketi" value="${AL.q.replace(/"/g, '')}">
+      ${AL.list === null ? '<div class="al-off">Yükleniyor…</div>' : !list.length ? `<div class="al-off">Bu sunucuda henüz ittifak yok.<br><button class="w-btn gold" data-wtab="create" style="margin-top:10px">🛡️ İlk ittifakı sen kur!</button></div>`
+        : `<div class="al-list">${list.map((a) => { const n = Object.keys(a.members || {}).length, ld = a.members?.[a.leader]?.name || '-'; return `<div class="al-card" data-alk="${(a.tag + ' ' + a.name).toLowerCase().replace(/"/g, '')}">${alEm(a.emblem, a.color)}<div class="al-ci"><b>[${a.tag}] ${a.name}</b><small>👑 ${ld} • 👥 ${n}/${ALLIANCE_MAX}</small><small>⚔ ${G.fmt(alPower(a))}${a.desc ? ' • ' + a.desc.replace(/</g, '') : ''}</small></div>${a.open && n < ALLIANCE_MAX ? `<button class="w-btn green" data-aljoin="${a.id}" ${AL.busy ? 'disabled' : ''}>Katıl</button>` : `<span class="al-closed">${n >= ALLIANCE_MAX ? 'Dolu' : '🔒 Kapalı'}</span>`}</div>`; }).join('')}</div>`}`);
+  }
+  const a = AL.doc, me = online.uid, lead = a && a.leader === me;
+  if (!a) return H('<div class="al-off">Yükleniyor…</div>');
+  const mem = Object.entries(a.members || {}).sort((x, y) => (y[1].role === 'leader') - (x[1].role === 'leader') || (y[1].power || 0) - (x[1].power || 0));
+  if (AL.tab === 'members') return H(`<div class="al-mh">👥 ${mem.length}/${ALLIANCE_MAX} üye • ⚔ ${G.fmt(alPower(a))}</div><div class="al-mem">${mem.map(([u, m]) => `<div class="al-mrow ${u === me ? 'me' : ''}">${frameHtml(m.hero, m.frame, 42)}<div class="al-mi"><b>${m.role === 'leader' ? '👑 ' : ''}${(m.name || 'Oyuncu').replace(/</g, '')}${u === me ? ' <small>(sen)</small>' : ''}</b><small>Belediye Sv.${m.th || 1} • ⚔ ${G.fmt(m.power || 0)}</small></div>${lead && u !== me ? `<button class="w-btn red" data-alkick="${u}">Çıkar</button>` : ''}</div>`).join('')}</div>`);
+  if (AL.tab === 'chat') {
+    if (!AL.unsub) { AL.chat = null; AL.unsub = watchChat(a.id, (msgs, err) => { if (msgs) AL.chat = msgs; else AL.chatErr = err; alRerender(); const box = $('alChat'); if (box) box.scrollTop = box.scrollHeight; }); }
+    const tm = (t) => new Date(t).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    return H(`<div class="al-chat" id="alChat">${AL.chatErr ? `<div class="why">${AL.chatErr}</div>` : AL.chat === null ? '<div class="al-off">Yükleniyor…</div>' : !AL.chat.length ? '<div class="al-off">Henüz mesaj yok. İlk mesajı sen yaz! 👋</div>'
+      : AL.chat.map((m) => `<div class="al-msg ${m.uid === me ? 'me' : ''}">${frameHtml(m.hero, m.frame, 32)}<div class="al-bub"><b>${(m.name || '').replace(/</g, '')} <small>${tm(m.t)}</small></b><span>${String(m.text).replace(/</g, '&lt;')}</span></div></div>`).join('')}</div>
+      <div class="al-send"><input id="alChatIn" maxlength="300" placeholder="Mesaj yaz…"><button class="w-btn gold" data-alsend>Gönder</button></div>`);
+  }
+  return H(`<div class="al-head">${alEm(a.emblem, a.color, 78)}<div><b>[${a.tag}] ${a.name}</b><small>👑 Lider: ${(a.members?.[a.leader]?.name || '-').replace(/</g, '')}</small><small>${a.open ? '🔓 Açık' : '🔒 Kapalı'} • Sunucu #${a.server}</small></div></div>
+    <div class="al-stats"><div><small>Üyeler</small><b>👥 ${mem.length}/${ALLIANCE_MAX}</b></div><div><small>Toplam güç</small><b>⚔ ${G.fmt(alPower(a))}</b></div></div>
+    <div class="al-desc">${a.desc ? a.desc.replace(/</g, '') : '<i>Açıklama yok</i>'}</div>
+    ${lead ? `<div class="al-lead"><textarea id="alEditDesc" maxlength="140" rows="2" placeholder="Açıklamayı düzenle…">${(a.desc || '').replace(/</g, '')}</textarea><div class="row"><button class="w-btn" data-alsave>💾 Kaydet</button><button class="w-btn" data-altoggle>${a.open ? '🔒 Kapalı yap' : '🔓 Açık yap'}</button></div></div>` : ''}
+    <p class="desc al-note">🤝 Müttefiklerin haritada yeşil halkayla görünür ve onlara saldırılamaz.</p>
+    <button class="w-btn red al-go" data-alleave>🏳️ ${lead && mem.length === 1 ? 'İttifakı dağıt' : 'İttifaktan ayrıl'}</button>`);
+}
+async function alAction(fn) { if (AL.busy) return; AL.busy = true; AL.err = ''; alRerender(); try { await fn(); } finally { AL.busy = false; alRerender(); } }
 // ---- Teklif paketleri ----
 function offersUI() {
   const chip = (img, txt, cls = '') => `<span class="of-it ${cls}">${img}<b>${txt}</b></span>`;
@@ -1140,7 +1218,7 @@ function profileUI() {
       { n: 'Kâşif', i: 'nav_world', ok: G.S.stats.kills >= 500 }, { n: 'Efsane', i: 'ic_gift', ok: Object.keys(G.S.heroes).some((x) => HERO_BY_ID[x].rarity === 5) },
     ];
     body = `<div class="w-banner" style="background-image:url(${UI('banner_profile')});min-height:140px;align-items:center">
-      <div class="w-prof"><div class="w-ava framed"><img src="assets/heroes/${G.S.commander}_a.webp" alt=""><img class="aframe" src="${UI('fr_' + G.S.frame)}" alt=""></div><div><div class="nm">${G.S.name}</div><div class="sub">ID: ${id} • Komutan: ${h ? h.name : '-'}</div>
+      <div class="w-prof"><div class="w-prof-av">${frameHtml(G.S.commander, G.S.frame, 70)}</div><div><div class="nm">${G.S.name}</div><div class="sub">ID: ${id} • Komutan: ${h ? h.name : '-'}</div>
       <div class="w-xp"><span class="lvl">${th}</span><div class="bar"><span style="width:${th * 10}%"></span></div></div></div></div></div>
       <div class="w-stats">
         <div class="w-stat"><img src="${UI('nav_heroes')}"><div><small>Güç</small><b>${G.fmt(G.cityPower())}</b></div></div>
@@ -1151,9 +1229,9 @@ function profileUI() {
   } else if (profTab === 'frame') {
     const cur = FRAME_BY_ID[G.S.frame] || FRAMES[0];
     const tile = (f) => { const own = G.frameOwned(f.id), on = G.S.frame === f.id;
-      return `<div class="fr-tile ${on ? 'on' : ''} ${f.free ? '' : 'prem t' + f.tier}" data-frame="${f.id}"><div class="fr-prev"><img class="fr-av" src="assets/heroes/${G.S.commander}_a.webp" alt=""><img class="fr-img" src="${UI('fr_' + f.id)}" alt=""></div>
+      return `<div class="fr-tile ${on ? 'on' : ''} ${f.free ? '' : 'prem t' + f.tier}" data-frame="${f.id}"><div class="fr-sm">${frameHtml(G.S.commander, f.id, 52)}</div>
         <b>${f.name}</b>${on ? '<em class="fr-st on">✓ Takılı</em>' : own ? '<em class="fr-st">Tak</em>' : `<em class="fr-st buy">🪙 ${G.fmt(f.gold)}</em>`}${f.pro ? '<i class="fr-pro">PRO</i>' : ''}</div>`; };
-    body = `<div class="fr-hero"><div class="fr-prev big"><img class="fr-av" src="assets/heroes/${G.S.commander}_a.webp" alt=""><img class="fr-img" src="${UI('fr_' + cur.id)}" alt=""></div><div><small>Takılı çerçeve</small><b>${cur.name}</b><span>${cur.free ? 'Ücretsiz' : 'Özel çerçeve'}</span></div></div>
+    body = `<div class="fr-hero"><div class="fr-big">${frameHtml(G.S.commander, cur.id, 66)}</div><div><small>Takılı çerçeve</small><b>${cur.name}</b><span>${cur.free ? 'Ücretsiz' : 'Özel çerçeve'}</span></div></div>
       <h4 class="fr-h">Ücretsiz çerçeveler</h4><div class="fr-grid">${FRAMES.filter((f) => f.free).map(tile).join('')}</div>
       <h4 class="fr-h prem">✨ Özel çerçeveler</h4><div class="fr-grid">${FRAMES.filter((f) => !f.free).map(tile).join('')}</div>`;
   } else {
@@ -1175,7 +1253,7 @@ $('modalBox').addEventListener('input', (e) => {
 });
 $('modalBox').addEventListener('click', (e) => {
   const wt = e.target.closest('[data-wtab]');
-  if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; return renderModal(); }
+  if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; else if (modalKind === 'alliance') { if (v !== 'chat') alStopChat(); AL.tab = v; AL.err = ''; if (v === 'find') alRefresh(); } return renderModal(); }
   const gq = e.target.closest('[data-goq]');
   if (gq) { const v = gq.dataset.goq; const q = QUESTS.find((x) => x.id === v); closeModal();
     if (q && q.t[0] === 'bld') { const p = PLOTS.find((x) => x.key === q.t[1]); if (p) { openBuilding(p.id); focusOn(p.x, p.z); } return; }
@@ -1213,6 +1291,26 @@ $('modalBox').addEventListener('click', (e) => {
   if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
   const ta = e.target.closest('[data-tall]');
   if (ta) { const m2 = ta.dataset.tall; for (const t in TROOPS) atk.troops[t] = m2 === 'all' ? G.S.troops[t] : m2 === 'half' ? Math.floor(G.S.troops[t] / 2) : 0; return renderModal(); }
+  if (modalKind === 'alliance') {
+    const em = e.target.closest('[data-alem]'), co = e.target.closest('[data-alcol]');
+    const keepForm = () => { const f = AL.form; f.name = $('alName')?.value ?? f.name; f.tag = ($('alTag')?.value ?? f.tag).toUpperCase().replace(/[^A-Z0-9ÇĞİÖŞÜ]/g, ''); f.desc = $('alDesc')?.value ?? f.desc; f.open = $('alOpen') ? $('alOpen').checked : f.open; };
+    if (em) { keepForm(); AL.form.emblem = +em.dataset.alem; return renderModal(); }
+    if (co) { keepForm(); AL.form.color = +co.dataset.alcol; return renderModal(); }
+    if (e.target.closest('[data-alcreate]')) { keepForm(); const f = AL.form;
+      if (f.name.trim().length < 3) { AL.err = 'İsim en az 3 harf olmalı'; return renderModal(); }
+      if (f.tag.length < 2) { AL.err = 'Etiket 2–4 harf olmalı'; return renderModal(); }
+      if (G.S.res.gold < G.ALLIANCE_COST) return needGold();
+      return alAction(async () => { const r = await createAlliance({ name: f.name.trim().slice(0, 20), tag: f.tag, emblem: f.emblem, color: f.color, desc: f.desc.trim().slice(0, 140), open: f.open, server: G.S.server || 1 }, G.myMember());
+        if (!r.ok) { AL.err = r.why; return; } G.payAlliance(); G.setAlliance({ id: r.id, tag: f.tag, name: f.name.trim(), emblem: f.emblem, color: f.color }); sfx('reveal5'); toast(`🛡️ [${f.tag}] ${f.name} kuruldu!`); AL.tab = 'main'; updateTop(); syncSoon(); await alRefresh(); }); }
+    const jn = e.target.closest('[data-aljoin]');
+    if (jn) return alAction(async () => { const r = await joinAlliance(jn.dataset.aljoin, G.myMember()); if (!r.ok) { toast(r.why, true); return; } const a = await getAlliance(jn.dataset.aljoin); G.setAlliance(a); AL.doc = a; AL.tab = 'main'; sfx('built'); toast(`🤝 [${a.tag}] ${a.name} ittifakına katıldın!`); syncSoon(); });
+    if (e.target.closest('[data-alleave]')) { if (!confirm('İttifaktan ayrılmak istiyor musun?')) return; return alAction(async () => { const r = await leaveAlliance(AL.doc); if (!r.ok) { toast(r.why, true); return; } alStopChat(); AL.doc = null; G.setAlliance(null); AL.tab = 'find'; AL.list = null; toast(r.deleted ? '🏳️ İttifak dağıtıldı' : '🏳️ İttifaktan ayrıldın'); syncSoon(); await alRefresh(); }); }
+    const kk = e.target.closest('[data-alkick]');
+    if (kk) { const nm = AL.doc.members[kk.dataset.alkick]?.name; if (!confirm(`${nm} ittifaktan çıkarılsın mı?`)) return; return alAction(async () => { const r = await kickMember(AL.doc.id, kk.dataset.alkick); if (!r.ok) { toast(r.why, true); return; } toast('👢 Üye çıkarıldı'); await alRefresh(); }); }
+    if (e.target.closest('[data-alsave]')) return alAction(async () => { const d = ($('alEditDesc')?.value || '').trim().slice(0, 140); const r = await editAlliance(AL.doc.id, { desc: d }); if (!r.ok) toast(r.why, true); else { toast('💾 Kaydedildi'); await alRefresh(); } });
+    if (e.target.closest('[data-altoggle]')) return alAction(async () => { const r = await editAlliance(AL.doc.id, { open: !AL.doc.open }); if (!r.ok) toast(r.why, true); else await alRefresh(); });
+    if (e.target.closest('[data-alsend]')) { const inp = $('alChatIn'), t = inp?.value.trim(); if (!t) return; inp.value = ''; sendChat(AL.doc.id, t, G.myMember()).then((r) => { if (!r.ok) toast(r.why, true); }); return; }
+  }
   const fr = e.target.closest('[data-frame]');
   if (fr) { const id = fr.dataset.frame; if (G.frameOwned(id)) { G.setFrame(id); sfx('click'); toast('🖼️ Çerçeve takıldı'); } else { const r = G.buyFrame(id); if (!r.ok) { if (r.needGold) needGold(); else toast(r.why, true); return; } sfx('reveal'); toast(`✨ ${FRAME_BY_ID[id].name} çerçevesi alındı`); } updateTop(); return renderModal(); }
   const ob = e.target.closest('[data-offer]');
@@ -1394,6 +1492,8 @@ async function startOnline() {
   if (!G.S.server) { const n = await assignServer(); G.placeOnServer(n); toast(`🌐 Sunucu #${n}'e katıldın!`); }
   await syncNow();
   processInbox(); refreshRivals(true);
+  if (G.S.alliance) alRefresh(); // üyeliği doğrula, gücü güncelle
+  setInterval(() => { if (G.S.alliance) alRefresh(); }, 300000);
   setInterval(() => { if (Date.now() - lastSync > 60000) syncNow(); }, 15000);
   setInterval(processInbox, 120000);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') syncNow(); });
