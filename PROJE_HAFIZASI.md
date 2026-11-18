@@ -478,6 +478,11 @@ cd araba-oyunu && python3 -m http.server 8000
 - Çağırma portalı: beyaz düz sütun yerine dokulu akan enerji sütunları (`beamTex`, iki katman) ve dönen arcane girdap (`assets/ui/fx_vortex.webp`, iki sprite, toplamsal), patlama ışığı yumuşatıldı.
 - Harita küreleri: `assets/ui/ic_castle.webp` (Şehrim), `ic_throne.webp` (Taht).
 
+### 5.26 Düzeltmeler: harita adı, kahraman ekranı v2, çağırmada ayak hizası
+- Haritada kendi şehrin etiketi artık `G.S.name` (önce sabit "Krallığım" yazıyordu).
+- Kahraman görüntüleyici (`scenes.js renderUI`, CSS "Kahraman ekranı v2" `.hv-*`): küçük altın çerçeveli isim levhası, 4'lü istatistik (Seviye/Saldırı/Savunma/Bonus), kısa yetenek satırı, tek satır Yüce yükseltme kutusu, köşeleri kesik butonlar (Seviye kaynak simgeli, x10, Komutan yap taçlı). Kahraman artık panelin üstünde tamamen görünür.
+- Çağırma: kaidenin üst yüzeyi portal modeline aşağı ışın atılarak bulunur (`heroBase`), kahraman ilk 0,6 sn ve 3B model gelince bounding box ile ayak hizasına oturtulur.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

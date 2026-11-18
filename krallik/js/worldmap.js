@@ -277,7 +277,7 @@ export function openWorldMap(opts = {}) {
     if (c.shieldUntil > Date.now() / 1000) { shield = new THREE.Mesh(new THREE.SphereGeometry(13, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), shieldMat); g.add(shield); }
     const el = document.createElement('div'); el.className = 'wm-l ' + kind(c);
     const tg = c.me ? G.S.alliance?.tag : c.alliance?.tag;
-    el.innerHTML = `<b>${c.th || 1}</b><span>${tg ? `<em class="wm-tag">[${tg}]</em> ` : ''}${c.me ? 'Krallığım' : (isAlly(c) ? '🤝 ' : c.real ? '🌐 ' : '') + c.name}</span>${shield ? '<i>🛡️</i>' : ''}`;
+    el.innerHTML = `<b>${c.th || 1}</b><span>${tg ? `<em class="wm-tag">[${tg}]</em> ` : ''}${c.me ? (G.S.name || 'Krallığım') : (isAlly(c) ? '🤝 ' : c.real ? '🌐 ' : '') + c.name}</span>${shield ? '<i>🛡️</i>' : ''}`;
     labels.appendChild(el);
     return { c, g, el, shield, terr, y: 0 };
   };

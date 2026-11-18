@@ -1241,3 +1241,49 @@ header#top > .profile { margin-left: 8px; }
 .btn.asc-go { flex: 0 0 auto; background: linear-gradient(180deg, #ff8ae0, #9a4ae8 60%, #5a1aa8); box-shadow: 0 4px 0 #3a0a70, 0 0 14px rgba(255, 120, 230, .6); animation: pulse 1.4s infinite; }
 .asc-box .btn { flex: 0 0 auto; padding: 10px 12px; font-size: 14px; }
 .hcard .hc-up { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 900; color: #fff; background: linear-gradient(180deg, #ff6ad8, #8a3ae8); box-shadow: 0 0 8px rgba(255, 120, 230, .8); }
+/* =====================================================================
+   Kahraman ekranı v2 — toplu, ortaçağ çerçeveli
+   ===================================================================== */
+.hv-top { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 8px; right: 8px; display: flex; align-items: center; gap: 6px; pointer-events: auto; }
+.hv-nav, .hv-x { flex-shrink: 0; width: 38px; height: 38px; border-radius: 50%; border: 2.5px solid transparent; color: #fff; font-size: 15px; font-weight: 900; cursor: pointer; text-shadow: 0 1px 0 #000;
+  background: radial-gradient(circle at 40% 30%, #6a7ae0, #23307a 60%, #0e143a) padding-box, var(--wm-gold) border-box; box-shadow: 0 3px 8px rgba(0,0,0,.6); }
+.hv-x { background: radial-gradient(circle at 40% 30%, #ff7a5a, #c8281a 55%, #6a0e06) padding-box, var(--wm-gold) border-box; }
+.hv-plate { flex: 1; min-width: 0; text-align: center; padding: 5px 8px 6px; border-radius: 14px; border: 2px solid transparent;
+  background: linear-gradient(180deg, rgba(28, 20, 60, .92), rgba(10, 8, 26, .92)) padding-box, var(--wm-gold) border-box; box-shadow: 0 4px 12px rgba(0,0,0,.55); }
+.hv-stars { line-height: 1; font-size: 16px; text-shadow: 0 0 8px currentColor; }
+.hv-name { font-family: 'Cinzel', serif; font-weight: 900; font-size: 16px; line-height: 1.15; color: var(--rc); text-shadow: 0 2px 0 #000, 0 0 10px rgba(0,0,0,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hv-sub { display: flex; justify-content: center; gap: 6px; align-items: center; font-size: 11px; font-weight: 800; color: #e8d6b0; white-space: nowrap; overflow: hidden; }
+.hv-rar { padding: 0 7px; border-radius: 7px; background: var(--rc); color: #1a1008; font-weight: 900; }
+.hv-sub .asc-tag { font-size: 11px; margin: 0; padding: 0 7px; }
+.hv-hint { position: absolute; top: calc(max(10px, env(safe-area-inset-top)) + 78px); left: 0; right: 0; text-align: center; font-size: 11px; font-weight: 800; color: rgba(255,240,210,.8); text-shadow: 0 1px 3px #000; pointer-events: none; }
+.hv-panel { margin: 0 2px; padding: 12px 10px 10px; border-radius: 18px; border: 2.5px solid transparent; position: relative;
+  background: radial-gradient(120% 80% at 50% 0%, #2c2470 0%, #161044 50%, #0a0822 100%) padding-box, var(--wm-gold) border-box; box-shadow: 0 -6px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,225,150,.25); }
+.hv-role { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); padding: 2px 12px; border-radius: 10px; white-space: nowrap; font-family: 'Lilita One', sans-serif; font-size: 12.5px; color: #ffe9b0;
+  border: 1.5px solid transparent; background: linear-gradient(180deg, #3a2a78, #1a1240) padding-box, var(--wm-gold) border-box; }
+.hv-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 4px 0 7px; }
+.hv-stats > div { display: flex; flex-direction: column; align-items: center; padding: 5px 2px; border-radius: 11px; background: linear-gradient(180deg, rgba(110, 90, 220, .3), rgba(20, 14, 60, .7)); border: 1px solid rgba(255, 210, 120, .28); }
+.hv-stats i { font-style: normal; font-size: 15px; line-height: 1; } .hv-stats small { font-size: 9.5px; font-weight: 800; color: #b8b0e8; }
+.hv-stats b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 15px; color: #fff; line-height: 1.1; white-space: nowrap; } .hv-stats b em { font-style: normal; font-size: 10px; color: #b8b0e8; } .hv-stats b em.up { color: #7dff7a; }
+.hv-skill { padding: 6px 9px; margin-bottom: 7px; border-radius: 10px; background: rgba(0,0,0,.32); border-left: 3px solid #e0a630; font-size: 11.5px; font-weight: 700; line-height: 1.3; color: #e6e0ff; }
+.hv-skill b { color: #ffd04a; }
+.hv-warn { margin: -3px 0 6px; font-size: 11px; font-weight: 800; color: #ffcf8a; text-align: center; }
+.hv-asc { display: flex; align-items: center; gap: 8px; padding: 5px 7px; margin-bottom: 7px; border-radius: 12px; background: linear-gradient(90deg, rgba(255, 106, 216, .16), rgba(110, 90, 255, .16)); border: 1px solid rgba(220, 150, 255, .35); }
+.hv-asc.ready { border-color: #ff9ae8; box-shadow: 0 0 12px rgba(255, 120, 230, .45); }
+.hv-asc > img { width: 30px; height: 30px; object-fit: contain; filter: drop-shadow(0 0 5px rgba(255, 120, 230, .8)); }
+.hv-ai { flex: 1; min-width: 0; } .hv-ai b { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 13px; color: #ffd8f6; } .hv-ai small { font-size: 10.5px; font-weight: 800; color: #d8c8ff; } .hv-ai .asc-bar { height: 5px; margin: 2px 0 1px; }
+.hv-row { display: flex; gap: 6px; }
+.hv-btn { --face: linear-gradient(180deg, #6a9aff, #2a5ad0 55%, #142c80); position: relative; isolation: isolate; flex: 1; min-width: 0; height: 46px; border: 0; cursor: pointer; padding: 0 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  color: #fff; font-family: 'Lilita One', sans-serif; font-size: 15px; line-height: 1.05; text-shadow: 0 2px 0 rgba(0,0,0,.5);
+  clip-path: polygon(10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px), 0 10px); background: var(--wm-gold); }
+.hv-btn::before { content: ''; position: absolute; inset: 2.5px; z-index: -1; background: var(--face); clip-path: polygon(9px 0, calc(100% - 9px) 0, 100% 9px, 100% calc(100% - 9px), calc(100% - 9px) 100%, 9px 100%, 0 calc(100% - 9px), 0 9px); box-shadow: inset 0 -5px 0 rgba(0,0,0,.25); }
+.hv-btn small { display: flex; align-items: center; gap: 2px; font-size: 11.5px; } .hv-btn small img { width: 15px; height: 15px; object-fit: contain; }
+.hv-btn > img { width: 20px; height: 16px; object-fit: contain; }
+.hv-btn.gold { flex-direction: row; gap: 4px; --face: linear-gradient(180deg, #ffe07a, #e0a020 55%, #8a5400); color: #3a1e00; text-shadow: 0 1px 0 rgba(255,240,190,.6); }
+.hv-btn.steel { flex-direction: row; gap: 4px; --face: linear-gradient(180deg, #9a96a8, #5a566c 55%, #36324a); }
+.hv-btn.green { --face: linear-gradient(180deg, #7ae07a, #2a9a3a 55%, #135a1a); flex: 1.3; }
+.hv-btn.sq { flex: 0 0 48px; }
+.hv-btn.asc { flex: 0 0 auto; height: 38px; padding: 0 12px; font-size: 13px; --face: linear-gradient(180deg, #ff8ae0, #9a4ae8 60%, #5a1aa8); }
+.hv-btn.violet { --face: linear-gradient(180deg, #a07aff, #6a3ad8 55%, #3a1a8a); }
+.hv-btn.wide { width: 100%; }
+.hv-btn[disabled] { filter: grayscale(.85) brightness(.6); pointer-events: none; }
+.hv-btn:active { transform: translateY(2px) scale(.98); }

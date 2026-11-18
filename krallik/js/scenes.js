@@ -450,7 +450,8 @@ function buildSummonScene() {
   // kristal ışıltıları (modeldeki kristallerin üstünde)
   const crystals = [];
   for (const [x, y] of [[-0.42, 0.2], [0.42, 0.2], [0, 0.96], [-0.12, 0.92], [0.12, 0.92]]) { const g = sprite(0xc080ff, 0.9, 0.5); g.position.set(x * PH * 0.98, y * PH, 0.3); portal.add(g); crystals.push({ m: g, ph: Math.random() * 6 }); }
-  const heroBase = P.daisY + 0.02;
+  let heroBase = P.daisY + 0.02;
+  if (pm) { portal.updateMatrixWorld(true); const rc = new THREE.Raycaster(new THREE.Vector3(0, PH * 0.26, -0.45), new THREE.Vector3(0, -1, 0)); const hit = rc.intersectObject(pm, true)[0]; if (hit && hit.point.y > 0.05) heroBase = hit.point.y + 0.01; }
   // parçacıklar
   const PN = 300, pg = new THREE.BufferGeometry(), pp = new Float32Array(PN * 3);
   for (let i = 0; i < PN; i++) { pp[i * 3] = rand(-6, 6); pp[i * 3 + 1] = rand(0, 7); pp[i * 3 + 2] = rand(-6, 4); }
@@ -571,6 +572,8 @@ export function openSummon() {
     if (S.flash.material.opacity > 0) { S.flash.material.opacity = Math.max(0, S.flash.material.opacity - dt * 1.5); S.flash.scale.setScalar(14 + (1 - S.flash.material.opacity) * 6); }
     if (S.heroSlot) {
       S.heroT += dt;
+      const sig = String(!!S.heroSlot.userData.h3);
+      if (S.heroT < 0.6 || sig !== S.heroSlot.userData.gsig) { S.heroSlot.userData.gsig = sig; S.heroSlot.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(S.heroSlot); if (isFinite(bb.min.y)) S.heroSlot.position.y += S.heroBase - bb.min.y; }
       S.heroSlot.rotation.y = Math.sin(S.heroT * 0.5) * 0.25;
       if (S.wantMove && S.heroSlot.userData.h3) { playHeroMove(S.heroSlot); playVoice(S.wantMove); S.wantMove = null; }
       animateUnit(S.heroSlot, 'idle', t, dt);
@@ -643,26 +646,29 @@ export function openHeroViewer(id) {
     const cost = o ? heroLevelCost(o.level) : null;
     const maxed = o && o.level >= G.heroMaxLevel();
     const roleTxt = { infantry: '🗡️ Piyade komutanı', archer: '🏹 Okçu komutanı', cavalry: '🐎 Süvari komutanı', tank: '⚙️ Tank komutanı' }[h.role];
-    ov().innerHTML = `<div class="ov-top"><button class="x" id="hPrev" style="margin:0">◀</button>
-      <div style="text-align:center"><div class="rs" style="font-size:18px;text-shadow:0 0 12px currentColor">${starsHtml(h, ups, 26)}</div>
-      <div class="ov-title" style="color:${RC};font-size:19px">${h.name}</div>${st.asc ? `<div class="asc-tag">✦ Yüce ${st.asc}</div>` : ''}<div style="font-weight:800;font-size:12px;color:#e8d6b0;text-shadow:0 1px 3px #000">${h.title} • ${roleTxt}</div><div style="font-size:11px;font-weight:800;color:#ffe7a0;opacity:.85;margin-top:2px">👆 Kahramana dokun: özel hareket</div></div>
-      <div class="row"><button class="x" id="hNext" style="margin:0">▶</button><button class="x" id="hClose" style="margin:0">✕</button></div></div>
-      <div class="ov-bottom"><div class="modal-box" style="max-width:none;padding:12px;animation:none">
-        <div class="stats" style="grid-template-columns:repeat(3,1fr)">
-          <div class="stat"><small>Seviye</small><b>${o ? o.level : '-'} <small style="display:inline">/ ${G.heroMaxLevel()}</small></b></div>
-          <div class="stat"><small>Birlik bonusu</small><b>+${bonus.toFixed(0)}%</b></div>
-          <div class="stat"><small>Kopya</small><b>${o ? o.copies : 0} <small style="display:inline">/ ${sc ?? 'MAX'}</small></b></div>
-          <div class="stat"><small>⚔ Saldırı</small><b>${heroAtk(h, o ? o.level : 1, ups)}${o && !maxed ? ` <span class="up">→ ${heroAtk(h, o.level + 1, ups)}</span>` : ''}</b></div>
-          <div class="stat"><small>🛡 Savunma</small><b>${heroDef(h, o ? o.level : 1, ups)}</b></div>
-          <div class="stat"><small>En yüksek</small><b>Sv.${HERO_MAX_LEVEL}</b></div></div>
-        ${o && maxed && o.level < HERO_MAX_LEVEL ? '<p class="desc" style="margin:0 0 8px;color:#ffcf8a">Daha yüksek seviye için Karakter Deposu\'nu yükselt (her seviye +15).</p>' : ''}
-        <p class="desc" style="margin:0 0 10px">✨ <b>${h.skill}</b></p>
-        ${o ? `<div class="asc-box ${canUp ? 'ready' : ''}"><div class="asc-info"><b>${sc == null ? '✦ En yüksek yıldız!' : st.gold < 5 ? `⭐ ${st.gold + 1}★ yükseltme` : `✦ Yüce ${st.asc + 1}`}</b><small>${sc == null ? 'Bu kahraman zirvede' : `Kopya ${o.copies}/${sc} • tüm güç +%15`}</small><div class="asc-bar"><i style="width:${sc ? Math.min(100, o.copies / sc * 100) : 100}%"></i></div></div><button class="btn ${canUp ? 'asc-go' : 'gray'}" id="hAsc" ${canUp ? '' : 'disabled'}>${st.gold < 5 ? '⭐' : '✦'} Yıldız yükselt</button></div>` : ''}
-        ${o ? `<div class="row">
-          <button class="btn" id="hLvl" ${maxed ? 'disabled' : ''}>${maxed ? 'Sınırda' : `⬆ Seviye • 🌾${G.fmt(cost.food)} 🪨${G.fmt(cost.stone)}`}</button>
-          ${maxed ? '' : '<button class="btn blue" id="hLvl10" style="flex:0 0 auto;padding:0 12px">x10</button>'}
-          <button class="btn ${G.S.commander === h.id ? 'gray' : 'gold'}" id="hCmd">${G.S.commander === h.id ? '👑 Komutan' : '👑 Komutan yap'}</button></div>`
-        : `<button class="btn purple" style="width:100%" id="hGo">🔒 Henüz sahip değilsin — Çağır</button>`}
+    const rimg = (r) => `<img src="assets/ui/res_${r}.webp" alt="">`;
+    ov().innerHTML = `<div class="hv-top">
+        <button class="hv-nav" id="hPrev">◀</button>
+        <div class="hv-plate" style="--rc:${RC}"><div class="hv-stars">${starsHtml(h, ups, 20)}</div><div class="hv-name">${h.name}</div>
+          <div class="hv-sub">${st.asc ? `<span class="asc-tag">✦ Yüce ${st.asc}</span>` : `<span class="hv-rar">${RARITY[effR].name}</span>`}<span>${h.title}</span></div></div>
+        <button class="hv-nav" id="hNext">▶</button><button class="hv-x" id="hClose">✕</button></div>
+      <div class="hv-hint">👆 Dokun: özel hareket • sürükle: döndür</div>
+      <div class="ov-bottom"><div class="hv-panel">
+        <div class="hv-role">${roleTxt}</div>
+        <div class="hv-stats">
+          <div><i>📈</i><small>Seviye</small><b>${o ? o.level : '-'}<em>/${G.heroMaxLevel()}</em></b></div>
+          <div><i>⚔️</i><small>Saldırı</small><b>${heroAtk(h, o ? o.level : 1, ups)}${o && !maxed ? `<em class="up">→${heroAtk(h, o.level + 1, ups)}</em>` : ''}</b></div>
+          <div><i>🛡️</i><small>Savunma</small><b>${heroDef(h, o ? o.level : 1, ups)}</b></div>
+          <div><i>✨</i><small>Bonus</small><b>+${bonus.toFixed(0)}%</b></div></div>
+        <div class="hv-skill"><b>${h.skill.split(':')[0]}</b>${h.skill.includes(':') ? ':' + h.skill.split(':').slice(1).join(':') : ''}</div>
+        ${o && maxed && o.level < HERO_MAX_LEVEL ? '<div class="hv-warn">Daha yüksek seviye: Karakter Deposu\'nu yükselt (+15)</div>' : ''}
+        ${o ? `<div class="hv-asc ${canUp ? 'ready' : ''}"><img src="assets/ui/st_asc.webp" alt=""><div class="hv-ai"><b>${sc == null ? 'En yüksek yıldız!' : st.gold < 5 ? `${st.gold + 1}★ yükseltme` : `Yüce ${st.asc + 1}`}</b><div class="asc-bar"><i style="width:${sc ? Math.min(100, o.copies / sc * 100) : 100}%"></i></div><small>Kopya ${o.copies}/${sc ?? '—'} • güç +%15</small></div>
+            <button class="hv-btn asc" id="hAsc" ${canUp ? '' : 'disabled'}>✦ Yükselt</button></div>
+          <div class="hv-row">
+            <button class="hv-btn green" id="hLvl" ${maxed ? 'disabled' : ''}>${maxed ? 'Sınırda' : `<span>⬆ Seviye</span><small>${rimg('food')}${G.fmt(cost.food)} ${rimg('stone')}${G.fmt(cost.stone)}</small>`}</button>
+            ${maxed ? '' : '<button class="hv-btn blue sq" id="hLvl10">x10</button>'}
+            <button class="hv-btn ${G.S.commander === h.id ? 'steel' : 'gold'}" id="hCmd"><img src="assets/ui/crown.webp" alt="">${G.S.commander === h.id ? 'Komutan' : 'Komutan yap'}</button></div>`
+        : `<button class="hv-btn violet wide" id="hGo">🔒 Henüz sahip değilsin — Çağır</button>`}
       </div></div>`;
     $('hClose').onclick = close;
     $('hPrev').onclick = () => { cur = (cur - 1 + list.length) % list.length; setHero(); };
