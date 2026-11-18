@@ -238,6 +238,33 @@ export const DAILY = [
   { id: 'd5', text: '1 kahraman çağır', stat: 'summons', n: 1, reward: { gold: 15 } },
   { id: 'd6', text: 'Yaralı asker iyileştir', stat: 'heals', n: 1, reward: { gold: 15 } },
 ];
+// ---- Hızlandırma eşyaları: her zamanlayıcıda (inşaat, eğitim, tank, araştırma, iyileştirme) kullanılır ----
+// tier → simge rengi: 1 yeşil, 2 mavi, 3 mor, 4 altın, 5 efsanevi kırmızı
+export const SPEEDUPS = {
+  s1m: { sec: 60, short: '1dk', name: '1 Dakika Hızlandırma', tier: 1 },
+  s5m: { sec: 300, short: '5dk', name: '5 Dakika Hızlandırma', tier: 1 },
+  s15m: { sec: 900, short: '15dk', name: '15 Dakika Hızlandırma', tier: 2 },
+  s1h: { sec: 3600, short: '1sa', name: '1 Saat Hızlandırma', tier: 2 },
+  s3h: { sec: 10800, short: '3sa', name: '3 Saat Hızlandırma', tier: 3 },
+  s5h: { sec: 18000, short: '5sa', name: '5 Saat Hızlandırma', tier: 3 },
+  s12h: { sec: 43200, short: '12sa', name: '12 Saat Hızlandırma', tier: 4 },
+  s24h: { sec: 86400, short: '24sa', name: '24 Saat Hızlandırma', tier: 4 },
+  s2d: { sec: 172800, short: '2gün', name: '2 Gün Hızlandırma', tier: 5 },
+  s3d: { sec: 259200, short: '3gün', name: '3 Gün Hızlandırma', tier: 5 },
+};
+export const SPEED_ORDER = Object.keys(SPEEDUPS);
+export const SPEED_TIER = { 1: 'Sıradan', 2: 'Nadir', 3: 'Destansı', 4: 'Efsanevi', 5: 'Mitik' };
+// Düşme tabloları: [eşya, ağırlık(%), adet aralığı]
+// Ana görev: %80 1–5 dk, 1 saat nadir
+export const DROP_QUEST = [['s1m', 45, [1, 3]], ['s5m', 35, [1, 2]], ['s15m', 13, [1, 1]], ['s1h', 6, [1, 1]], ['s3h', 1, [1, 1]]];
+// Etkinlik (günlük görevler): büyük hızlandırmalar burada, ama nadir
+export const DROP_EVENT = [['s1m', 30, [2, 4]], ['s5m', 30, [1, 3]], ['s15m', 18, [1, 2]], ['s1h', 12, [1, 1]], ['s3h', 5, [1, 1]], ['s5h', 3, [1, 1]], ['s12h', 1.5, [1, 1]], ['s24h', 0.5, [1, 1]]];
+// Günlük etkinlik sandığı: 2 çekiliş, büyük ödül şansı biraz daha yüksek
+export const DROP_CHEST = [['s5m', 30, [2, 3]], ['s15m', 25, [1, 2]], ['s1h', 22, [1, 2]], ['s3h', 11, [1, 1]], ['s5h', 7, [1, 1]], ['s12h', 3.5, [1, 1]], ['s24h', 1.5, [1, 1]]];
+// Market: altınla, bilerek pahalı (doğrudan altınla bitirmekten ~%25–40 pahalı)
+export const SPEED_SHOP = [
+  { id: 's1h', gold: 400 }, { id: 's5h', gold: 760 }, { id: 's24h', gold: 2100, tag: 'Popüler' }, { id: 's2d', gold: 3900 }, { id: 's3d', gold: 5600, tag: 'Kraliyet' },
+];
 export const DAILY_CHEST = { need: 4, reward: { gold: 100, food: 3000, wood: 3000 } };
 export const LOGIN_REWARDS = [
   { food: 2000, wood: 2000 }, { gold: 50 }, { stone: 2000, food: 2000 }, { gold: 100 }, { food: 5000, wood: 5000, stone: 2000 }, { gold: 150 }, { gold: 300 },

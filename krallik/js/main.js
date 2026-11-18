@@ -8,7 +8,7 @@ import * as ASSETS from './assets.js';
 import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI } from './worldmap.js';
 import { serverPlayers, assignServer } from './online.js';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT } from './data.js';
 import { campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js';
 import * as G from './state.js';
 import { getAvatar } from './scenes.js';
@@ -585,6 +585,7 @@ function upgradeBlock(id) {
   if (b.busyUntil > t) {
     const pct = (t - b.busyStart) / (b.busyUntil - b.busyStart) * 100;
     return `<div class="progress"><span style="width:${pct}%"></span><em>🔨 ${b.level ? 'Yükseltiliyor' : 'İnşa ediliyor'} • ${G.fmtTime(b.busyUntil - t)}</em></div>
+      <button class="btn speedbtn" style="width:100%;margin-bottom:8px" data-act="spd" data-tg="b:${id}">⏩ Hızlandır ${spCountTxt()}</button>
       <button class="btn gold" style="width:100%" data-act="speed">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(b.busyUntil - t)}</button>`;
   }
   if (b.level >= maxLevel(p.key)) return `<p class="desc">✨ En yüksek seviyeye ulaştı (Sv.${maxLevel(p.key)}).</p>`;
@@ -658,6 +659,7 @@ function barracksUI() {
     const tr = G.S.training, pct = (t - tr.start) / (tr.end - tr.start) * 100;
     return `<p class="desc"><b>${TROOPS[tr.type].icon} ${tr.n} ${TROOPS[tr.type].name}</b> eğitiliyor…</p>
       <div class="progress green"><span style="width:${pct}%"></span><em>${G.fmtTime(tr.end - t)}</em></div>
+      <button class="btn speedbtn" style="width:100%;margin-bottom:8px" data-act="spd" data-tg="train">⏩ Hızlandır ${spCountTxt()}</button>
       <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedtrain">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(tr.end - t)}</button>`;
   }
   const room = G.campRoom(), max = Math.max(1, Math.min(G.trainBatchMax(), room));
@@ -685,6 +687,7 @@ function tankyardUI() {
     const tr = G.S.tankTraining, pct = (t - tr.start) / (tr.end - tr.start) * 100;
     return s + `<p class="desc"><b>${d.icon} ${tr.n} ${d.name}</b> üretiliyor…</p>
       <div class="progress green"><span style="width:${pct}%"></span><em>${G.fmtTime(tr.end - t)}</em></div>
+      <button class="btn speedbtn" style="width:100%;margin-bottom:8px" data-act="spd" data-tg="tank">⏩ Hızlandır ${spCountTxt()}</button>
       <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedtank">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(tr.end - t)}</button>`;
   }
   const room = G.campRoom(), max = Math.max(1, Math.min(G.tankBatchMax(), room)); tankQty = clamp(tankQty, 1, max); s += campBar();
@@ -702,6 +705,7 @@ function academyUI() {
     const pct = (t - cur.start) / (cur.end - cur.start) * 100, R = RESEARCH[cur.key];
     s += `<p class="desc"><b>${R.icon} ${R.name} Sv.${(G.S.research.levels[cur.key] || 0) + 1}</b> araştırılıyor…</p>
       <div class="progress"><span style="width:${pct}%"></span><em>${G.fmtTime(cur.end - t)}</em></div>
+      <button class="btn speedbtn" style="width:100%;margin-bottom:8px" data-act="spd" data-tg="research">⏩ Hızlandır ${spCountTxt()}</button>
       <button class="btn gold" style="width:100%;margin-bottom:10px" data-act="speedres">⚡ Hemen bitir • 🪙 ${G.gemCostForTime(cur.end - t)}</button>`;
   }
   for (const k in RESEARCH) {
@@ -718,7 +722,7 @@ function hospitalUI() {
   s += `<div class="troops">${Object.keys(TROOPS).map((k) => `<div class="troop"><span class="ti">${TROOPS[k].icon}</span>${TROOPS[k].short}<small>🤕 ${G.S.wounded[k]}</small></div>`).join('')}</div>`;
   if (G.S.healing) {
     const hl = G.S.healing, pct = (t - hl.start) / (hl.end - hl.start) * 100;
-    s += `<div class="progress green"><span style="width:${pct}%"></span><em>💚 ${G.totalTroops(hl.counts)} asker iyileşiyor • ${G.fmtTime(hl.end - t)}</em></div>`;
+    s += `<div class="progress green"><span style="width:${pct}%"></span><em>💚 ${G.totalTroops(hl.counts)} asker iyileşiyor • ${G.fmtTime(hl.end - t)}</em></div><button class="btn speedbtn" style="width:100%;margin-bottom:8px" data-act="spd" data-tg="heal">⏩ Hızlandır ${spCountTxt()}</button>`;
   } else if (w) {
     s += `<div class="cost">${costHtml(G.healCost(G.S.wounded))}</div><button class="btn" style="width:100%;margin-bottom:8px" data-act="heal">💚 Tümünü iyileştir</button>`;
   }
@@ -749,6 +753,7 @@ $('sheet').addEventListener('click', (e) => {
   if (act === 'upgrade') { const r = G.startUpgrade(id); if (!r.ok) toast(r.why, true); else { toast('🔨 İnşaat başladı'); sfx('build'); refreshPlot(id); tutEvent('upgrade'); } }
   if (act === 'speed') { if (G.speedUp(id)) { sfx('coin'); tutEvent('speed'); } else needGold(); }
   if (act === 'collect') doCollect(id);
+  if (act === 'spd') { openSpeed(a.dataset.tg); return; }
   if (act === 'train') { const r = G.startTraining(trainSel, trainQty); if (!r.ok) toast(r.why, true); else { toast('⚔ Eğitim başladı'); sfx('train'); tutEvent('train'); } }
   if (act === 'speedtrain') { if (!G.speedTraining()) needGold(); }
   if (act === 'traintank') { const r = G.startTankTraining(tankQty); if (!r.ok) toast(r.why, true); else { toast('⚙️ Tank üretimi başladı'); sfx('build'); } }
@@ -824,6 +829,7 @@ function renderModalInner() {
   if (k === 'login') return openModal(loginUI());
   if (k === 'attack') return openModal(attackUI());
   if (k === 'scout') return openModal(scoutUI(scoutRep));
+  if (k === 'speed') return openModal(speedUI());
 }
 const allEnemies = () => G.S.enemies.concat(G.ONLINE.enemies);
 function worldUI() {
@@ -887,15 +893,29 @@ function attackUI() {
     <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${tot ? '' : 'disabled'}>🚩 Yürüyüşe çık</button></div>`;
 }
 let questTab = 'main';
-const rewardTxt = (r) => Object.entries(r).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ');
+const rewardTxt = (r) => Object.entries(r).filter(([k]) => RES[k]).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ') + (r._items ? '  ' + r._items.map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join('  ') : '');
+// Ödül alındığında: kaynak bildirimi + büyük hızlandırma çıktıysa özel kutlama
+function rewardFx(r, icon = '🎉') {
+  toast(icon + ' ' + rewardTxt(r));
+  const big = (r._items || []).filter((it) => SPEEDUPS[it.id].tier >= 3).sort((a, b) => SPEEDUPS[b.id].sec - SPEEDUPS[a.id].sec)[0];
+  if (big) { sfx('reveal5'); showItemDrop(big); } else sfx('coin');
+}
+function showItemDrop(it) {
+  const d = SPEEDUPS[it.id]; let el = $('itemDrop'); if (!el) { el = document.createElement('div'); el.id = 'itemDrop'; document.body.appendChild(el); }
+  el.className = 'idrop t' + d.tier; el.innerHTML = `<div class="idrop-box"><div class="idrop-rays"></div>${spIcon(it.id, 120)}<b>${SPEED_TIER[d.tier]} ödül!</b><span>${d.name}${it.n > 1 ? ' ×' + it.n : ''}</span><small>Dokun ve devam et</small></div>`;
+  el.onclick = () => el.classList.add('hidden'); el.classList.remove('hidden');
+  clearTimeout(showItemDrop.t); showItemDrop.t = setTimeout(() => el.classList.add('hidden'), 6000);
+}
+// Hızlandırma simgesi: kum saati (nadirlik rengi) + süre rozeti
+export const spIcon = (id, sz = 56, n) => { const d = SPEEDUPS[id]; return `<span class="sp-ic t${d.tier}" style="--sz:${sz}px"><img src="${UI('sp_t' + d.tier)}" alt=""><b>${d.short}</b>${n != null ? `<em>×${G.fmt(n)}</em>` : ''}</span>`; };
 const rewardPills = (r) => Object.entries(r).map(([k, v]) => pill(k, v)).join('');
 function questsUI() {
   G.dailyReset();
   let body = '';
-  const qRow = (icon, text, x, y, reward, btn) => `<div class="w-row"><img src="${UI(icon)}" alt=""><div class="rt">${text}<div class="pb"><i><b style="width:${Math.min(100, x / y * 100)}%"></b></i><small>${G.fmt(x)}/${G.fmt(y)}</small></div></div><div class="w-rw">${rewardPills(reward)}${btn}</div></div>`;
+  const qRow = (icon, text, x, y, reward, btn) => `<div class="w-row"><img src="${UI(icon)}" alt=""><div class="rt">${text}<div class="pb"><i><b style="width:${Math.min(100, x / y * 100)}%"></b></i><small>${G.fmt(x)}/${G.fmt(y)}</small></div></div><div class="w-rw">${rewardPills(reward)}<span class="w-pill sp-q ${questTab === 'daily' ? 'ev' : ''}" title="Rastgele hızlandırma"><img src="${UI(questTab === 'daily' ? 'sp_t3' : 'sp_t1')}" alt="">?</span>${btn}</div></div>`;
   if (questTab === 'main') {
     const list = G.activeQuests();
-    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Krallık Görevleri</div><div class="bs">Görevleri tamamla, krallığını büyüt!</div></div><span class="bt2">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length}</span></div>`;
+    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Krallık Görevleri</div><div class="bs">Her görev rastgele ⏩ hızlandırma verir!</div></div><span class="bt2">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length}</span></div>`;
     if (!list.length) body += '<p class="desc">🏆 Tüm ana görevleri tamamladın!</p>';
     for (const q of list) {
       const [x, y] = G.questProgress(q), ok = x >= y;
@@ -905,7 +925,7 @@ function questsUI() {
   } else if (questTab === 'daily') {
     const n = G.dailyClaimedCount();
     const steps = [1, 2, 3, DAILY_CHEST.need];
-    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Günlük Görevler</div><div class="bs">${DAILY_CHEST.need} görev bitir, sandığı aç!</div></div><span class="bt2">⏱ ${G.fmtTime((new Date().setHours(24, 0, 0, 0) - Date.now()) / 1000)}</span></div>`;
+    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Günlük Görevler</div><div class="bs">${DAILY_CHEST.need} görev bitir, sandığı aç! ⏩ 24 saate kadar hızlandırma şansı</div></div><span class="bt2">⏱ ${G.fmtTime((new Date().setHours(24, 0, 0, 0) - Date.now()) / 1000)}</span></div>`;
     body += `<div class="w-card"><div class="w-track">${steps.map((st, i) => `<div class="ms ${n >= st ? 'ok' : ''}"><div class="box"><img src="${UI(i === 3 ? 'nav_shop' : i === 1 ? 'res_gold' : 'res_food')}" alt="">${i === 3 ? '' : `<small>${i === 1 ? '+30' : '+500'}</small>`}</div><div class="node">${st}</div></div>`).join('')}</div>
       <div style="text-align:center;margin-top:8px"><button class="w-btn gold" data-chest ${!G.S.daily.chest && n >= DAILY_CHEST.need ? '' : 'disabled'}>${G.S.daily.chest ? 'Sandık alındı' : `Sandığı aç (${Math.min(n, DAILY_CHEST.need)}/${DAILY_CHEST.need})`}</button></div></div>`;
     for (const d of DAILY) {
@@ -942,7 +962,7 @@ function updateQuestUI() {
 }
 $('qbar').onclick = () => {
   const q = G.activeQuests()[0];
-  if (q && G.questDone(q)) { const r = G.claimQuest(q.id); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('built'); updateTop(); updateQuestUI(); } return; }
+  if (q && G.questDone(q)) { const r = G.claimQuest(q.id); if (r) { rewardFx(r); updateTop(); updateQuestUI(); } return; }
   if (q && q.t[0] === 'bld') { const p = PLOTS.find((x) => x.key === q.t[1]); if (p) { openBuilding(p.id); focusOn(p.x, p.z); return; } }
   if (q && q.t[1] === 'trained') { openBuilding('barracks'); focusOn(-17, 2); return; }
   if (q && (q.t[1] === 'wins')) return navigate('world');
@@ -1004,12 +1024,20 @@ export async function fillPortraits(root = $('modalBox')) {
   }
 }
 let shopTab = 'gold';
+function speedShopHtml() {
+  const pct = (tbl, k) => { const tot = tbl.reduce((a, r) => a + r[1], 0), r = tbl.find((q) => q[0] === k); return r ? (r[1] / tot * 100).toFixed(r[1] / tot < 0.01 ? 1 : 0) + '%' : '—'; };
+  const owned = SPEED_ORDER.filter((k) => G.S.items[k] > 0);
+  return `<div class="sp-shop">${SPEED_SHOP.map((p) => { const d = SPEEDUPS[p.id]; return `<div class="pack sp-pack t${d.tier}">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}${spIcon(p.id, 74)}<b>${d.name}</b><small>Sende: ${G.fmt(G.S.items[p.id] || 0)}</small><button class="w-btn gold" style="width:100%" data-spbuy="${p.id}">🪙 ${G.fmt(p.gold)}</button></div>`; }).join('')}</div>
+    <div class="w-card sp-bag"><h4>🎒 Çantam</h4>${owned.length ? `<div class="sp-bag-list">${owned.map((k) => spIcon(k, 54, G.S.items[k])).join('')}</div>` : '<p class="desc" style="margin:0">Henüz hızlandırman yok.</p>'}</div>
+    <div class="w-card sp-odds"><h4>🎲 Nereden kazanılır?</h4><table><tr><th></th><th>Ana görev</th><th>Etkinlik</th></tr>${SPEED_ORDER.filter((k) => !['s2d', 's3d'].includes(k)).map((k) => `<tr><td>${spIcon(k, 30)}</td><td>${pct(DROP_QUEST, k)}</td><td>${pct(DROP_EVENT, k)}</td></tr>`).join('')}</table><p class="desc" style="margin:6px 0 0">2 ve 3 günlük hızlandırmalar yalnızca markette.</p></div>`;
+}
 function shopUI() {
   let body = `<div class="w-banner" style="background-image:url(${UI('banner_shop')})"><div><div class="bt">Kraliyet Hazinesi</div><div class="bs">Altın paketleri ve kaynaklar</div></div></div>`;
   if (shopTab === 'gold') body += `<div class="shop">${SHOP.map((p) => `<div class="pack">${p.tag ? `<span class="tag">${p.tag}</span>` : ''}<div class="pg"><img src="${UI('res_gold')}" width="54" height="54" alt=""></div><b>${G.fmt(p.gold)}</b>${p.bonus ? `<small>+${p.bonus} bonus</small>` : '<small>&nbsp;</small>'}<button class="w-btn gold" style="width:100%" data-buy="${p.id}">${p.price}</button></div>`).join('')}</div>`;
+  else if (shopTab === 'speed') body += speedShopHtml();
   else body += `<div class="shop">${RES_PACKS.map((p) => `<div class="pack"><div class="pg">${Object.keys(p.res).map((r) => resImg(r, 34)).join('')}</div><b style="font-size:14px">${Object.values(p.res).map((v) => G.fmt(v)).join(' / ')}</b><button class="w-btn" style="width:100%" data-rbuy="${p.id}">${resImg('gold')} ${p.gold}</button></div>`).join('')}</div>`;
   body += '<p class="demo">⚠️ Demo mağaza: gerçek ödeme alınmaz, altın ücretsiz eklenir.</p>';
-  return head('Mağaza', 'nav_shop', [{ id: 'gold', label: 'Altın', icon: 'res_gold' }, { id: 'res', label: 'Kaynak', icon: 'res_wood' }], shopTab) + body;
+  return head('Mağaza', 'nav_shop', [{ id: 'gold', label: 'Altın', icon: 'res_gold' }, { id: 'speed', label: 'Hızlandır', icon: 'sp_t4' }, { id: 'res', label: 'Kaynak', icon: 'res_wood' }], shopTab) + body;
 }
 function reportsUI() {
   if (!G.S.reports.length) return head('Savaş Raporları', '📜') + '<p class="desc">Henüz savaş yok. Dünya haritasından bir krallığa saldır!</p>';
@@ -1022,6 +1050,29 @@ function reportsUI() {
     <div class="ln">Kayıpların: ${tot(r.aLoss)} (🤕 ${tot(r.wounded)} yaralı, 💀 ${tot(r.dead)} ölü) • Düşman kaybı: ${tot(r.dLoss)}</div>
     ${r.kind === 'attack' && r.win ? `<div class="ln">Ganimet: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)} 🪙${r.loot.gold || 0}</div>` : ''}
     ${r.kind === 'defense' && !r.win ? `<div class="ln">Yağmalanan: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}</div>` : ''}</div>`).join('');
+}
+// ---- Hızlandırma penceresi ----
+let speedTarget = null;
+const spTotal = () => SPEED_ORDER.reduce((a, k) => a + (G.S.items[k] || 0), 0);
+const spCountTxt = () => { const n = spTotal(); return n ? `<small class="spn">${G.fmt(n)}</small>` : ''; };
+const SP_NAMES = { train: 'Asker eğitimi', tank: 'Tank üretimi', research: 'Araştırma', heal: 'İyileştirme' };
+function openSpeed(tg) { speedTarget = tg; modalKind = 'speed'; lastModalKey = ''; sfx('open'); renderModal(); }
+function speedUI() {
+  const tg = speedTarget, left = G.timerLeft(tg);
+  const name = tg && tg.startsWith('b:') ? (() => { const p = PLOTS.find((q) => q.id === tg.slice(2)); return `${BUILDINGS[p.key].name} Sv.${G.lvl(p.id) + 1}`; })() : SP_NAMES[tg] || '';
+  if (!left) return head('Hızlandır', 'ic_gift') + `<div class="sp-done">✅ Tamamlandı!</div><button class="w-btn" data-m="close" style="width:100%">Kapat</button>`;
+  const owned = SPEED_ORDER.filter((k) => G.S.items[k] > 0), plan = G.bestSpeedups(tg);
+  const planSec = plan.reduce((a, [k, n]) => a + SPEEDUPS[k].sec * n, 0);
+  const rows = owned.map((k) => { const d = SPEEDUPS[k], need = Math.min(G.S.items[k], Math.ceil(left / d.sec));
+    return `<div class="sp-row t${d.tier}">${spIcon(k, 52, G.S.items[k])}<div class="sp-txt"><b>${d.name}</b><small>${SPEED_TIER[d.tier]}</small></div><div class="sp-btns"><button class="w-btn" data-spuse="${k}:1">Kullan</button>${need > 1 ? `<button class="w-btn gold" data-spuse="${k}:${need}">×${need}</button>` : ''}</div></div>`; }).join('');
+  return head('Hızlandır', 'ic_gift') + `<div class="sp-head"><small>${name}</small><b data-spleft>${G.fmtTime(left)}</b></div>
+    ${owned.length ? `<button class="w-btn gold sp-best" data-spbest>⚡ Akıllı kullan <small>(${plan.map(([k, n]) => SPEEDUPS[k].short + (n > 1 ? '×' + n : '')).join(' + ')}${planSec >= left ? ' → bitir' : ''})</small></button><div class="sp-list">${rows}</div>`
+      : `<div class="sp-empty">Hiç hızlandırman yok. Görevlerden ve etkinliklerden kazanabilir ya da marketten alabilirsin.</div>`}
+    <div class="sp-foot"><button class="w-btn" data-spshop>🛒 Market</button><button class="w-btn red" data-spgold>⚡ Altınla bitir • 🪙 ${G.gemCostForTime(left)}</button></div>`;
+}
+function afterSpeed(r) {
+  updateTop(); renderSheet(); updateLabels(true);
+  if (r && r.done) { toast('✅ Tamamlandı!'); sfx('built'); closeModal(); } else renderModal();
 }
 // ---- Gözetleme raporu ----
 let scoutRep = null;
@@ -1101,9 +1152,9 @@ $('modalBox').addEventListener('click', (e) => {
     if (v.includes('heals')) { openBuilding('hospital'); return; }
     return; }
   const qt = e.target.closest('[data-qtab]'); if (qt) { questTab = qt.dataset.qtab; return renderModal(); }
-  const cq = e.target.closest('[data-claimq]'); if (cq) { const r = G.claimQuest(cq.dataset.claimq); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('coin'); updateTop(); } return renderModal(); }
-  const cd = e.target.closest('[data-claimd]'); if (cd) { const r = G.claimDaily(cd.dataset.claimd); if (r) { toast('🎉 ' + rewardTxt(r)); sfx('coin'); updateTop(); } return renderModal(); }
-  if (e.target.closest('[data-chest]')) { const r = G.claimChest(); if (r) { toast('🎁 ' + rewardTxt(r)); sfx('built'); updateTop(); } return renderModal(); }
+  const cq = e.target.closest('[data-claimq]'); if (cq) { const r = G.claimQuest(cq.dataset.claimq); if (r) { rewardFx(r); updateTop(); } return renderModal(); }
+  const cd = e.target.closest('[data-claimd]'); if (cd) { const r = G.claimDaily(cd.dataset.claimd); if (r) { rewardFx(r); updateTop(); } return renderModal(); }
+  if (e.target.closest('[data-chest]')) { const r = G.claimChest(); if (r) { rewardFx(r, '🎁'); updateTop(); } return renderModal(); }
   const kd = e.target.closest('[data-k]');
   if (kd) { worldSel = kd.dataset.k; atk.init = false; return renderModal(); }
   const tab = e.target.closest('[data-tab]');
@@ -1128,6 +1179,13 @@ $('modalBox').addEventListener('click', (e) => {
   if (tq) { const [t, m2] = tq.dataset.tq.split(':'), max = G.S.troops[t]; atk.troops[t] = m2 === 'all' ? max : m2 === 'half' ? Math.floor(max / 2) : 0; return renderModal(); }
   const ta = e.target.closest('[data-tall]');
   if (ta) { const m2 = ta.dataset.tall; for (const t in TROOPS) atk.troops[t] = m2 === 'all' ? G.S.troops[t] : m2 === 'half' ? Math.floor(G.S.troops[t] / 2) : 0; return renderModal(); }
+  const su = e.target.closest('[data-spuse]');
+  if (su) { const [k, n] = su.dataset.spuse.split(':'); const r = G.useSpeedup(speedTarget, k, +n); if (!r.ok) toast(r.why, true); else { sfx('coin'); toast(`⏩ ${SPEEDUPS[k].short}${r.count > 1 ? ' ×' + r.count : ''} kullanıldı`); } return afterSpeed(r); }
+  if (e.target.closest('[data-spbest]')) { const n = G.useBest(speedTarget); if (n) { sfx('coin'); toast(`⏩ ${n} hızlandırma kullanıldı`); } return afterSpeed({ done: !G.timerLeft(speedTarget) }); }
+  if (e.target.closest('[data-spshop]')) { shopTab = 'speed'; modalKind = 'shop'; return renderModal(); }
+  if (e.target.closest('[data-spgold]')) { const tg = speedTarget, ok = tg.startsWith('b:') ? G.speedUp(tg.slice(2)) : tg === 'train' ? G.speedTraining() : tg === 'tank' ? G.speedTankTraining() : tg === 'research' ? G.speedResearch() : G.speedHealing?.(); if (!ok) { needGold(); return; } sfx('coin'); return afterSpeed({ done: true }); }
+  const sb = e.target.closest('[data-spbuy]');
+  if (sb) { const r = G.buySpeedup(sb.dataset.spbuy); if (!r.ok) { if (r.needGold) needGold(); else toast(r.why, true); return; } sfx('coin'); toast(`🛒 ${SPEEDUPS[sb.dataset.spbuy].name} alındı`); updateTop(); return renderModal(); }
   const sr = e.target.closest('[data-scoutrep]');
   if (sr) { openScoutReport(G.S.reports[+sr.dataset.scoutrep]); return; }
   const sa = e.target.closest('[data-scoutatk]');
@@ -1344,4 +1402,5 @@ async function boot() {
   setTimeout(startOnline, 1500);
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
+window.__dsShowDrop = (it) => showItemDrop(it);
 window.__ds = { online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };

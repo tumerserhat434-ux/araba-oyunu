@@ -417,6 +417,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Harita arayüzü v2** (`worldmap.js render`, `style.css` sonu): altın çerçeveli pencere (`.wm-card`, üstte taç), istatistik kutuları (`.wm-st`), köşeleri kesik metalik butonlar (`.wm-btn` steel/violet/crimson/sapphire/gold), altın çerçeveli üst çubuk, yan küreler (`.wm-orb`).
 - **Hayalet şehirler**: Playwright testleri gerçek Firebase'e misafir hesap olarak bağlanıp Sunucu #1'e "Krallığım" adlı Sv.1 şehirler yazmıştı. `online.js → ghost()` varsayılan isimli, Belediye Sv.1, zaferi olmayan profilleri harita/rakip/sıralamadan gizler. Kayıtlar Firestore'da duruyor (sadece sahibi silebilir; Firebase Console'dan silinebilir). **Testlerde Firebase hostları `page.route` ile engellenmeli.**
 
+### 5.18 Hızlandırma eşyaları
+- `data.js → SPEEDUPS`: s1m, s5m (tier1 yeşil), s15m, s1h (tier2 mavi), s3h, s5h (tier3 mor), s12h, s24h (tier4 altın), s2d, s3d (tier5 kırmızı). Simgeler `assets/ui/sp_t1..5.webp` (Higgsfield kum saatleri, ~1,25 kredi).
+- Her zamanlayıcıda kullanılır: `G.useSpeedup(target, id, n)`, hedefler `b:<arsa>`, `train`, `tank`, `research`, `heal`. `bestSpeedups/useBest` en az israfla plan (büyük eşya gerekirse gereksiz küçükleri plandan çıkarır). `S.items`.
+- Düşme: ana görev `DROP_QUEST` (1dk %45, 5dk %35, 15dk %13, 1sa %6, 3sa %1). Günlük görevler `DROP_EVENT` (5sa %3, 12sa %1,5, 24sa %0,5). Günlük sandık 2 çekiliş `DROP_CHEST` (5sa %7, 12sa %3,5, 24sa %1,5). 2–3 günlük yalnızca markette.
+- Market `SPEED_SHOP` (Mağaza > Hızlandır): 1sa 400, 5sa 760, 24sa 2100, 2 gün 3900, 3 gün 5600 altın; çanta ve düşme oranları tablosu aynı sekmede.
+- Arayüz: her "Hemen bitir"in üstünde "⏩ Hızlandır" (eşya sayısıyla), `speedUI` penceresi (Akıllı kullan, tek tek/×N, Market, Altınla bitir). Görev satırlarında "?" hızlandırma rozeti. Tier ≥3 düşünce tam ekran kutlama (`showItemDrop`, 6 sn ya da dokununca kapanır).
+- Not: Playwright/SwiftShader'da sayfa çok yavaş; CSS animasyonları ve zamanlayıcılar ekran görüntüsünü yanıltabiliyor.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

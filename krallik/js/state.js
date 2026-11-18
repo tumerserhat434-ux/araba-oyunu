@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS } from './data.js';
+import { campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP } from './data.js';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -60,6 +60,7 @@ export function load() {
   if (S.mapX == null) { S.mapX = Math.round(rand(220, 780)); S.mapY = Math.round(rand(220, 780)); }
   S.marches ||= [];
   S.scouts ||= []; S.scoutReports ||= [];
+  S.items ||= {};
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
@@ -81,11 +82,48 @@ export function questProgress(q) {
 }
 export const questDone = (q) => { const [x, y] = questProgress(q); return x >= y; };
 export function activeQuests() { return QUESTS.filter((q) => !S.qClaimed[q.id]).slice(0, 4); }
-export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); save(); emit('quests'); return q.reward; }
+// ---- Hızlandırma eşyaları ----
+export function addItem(id, n = 1) { S.items[id] = (S.items[id] || 0) + n; }
+export function rollDrop(table) {
+  const tot = table.reduce((a, r) => a + r[1], 0); let x = Math.random() * tot;
+  for (const [id, w, [lo, hi]] of table) { x -= w; if (x <= 0) { const n = lo + Math.floor(Math.random() * (hi - lo + 1)); addItem(id, n); return { id, n }; } }
+  const [id] = table[0]; addItem(id, 1); return { id, n: 1 };
+}
+// Hızlandırılabilir zamanlayıcılar: 'b:<arsa>', 'train', 'tank', 'research', 'heal'
+function timerRef(target) {
+  if (target.startsWith('b:')) { const b = S.buildings[target.slice(2)]; return b && b.busyUntil > now() ? { get: () => b.busyUntil, set: (v) => { b.busyUntil = v; } } : null; }
+  const o = target === 'train' ? S.training : target === 'tank' ? S.tankTraining : target === 'research' ? S.research.cur : target === 'heal' ? S.healing : null;
+  return o && o.end > now() ? { get: () => o.end, set: (v) => { o.end = v; } } : null;
+}
+export const timerLeft = (target) => { const r = timerRef(target); return r ? Math.max(0, r.get() - now()) : 0; };
+export function useSpeedup(target, id, count = 1) {
+  const r = timerRef(target), it = SPEEDUPS[id]; if (!r || !it) return { ok: false, why: 'Hızlandırılacak bir şey yok' };
+  const have = S.items[id] || 0; count = Math.min(count, have, Math.ceil(timerLeft(target) / it.sec)); if (count <= 0) return { ok: false, why: 'Bu hızlandırmadan yok' };
+  S.items[id] = have - count; r.set(r.get() - it.sec * count); count && (S.counters.speedups = (S.counters.speedups || 0) + count);
+  tick(); save(); emit('speedup', { target, id, count }); return { ok: true, count, done: !timerRef(target) };
+}
+// Kalan süreyi en az israfla bitirecek eşya önerisi (büyükten küçüğe)
+export function bestSpeedups(target) {
+  let left = timerLeft(target); const plan = [];
+  const ids = Object.keys(SPEEDUPS).filter((k) => S.items[k] > 0).sort((a, b) => SPEEDUPS[b].sec - SPEEDUPS[a].sec);
+  for (const k of ids) { if (left <= 0) break; const n = Math.min(S.items[k], Math.floor(left / SPEEDUPS[k].sec)); if (n > 0) { plan.push([k, n]); left -= n * SPEEDUPS[k].sec; } }
+  if (left > 0) { const k = ids.slice().reverse().find((q) => S.items[q] > (plan.find((p) => p[0] === q)?.[1] || 0)); if (k) { const p = plan.find((q) => q[0] === k); if (p) p[1]++; else plan.push([k, 1]); } }
+  // gereksiz kalanları çıkar: küçükten büyüğe, toplam yine yetiyorsa eşyayı plandan düş (büyük eşya geldiyse küçükler harcanmasın)
+  const need = timerLeft(target); let tot = plan.reduce((a, [k, n]) => a + SPEEDUPS[k].sec * n, 0);
+  for (const p of plan.slice().sort((x, y) => SPEEDUPS[x[0]].sec - SPEEDUPS[y[0]].sec)) while (p[1] > 0 && tot - SPEEDUPS[p[0]].sec >= need) { p[1]--; tot -= SPEEDUPS[p[0]].sec; }
+  return plan.filter((p) => p[1] > 0).sort((x, y) => SPEEDUPS[y[0]].sec - SPEEDUPS[x[0]].sec);
+}
+export function useBest(target) { let used = 0; for (const [k, n] of bestSpeedups(target)) { const r = useSpeedup(target, k, n); if (r.ok) used += r.count; } return used; }
+export function buySpeedup(id) {
+  const p = SPEED_SHOP.find((q) => q.id === id); if (!p) return { ok: false, why: 'Bulunamadı' };
+  if (S.res.gold < p.gold) return { ok: false, why: 'Yetersiz altın', needGold: true };
+  S.res.gold -= p.gold; addItem(id, 1); save(); emit('items'); return { ok: true };
+}
+export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }
 export const dailyProg = (d) => Math.min(d.n, S.daily.c[d.stat] || 0);
-export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; gainRes(d.reward); save(); emit('quests'); return d.reward; }
+export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; gainRes(d.reward); const items = [rollDrop(DROP_EVENT)]; save(); emit('quests'); return { ...d.reward, _items: items }; }
 export const dailyClaimedCount = () => Object.keys(S.daily.claimed).length;
-export function claimChest() { if (S.daily.chest || dailyClaimedCount() < DAILY_CHEST.need) return null; S.daily.chest = true; gainRes(DAILY_CHEST.reward); save(); emit('quests'); return DAILY_CHEST.reward; }
+export function claimChest() { if (S.daily.chest || dailyClaimedCount() < DAILY_CHEST.need) return null; S.daily.chest = true; gainRes(DAILY_CHEST.reward); const items = [rollDrop(DROP_CHEST), rollDrop(DROP_CHEST)]; save(); emit('quests'); return { ...DAILY_CHEST.reward, _items: items }; }
 export function claimableCount() {
   let n = activeQuests().filter(questDone).length;
   n += DAILY.filter((d) => !S.daily.claimed[d.id] && dailyProg(d) >= d.n).length;
@@ -273,6 +311,7 @@ export function startTraining(type, n) {
   save(); emit('training');
   return { ok: true };
 }
+export function speedHealing() { const h = S.healing; if (!h) return false; const g = gemCostForTime(h.end - now()); if (S.res.gold < g) return false; S.res.gold -= g; h.end = now(); tick(); save(); return true; }
 export function speedTraining() {
   if (!S.training) return false;
   const g = gemCostForTime(S.training.end - now());
