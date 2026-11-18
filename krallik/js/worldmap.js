@@ -341,6 +341,38 @@ export function openWorldMap(opts = {}) {
   };
   syncScouts();
 
+  // ---- zombiler ----
+  const zombieObjs = new Map();
+  A.ensureHF('zombie');
+  const zRing = new THREE.MeshBasicMaterial({ map: terrTex(), color: 0x6aff3a, transparent: true, opacity: 0.6, depthWrite: false });
+  const zombieMesh = (L) => {
+    let m = A.hasHF('zombie') ? A.hfModel('zombie') : null, h = 1;
+    if (m) { const sz = A.hfSize('zombie'); h = sz.y; m.scale.setScalar((7 + Math.min(L, 100) * 0.04) / h); }
+    else { m = createSoldier('infantry', 'red'); m.scale.setScalar(2.6); m.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.color?.multiply(new THREE.Color(0x7aff6a)); } }); }
+    return m;
+  };
+  const buildZombie = (z) => {
+    const g = new THREE.Group(); g.position.set(z.mapX, 0, z.mapY); scene.add(g);
+    const ring = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), zRing); ring.scale.set(16, 1, 16); ring.position.y = 0.2; g.add(ring);
+    const gg = groundGlow(0x5aff3a, 18, 0.35); gg.position.y = 0.3; g.add(gg);
+    const body = new THREE.Group(); g.add(body); body.add(zombieMesh(z.level));
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(8, 8, 12, 8), hitMat); hit.position.y = 6; hit.userData.city = z; g.add(hit); hits.push(hit);
+    const el = document.createElement('div'); el.className = 'wm-l zombie'; labels.appendChild(el);
+    return { z, c: z, g, body, el, hit, ph: Math.random() * 6, hf: A.hasHF('zombie'), lock: null };
+  };
+  const syncZombies = () => {
+    if (!home) return;
+    for (const [id, o] of zombieObjs) if (!S.zombies.includes(o.z)) { scene.remove(o.g); o.el.remove(); hits.splice(hits.indexOf(o.hit), 1); zombieObjs.delete(id); if (sel === o.z) select(null); }
+    for (const z of S.zombies) {
+      let o = zombieObjs.get(z.id);
+      if (!o) { o = buildZombie(z); zombieObjs.set(z.id, o); }
+      if (!o.hf && A.hasHF('zombie')) { o.body.clear(); o.body.add(zombieMesh(z.level)); o.hf = true; }
+      const lock = !G.zombieUnlocked(z.level);
+      if (o.lock !== lock) { o.lock = lock; o.el.classList.toggle('locked', lock); o.el.innerHTML = `<b>${z.level}</b><span>${lock ? '🔒 ' : ''}Zombi</span>`; }
+    }
+  };
+  syncZombies();
+
   // =====================================================================
   //  Kamera
   // =====================================================================
@@ -423,7 +455,15 @@ export function openWorldMap(opts = {}) {
     const cost = (ic, v) => `<em class="wm-cost">${ic}${v}</em>`;
     const win = (title, badge, body, kind = '') => `<div class="wm-card ${kind}"><div class="wm-crown"></div><div class="wm-ch"><b>${title}</b>${badge ? `<span class="wm-badge">${badge}</span>` : ''}</div>${body}</div>`;
     const stat = (ic, label, val, sub = '') => `<div class="wm-st"><i>${ic}</i><div><small>${label}</small><b>${val}</b>${sub}</div></div>`;
-    if (c && c.throne) {
+    if (c && c.zombie) {
+      const L = c.level, lock = !G.zombieUnlocked(L), need = G.zombiePower(L), mine = G.armyPower(G.S.troops), [lo, hi] = G.zombieLootRange(L), t = G.marchTime(c, G.S.troops), going = G.S.marches.some((m) => m.target === c.id);
+      const ok = mine >= need * 1.1 ? ['Kolay', 'easy'] : mine >= need ? ['Orta', 'mid'] : mine >= need * 0.75 ? ['Zor', 'hard'] : ['Çok zor', 'vhard'];
+      card = win(`🧟 Zombi Sv.${L}`, `⏱ ${fmtT(t)}`, `
+        <div class="wm-cs">${stat('💀', 'Gereken güç', G.fmt(need))}${stat('⚔️', 'Ordu gücün', G.fmt(mine), `<em class="wm-diff ${ok[1]}">${ok[0]}</em>`)}</div>
+        <div class="wm-zrw"><small>Ödüller</small><div><span>🌾🪵🪨 ${G.fmt(lo)}–${G.fmt(hi)}</span><span>⏩ 1dk${L >= 20 ? ' ×' + (1 + Math.floor(L / 20)) : ''}</span><span>⏩ 5dk <i>şans</i></span></div></div>
+        ${lock ? `<div class="wm-shield zl">🔒 Önce <b>Sv.${L - 1}</b> zombiyi öldürmelisin. En yüksek: Sv.${G.S.zombieMax || 0}</div>` : ''}
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('crimson', 'wmAtk', going ? '🚩' : '⚔', going ? 'Yolda…' : 'Saldır', '', lock || going)}</div>`, 'zombie');
+    } else if (c && c.throne) {
       card = win('👑 Demir Taht', `Sunucu #${server}`, `<p class="wm-desc">Krallıkların ortasındaki kadim kale. Şu an <b>tarafsız</b>. Çevresine şehir kurulamaz.</p>
         <div class="wm-cs">${stat('🏳️', 'Durum', 'Tarafsız')}${stat('📍', 'Konum', `X:${TH.x} Y:${TH.y}`)}</div>
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}</div>`, 'throne');
@@ -463,7 +503,7 @@ export function openWorldMap(opts = {}) {
     if ($('wmCity')) $('wmCity').onclick = closeWorld;
     ov().querySelectorAll('[data-recall]').forEach((b) => (b.onclick = () => { G.recallMarch(b.dataset.recall); render(); }));
   };
-  const select = (c) => { sel = c; if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
+  const select = (c) => { sel = c; zombieObjs.forEach((o) => o.el.classList.toggle('sel', o.z === c)); if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
   W = { scene, render, select, syncMarches, syncScouts, cities, list, server, home };
   window.__wmSelect = select; window.__wmCam = cam;
   render();
@@ -523,6 +563,14 @@ export function openWorldMap(opts = {}) {
       if (o.c === sel) o.terr.material.opacity = 0.75 + Math.sin(t * 6) * 0.2; else o.terr.material.opacity = 0.8;
     }
     putLabel(tLabel, 0, 40);
+    if (t - (W._zs || 0) > 0.5) { W._zs = t; syncZombies(); }
+    for (const o of zombieObjs.values()) {
+      const d = Math.hypot(o.z.mapX - cam.tx, o.z.mapY - cam.tz), vis = d < cam.d * 2.6 + 120; o.g.visible = vis;
+      if (!vis) { o.el.style.display = 'none'; continue; }
+      if (o.g.scale.x !== lod) o.g.scale.setScalar(lod);
+      o.body.rotation.z = Math.sin(t * 1.6 + o.ph) * 0.06; o.body.position.y = Math.abs(Math.sin(t * 1.6 + o.ph)) * 0.3; o.body.rotation.y = Math.sin(t * 0.4 + o.ph) * 0.6;
+      putLabel(o, -2 * lod);
+    }
     zone.material.opacity = sel === throneCity ? 0.75 + Math.sin(t * 6) * 0.2 : 0.85;
     // dolaşan ordular
     for (const a of ambient) {

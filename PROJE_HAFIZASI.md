@@ -443,6 +443,15 @@ cd araba-oyunu && python3 -m http.server 8000
 - Harita: müttefik şehirler yeşil (`COL.ally`), etiket `[TAG]`, "🤝 Müttefik" (saldırı yok); `startMarch` müttefike seferi reddeder. `S.alliance` kayıtta; açılışta ve 5 dk'da bir doğrulanır, güç güncellenir.
 - Test: `scratchpad/mock/` bellekte sahte Firebase modülleri (app/auth/firestore), Playwright `page.route` ile gstatic firebasejs yerine verilir — canlı sunucuya dokunmadan çevrimiçi akış testi.
 
+### 5.21 Zombiler ve ittifak armaları
+- **İttifak armaları**: emojiler yerine Higgsfield arma görselleri `assets/ui/ac_0..9.webp` (Aslan, Kurt, Kartal, Ejder, Kılıçlar, Hilal, Anka, Buz, Kale, Taç). `alEm(emblem, color)` renkli sancak + arma.
+- **Zombiler** (`state.js`): `S.zombies` (haritada ~36), `S.zombieMax` (öldürülen en yüksek seviye), `S.zombieNext` (yenilenme zamanı). Seviye 1–100; `zombiePower(L)`: 10 bin, 45 bin, 75 bin, 100 bin, sonra ×1,1028 (Sv.20 ≈ 480 bin, Sv.50 ≈ 9 M, Sv.100 ≈ 1,2 milyar). Zombi ordusu = power/36,8 piyade, savaş `simulateBattle` ile.
+- Sıra: `zombieUnlocked(L)` = L ≤ zombieMax+1; `startMarch` kilitli seviyeyi ve aynı zombiye ikinci seferi reddeder. Öldürülen seviyeler tekrar tekrar kesilebilir.
+- Ödül (`zombieLoot`, `zombieItems`): kaynak 10–50 bin × (1 + (L−1)×0,15) (taş ×0,6), depo sınırını aşabilir (`gainRes`); 1 dk hızlandırma (L/20 ek), %30+ şansla 5 dk.
+- Yenilenme `tickZombies`: harita boşsa doldurur, 10–20 dk'da bir eksikleri tamamlar; yarısı oyuncunun sıradaki seviyelerine yakın, yarısı 1–100 karışık; sıradaki seviye her zaman yakında. Işınlanma/sunucuya yerleşme sonrası yeniden dağıtılır.
+- Harita (`worldmap.js` zombi bölümü): `assets/hf/zombie.glb` (Higgsfield Tripo, 6000 yüz, 117 KB, `ensureHF('zombie')`), yeşil halka + ışık, sallanma animasyonu, yeşil seviye rozeti (kilitliyse gri + 🔒), kart: gereken güç, ordu gücü, zorluk, ödüller, Saldır → Sefer Kampı. `attackUI` artık `G.findEnemy` kullanır.
+- Bu adımda ~12 kredi (11 görsel + 1 Tripo).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

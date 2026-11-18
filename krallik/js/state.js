@@ -63,6 +63,7 @@ export function load() {
   S.items ||= {};
   S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {};
   S.alliance ??= null;
+  S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
   // Ordu kampı: eski kayıtlarda 1. kamp mevcut ordunu alacak seviyede başlar
   if (!S.buildings.camp1.level) { const have = armyTotal(); let L = 1; while (L < 30 && campCap(L) < have) L++; S.buildings.camp1.level = L; }
   ensureMapKingdoms();
@@ -470,6 +471,7 @@ export function teleport(x, y) {
   if (S.res.gold < TELEPORT_COST) return { ok: false, why: 'Yetersiz altın', needGold: true };
   S.res.gold -= TELEPORT_COST; S.mapX = Math.round(x); S.mapY = Math.round(y);
   S.enemies.forEach((e) => { if (Math.hypot(e.mapX - S.mapX, e.mapY - S.mapY) < 24) placeOnMap(e, S.enemies.indexOf(e)); });
+  S.zombies = S.zombies.filter((z) => Math.hypot(z.mapX - S.mapX, z.mapY - S.mapY) > 20); tickZombies(true);
   save(); emit('teleport'); return { ok: true };
 }
 // Hedefin yakınında boş yer bul
@@ -481,7 +483,7 @@ export function spotNear(x, y) {
 export function placeOnServer(server) {
   S.server = server;
   for (let k = 0; k < 80; k++) { const a = Math.random() * Math.PI * 2, d = 110 + Math.random() * (220 + k * 2), x = THRONE.x + Math.cos(a) * d, y = THRONE.y + Math.sin(a) * d; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
-  S.enemies.forEach((e, i) => placeOnMap(e, i)); save();
+  S.enemies.forEach((e, i) => placeOnMap(e, i)); S.zombies = []; S.zombieNext = 0; save();
 }
 function placeOnMap(e, i) {
   for (let k = 0; k < 40; k++) {
@@ -593,7 +595,7 @@ function applyLosses(loss) {
 }
 // ---- Çevrimiçi: gerçek oyuncular ----
 export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0 };
-export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
+export const findEnemy = (id) => S.enemies.find((q) => q.id === id) || (S.zombies || []).find((q) => q.id === id) || ONLINE.enemies.find((q) => q.id === id) || ONLINE.foreign.find((q) => q.id === id);
 // Başka sunucunun bilgisayar krallıkları (görüntülenirken üretilir, kalıcı değil)
 export function foreignBots(server) {
   let seed = server * 9973; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -613,6 +615,8 @@ export function marchTime(e, troops) {
 export function startMarch(enemyId, sent, heroIds) {
   const e = findEnemy(enemyId); if (!e) return { ok: false, why: 'Hedef bulunamadı' };
   if (e.alliance && S.alliance && e.alliance.id === S.alliance.id) return { ok: false, why: '🤝 Müttefikine saldıramazsın' };
+  if (e.zombie && !zombieUnlocked(e.level)) return { ok: false, why: `🧟 Önce Sv.${e.level - 1} zombiyi öldür` };
+  if (e.zombie && S.marches.some((m) => m.target === e.id)) return { ok: false, why: 'Bu zombiye zaten ordu gidiyor' };
   if (S.marches.length >= 3) return { ok: false, why: 'En fazla 3 sefer aynı anda' };
   const troops = {}; let n = 0;
   for (const t in TROOPS) { troops[t] = Math.max(0, Math.min(sent[t] || 0, S.troops[t] || 0)); n += troops[t]; }
@@ -726,7 +730,17 @@ export function attackEnemy(enemyId, sent, heroIds) {
   const res = simulateBattle({ troops: sent, heroes: heroesOf(heroIds), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: e.hero || null, tower: e.tower * 120 });
   const split = applyLosses(res.aLoss);
   for (const t in res.A) S.troops[t] += res.A[t];
-  let loot = {};
+  let loot = {}, items = null;
+  if (e.zombie) {
+    if (res.win) { loot = zombieLoot(e.level); items = zombieItems(e.level); gainRes(loot); for (const it of items) addItem(it.id, it.n); S.zombieMax = Math.max(S.zombieMax, e.level); S.zombieKills++; S.stats.wins++; count('wins'); S.zombies = S.zombies.filter((z) => z !== e); }
+    else { S.stats.losses++; for (const t in e.troops) e.troops[t] = res.D[t]; e.power = armyPower(e.troops); }
+    S.stats.kills += totalTroops(res.dLoss);
+    if (res.win) for (const id of heroIds) if (S.heroes[id].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[id].level++;
+    const rep = { t: now(), kind: 'attack', zombie: e.level, win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, items, hero: heroId, heroes: heroIds };
+    S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
+    save(); emit('battle', rep);
+    return { rep, res, enemy: e, sent };
+  }
   if (res.win) {
     let cap = Object.entries(res.A).reduce((s, [t, n]) => s + n * TROOPS[t].load, 0) * (1 + rb('logis')) * (1 + rallyLoadBonus());
     for (const r of ['food', 'wood', 'stone']) { const take = Math.min(Math.floor(e.res[r] * 0.6), Math.floor(cap / 3)); loot[r] = take; e.res[r] -= take; }
@@ -746,6 +760,47 @@ export function attackEnemy(enemyId, sent, heroIds) {
   save(); emit('battle', rep);
   return { rep, res, enemy: e, sent };
 }
+
+// ---- Zombiler: 1–100. seviye, sırayla açılır, haritada sürekli yenilenir ----
+// Gereken güç: Sv.1 10 bin, Sv.2 45 bin, Sv.3 75 bin, Sv.4 100 bin, sonra her seviye ×1,103 (Sv.20 ≈ 480 bin, Sv.50 ≈ 9 milyon, Sv.100 ≈ 1,2 milyar)
+export const ZOMBIE_MAX_LEVEL = 100;
+export function zombiePower(L) { return L <= 1 ? 10000 : L === 2 ? 45000 : L === 3 ? 75000 : Math.round(100000 * Math.pow(1.1028, L - 4)); }
+export const zombieUnlocked = (L) => L <= (S.zombieMax || 0) + 1;
+// Ödül: 10–50 bin kaynak (seviyeyle artar), her zaman 1 dk hızlandırma, bazen 5 dk
+export function zombieLoot(L) { const k = 1 + (L - 1) * 0.15, o = {}; for (const r of ['food', 'wood', 'stone']) o[r] = Math.round(rand(10000, 50000) * k * (r === 'stone' ? 0.6 : 1) / 100) * 100; return o; }
+export function zombieItems(L) { const out = [{ id: 's1m', n: 1 + Math.floor(L / 20) }]; if (Math.random() < 0.3 + Math.min(0.4, L * 0.004)) out.push({ id: 's5m', n: 1 + Math.floor(L / 40) }); return out; }
+export const zombieLootRange = (L) => { const k = 1 + (L - 1) * 0.15; return [Math.round(10000 * k), Math.round(50000 * k)]; };
+const ZOMBIE_COUNT = 36;
+function makeZombie(L, near) {
+  const n = Math.max(20, Math.round(zombiePower(L) / 36.8));
+  const z = { id: 'z' + Math.random().toString(36).slice(2, 8), zombie: true, level: L, name: `Zombi Sv.${L}`, lord: 'Ölüler Ordusu', th: L, tower: 0, hero: null, res: {}, shieldUntil: 0, troops: { infantry: n, spearman: 0, archer: 0, cavalry: 0, tank: 0 } };
+  z.power = armyPower(z.troops);
+  for (let k = 0; k < 40; k++) {
+    const a = rand(0, Math.PI * 2), d = near ? rand(35, 160) : rand(60, 420), x = (S.mapX ?? 500) + Math.cos(a) * d, y = (S.mapY ?? 500) + Math.sin(a) * d;
+    if (x < 30 || x > 970 || y < 30 || y > 970 || nearThrone(x, y, 16)) continue;
+    if (occupied().concat([[S.mapX, S.mapY]]).every(([px, py]) => Math.hypot(px - x, py - y) > 28) && S.zombies.every((q) => Math.hypot(q.mapX - x, q.mapY - y) > 18)) { z.mapX = Math.round(x); z.mapY = Math.round(y); return z; }
+  }
+  return null;
+}
+// eksik zombileri tamamla: yarısı oyuncunun sıradaki seviyelerine yakın, yarısı 1–100 karışık
+function spawnZombies(n) {
+  for (let i = 0; i < n; i++) {
+    const m = S.zombieMax || 0, nearLv = i % 2 === 0;
+    const L = nearLv ? Math.max(1, Math.min(ZOMBIE_MAX_LEVEL, m + randi(-2, 2) + (i % 4 === 0 ? 1 : 0))) : randi(1, ZOMBIE_MAX_LEVEL);
+    const z = makeZombie(L, nearLv); if (z) S.zombies.push(z);
+  }
+  // sıradaki seviye her zaman haritada (yakında) olsun
+  const next = Math.min(ZOMBIE_MAX_LEVEL, (S.zombieMax || 0) + 1);
+  if (!S.zombies.some((z) => z.level === next)) { const z = makeZombie(next, true); if (z) S.zombies.push(z); }
+}
+// 10–20 dakikada bir yenilenir; ilk açılışta harita doldurulur
+export function tickZombies(force) {
+  if (S.mapX == null) return;
+  const t = now();
+  if (!S.zombies.length || force) { spawnZombies(ZOMBIE_COUNT - S.zombies.length); S.zombieNext = t + rand(600, 1200); emit('zombies'); return; }
+  if (t >= S.zombieNext) { spawnZombies(Math.max(1, ZOMBIE_COUNT - S.zombies.length)); S.zombieNext = t + rand(600, 1200); emit('zombies'); }
+}
+export const zombieRespawnIn = () => Math.max(0, (S.zombieNext || 0) - now());
 
 // Düşman baskını (şehre saldırı)
 export function resolveRaid() {
@@ -777,6 +832,7 @@ export function tick() {
   const t = now();
   if (S.marches?.length) tickMarches();
   if (S.scouts?.length) tickScouts();
+  if (S.mapX != null && (!S.zombies?.length || now() >= (S.zombieNext || 0))) tickZombies();
   for (const p of PLOTS) {
     const b = S.buildings[p.id];
     if (b.busyUntil && b.busyUntil <= t) {

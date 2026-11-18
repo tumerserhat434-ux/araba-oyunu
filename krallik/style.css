@@ -1164,3 +1164,23 @@ header#top > .profile { margin-left: 8px; }
 .wm-tag { font-style: normal; color: #7ae0ff; }
 .fr-sm { width: 100%; }
 .fr-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* İttifak arması: renkli sancak + arma görseli */
+.al-em { overflow: visible; padding-bottom: 0; }
+.al-em img { position: absolute; left: 50%; top: 46%; width: 128%; height: 128%; transform: translate(-50%, -50%); object-fit: contain; filter: drop-shadow(0 3px 3px rgba(0,0,0,.6)); }
+.al-em { clip-path: none; background: none; filter: none; }
+.al-em::before { content: ''; position: absolute; inset: 4% 8% 0; clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%); box-shadow: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 100%, #fff 25%), var(--c) 50%, color-mix(in srgb, var(--c) 65%, #000)); border-top: 3px solid #f0c050; }
+.al-pick.em { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.al-pick.em button { width: auto; height: 58px; padding: 2px; display: grid; place-items: center; }
+.al-pick.em button img { width: 100%; height: 100%; object-fit: contain; }
+/* ---- Zombiler (harita) ---- */
+.wm-l.zombie b { background: radial-gradient(circle at 50% 30%, #9aff5a, #2a7a10 70%); color: #0a1a04; text-shadow: none; box-shadow: 0 0 0 1.5px #0a1a04, 0 0 0 3px #b8ff7a, 0 0 10px rgba(130, 255, 80, .7); }
+.wm-l.zombie span { color: #c8ffb0; }
+.wm-l.zombie.locked b { background: radial-gradient(circle at 50% 30%, #8a8a8a, #3a3a3a 70%); box-shadow: 0 0 0 1.5px #000, 0 0 0 3px #8a8a8a; color: #fff; }
+.wm-l.zombie.locked span { color: #b8b8b8; }
+#wmLabels.far .wm-l.zombie span { display: none; }
+.wm-card.zombie { background: radial-gradient(120% 90% at 50% 0%, #1e5a1a 0%, #142a1a 45%, #0a120c 100%) padding-box, var(--wm-gold) border-box; }
+.wm-zrw { margin: -2px 0 10px; padding: 8px 10px; border-radius: 12px; background: rgba(0,0,0,.35); border: 1px solid rgba(160, 255, 120, .3); }
+.wm-zrw small { display: block; font-size: 11px; font-weight: 800; color: #b8ffa0; margin-bottom: 4px; }
+.wm-zrw div { display: flex; flex-wrap: wrap; gap: 5px; } .wm-zrw span { padding: 3px 8px; border-radius: 8px; background: rgba(255,255,255,.08); font-family: 'Lilita One', sans-serif; font-size: 13px; } .wm-zrw i { font-style: normal; font-size: 11px; color: #ffe08a; }
+.wm-shield.zl { background: rgba(120, 120, 120, .3); border-color: #b8b8b888; }

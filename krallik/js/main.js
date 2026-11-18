@@ -873,7 +873,7 @@ function worldUI() {
 }
 let atk = { troops: {}, heroes: [] };
 function attackUI() {
-  const e = allEnemies().find((q) => q.id === worldSel);
+  const e = G.findEnemy(worldSel);
   if (!e) return worldUI();
   if (!atk.init) { atk = { init: true, troops: {}, heroes: G.S.heroes[G.S.commander] ? [G.S.commander] : [] }; for (const t in TROOPS) atk.troops[t] = Math.floor(G.S.troops[t] * 0.8); }
   const owned = Object.keys(G.S.heroes).map((id) => HERO_BY_ID[id]).sort((a, b) => b.rarity - a.rarity || G.S.heroes[b.id].level - G.S.heroes[a.id].level);
@@ -1056,10 +1056,10 @@ function speedShopHtml() {
 // =====================================================================
 //  İttifak
 // =====================================================================
-const AL_EMBLEMS = ['🦁', '🐺', '🦅', '🐉', '⚔️', '🌙', '🔥', '❄️', '🛡️', '👑'];
+const AL_EMBLEMS = ['Aslan', 'Kurt', 'Kartal', 'Ejder', 'Kılıçlar', 'Hilal', 'Anka', 'Buz', 'Kale', 'Taç'];
 const AL_COLORS = ['#c8281a', '#2a5ad8', '#2a9a3a', '#8a3ad8', '#e0a020', '#2a2a3a'];
 const AL = { doc: null, list: null, chat: null, chatErr: '', unsub: null, tab: 'find', q: '', form: { name: '', tag: '', emblem: 0, color: 1, desc: '', open: true }, busy: false, err: '' };
-const alEm = (e, c, sz = 46) => `<span class="al-em" style="--c:${AL_COLORS[c] || AL_COLORS[1]};--s:${sz}px"><i>${AL_EMBLEMS[e] || AL_EMBLEMS[0]}</i></span>`;
+const alEm = (e, c, sz = 46) => `<span class="al-em" style="--c:${AL_COLORS[c] || AL_COLORS[1]};--s:${sz}px"><img src="${UI('ac_' + (AL_EMBLEMS[e] ? e : 0))}" alt=""></span>`;
 const alPower = (a) => Object.values(a.members || {}).reduce((t, m) => t + (m.power || 0), 0);
 function alStopChat() { if (AL.unsub) { AL.unsub(); AL.unsub = null; } }
 function alRerender() { if (modalKind === 'alliance' && $('modal').classList.contains('open')) { const inp = $('alChatIn'), v = inp?.value; renderModal(); if (v && $('alChatIn')) $('alChatIn').value = v; } }
@@ -1086,7 +1086,7 @@ function allianceUI() {
         <div class="al-prev">${alEm(f.emblem, f.color, 64)}<div><b>${f.tag ? `[${f.tag}] ` : ''}${f.name || 'İttifak adı'}</b><small>Lider: ${G.S.name}</small></div></div>
         <label>İttifak adı</label><input id="alName" maxlength="20" value="${f.name.replace(/"/g, '')}" placeholder="ör. Demir Kurtlar">
         <label>Etiket (2–4 harf)</label><input id="alTag" maxlength="4" value="${f.tag}" placeholder="ör. DMR" style="text-transform:uppercase">
-        <label>Arma</label><div class="al-pick">${AL_EMBLEMS.map((e, i) => `<button class="${i === f.emblem ? 'on' : ''}" data-alem="${i}">${e}</button>`).join('')}</div>
+        <label>Arma</label><div class="al-pick em">${AL_EMBLEMS.map((e, i) => `<button class="${i === f.emblem ? 'on' : ''}" data-alem="${i}" title="${e}"><img src="${UI('ac_' + i)}" alt=""></button>`).join('')}</div>
         <label>Renk</label><div class="al-pick col">${AL_COLORS.map((c, i) => `<button class="${i === f.color ? 'on' : ''}" data-alcol="${i}" style="background:${c}"></button>`).join('')}</div>
         <label>Açıklama</label><textarea id="alDesc" maxlength="140" rows="2" placeholder="İttifakını tanıt…">${f.desc.replace(/</g, '')}</textarea>
         <label class="al-chk"><input type="checkbox" id="alOpen" ${f.open ? 'checked' : ''}> Herkes katılabilir (açık ittifak)</label>
@@ -1152,7 +1152,7 @@ function reportsUI() {
     <div class="ln">${r.failed ? r.why : `Yağmalanabilir: 🌾${G.fmt(r.loot.food)} 🪵${G.fmt(r.loot.wood)} 🪨${G.fmt(r.loot.stone)} • Asker: ${tot(r.troops)} • <u>Ayrıntılar ›</u>`}</div></div>` : `<div class="rep ${r.win ? '' : 'lose'}"><span class="t">${ago(r.t)}</span>
     <b>${r.kind === 'attack' ? '⚔ Saldırı' : '🛡️ Savunma'}: ${r.win ? 'ZAFER' : 'YENİLGİ'}</b> — ${r.enemy}
     <div class="ln">Kayıpların: ${tot(r.aLoss)} (🤕 ${tot(r.wounded)} yaralı, 💀 ${tot(r.dead)} ölü) • Düşman kaybı: ${tot(r.dLoss)}</div>
-    ${r.kind === 'attack' && r.win ? `<div class="ln">Ganimet: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)} 🪙${r.loot.gold || 0}</div>` : ''}
+    ${r.kind === 'attack' && r.win ? `<div class="ln">Ganimet: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}${r.zombie ? '' : ' 🪙' + (r.loot.gold || 0)}${r.items ? ' ' + r.items.map((it) => `⏩${SPEEDUPS[it.id].short}${it.n > 1 ? '×' + it.n : ''}`).join(' ') : ''}</div>` : ''}
     ${r.kind === 'defense' && !r.win ? `<div class="ln">Yağmalanan: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}</div>` : ''}</div>`).join('');
 }
 // ---- Hızlandırma penceresi ----
@@ -1370,6 +1370,7 @@ G.onChange((ev, data) => {
   if (ev === 'marchArrived') {
     const { r } = data; if (r.enemy.real) sendAttack(r.enemy.uid, { name: G.S.name, win: r.res.win, loot: r.rep.loot, sent: r.sent, aLoss: r.res.aLoss, dLoss: r.res.dLoss });
     lastBattle = r; sfx(r.res.win ? 'win' : 'lose');
+    if (r.rep.zombie) { if (r.res.win) toast(`🧟 Zombi Sv.${r.rep.zombie} öldürüldü! ` + (r.rep.items || []).map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join(' ')); else toast(`🧟 Zombi Sv.${r.rep.zombie} çok güçlüydü! Ordun yenildi`, true); }
     showBattleBanner(r); refreshWorldUI(); syncSoon();
   }
   if (ev === 'scout') { sfx('click'); refreshWorldUI(); }
