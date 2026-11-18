@@ -13,7 +13,7 @@ import * as BLD from './buildings.js';
 import * as G from './state.js';
 import { SPEEDUPS } from './data.js';
 import { createSoldier, animateUnit } from './units.js';
-import { openScene, closeScene, sceneOverlay as ov } from './scenes.js';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -311,7 +311,7 @@ export function openWorldMap(opts = {}) {
   // ---- oyuncunun seferleri: oklu şerit + yürüyen ordu ----
   const marchObjs = new Map();
   const syncMarches = () => {
-    for (const [id, o] of marchObjs) if (!S.marches.find((m) => m.id === id)) { scene.remove(o.line, o.army); o.el.remove(); marchObjs.delete(id); }
+    for (const [id, o] of marchObjs) if (!S.marches.find((m) => m.id === id)) { scene.remove(o.line, o.army); freeSkeletons(o.army); o.line.geometry.dispose(); o.el.remove(); marchObjs.delete(id); }
     for (const m of S.marches) {
       if (marchObjs.has(m.id) || !home || m.foreign) continue;
       const a = new THREE.Vector3(S.mapX, 0, S.mapY), b = new THREE.Vector3(m.tx, 0, m.ty), c = m.kind === 'rally' ? new THREE.Vector3(m.lx, 0, m.ly) : null;
@@ -364,7 +364,7 @@ export function openWorldMap(opts = {}) {
   };
   const syncZombies = () => {
     if (!home) return;
-    for (const [id, o] of zombieObjs) if (!S.zombies.includes(o.z)) { scene.remove(o.g); o.el.remove(); hits.splice(hits.indexOf(o.hit), 1); zombieObjs.delete(id); if (sel === o.z) select(null); }
+    for (const [id, o] of zombieObjs) if (!S.zombies.includes(o.z)) { scene.remove(o.g); freeSkeletons(o.g); o.el.remove(); hits.splice(hits.indexOf(o.hit), 1); zombieObjs.delete(id); if (sel === o.z) select(null); }
     for (const z of S.zombies) {
       let o = zombieObjs.get(z.id);
       if (!o) { o = buildZombie(z); zombieObjs.set(z.id, o); }
@@ -420,7 +420,7 @@ export function openWorldMap(opts = {}) {
   };
   const syncGiants = () => {
     if (!home) return;
-    for (const [id, o] of giantObjs) if (!S.giants.includes(o.z)) { scene.remove(o.g); o.el.remove(); hits.splice(hits.indexOf(o.hit), 1); giantObjs.delete(id); if (sel === o.z) select(null); }
+    for (const [id, o] of giantObjs) if (!S.giants.includes(o.z)) { scene.remove(o.g); freeSkeletons(o.g); o.el.remove(); hits.splice(hits.indexOf(o.hit), 1); giantObjs.delete(id); if (sel === o.z) select(null); }
     for (const q of S.giants) {
       let o = giantObjs.get(q.id); if (!o) { o = buildGiant(q); giantObjs.set(q.id, o); }
       if (!o.hf && A.hasHF('giant')) { o.body.clear(); o.body.add(giantMesh()); o.hf = true; }
@@ -741,7 +741,7 @@ export function openWorldMap(opts = {}) {
     cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); removeEventListener('pointercancel', pu); cv.removeEventListener('wheel', wh);
     labels.innerHTML = ''; labels.classList.add('hidden'); labels.classList.remove('far'); W = null;
   };
-  openScene({ scene, camera, update, dispose }, 'city');
+  openScene({ scene, camera, update, dispose, freeOnClose: true }, 'city');
 }
 function closeWorld() { if (!W) return; closeScene(); }
 export function closeWorldMap() { closeWorld(); }

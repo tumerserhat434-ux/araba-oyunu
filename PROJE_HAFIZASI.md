@@ -496,6 +496,12 @@ cd araba-oyunu && python3 -m http.server 8000
 - Arayüz: İttifak › Ralli sekmesi (`ic_rally`), açık ralliler (geri sayım, üyeler, güç çubuğu, Katıl), "Ralli oluştur" → harita Ara (Dev sekmesi açık, `openWorldMap({search:'giant'})`). Dev kartı: güç, ödüller, "Ralli aç" (ittifak + çevrimiçi gerekir). Sefer Kampı ralli modu (`atk.rally`: create/join). Ralli açılınca ittifak sohbetine duyuru. Raporlarda "📯 Ralli".
 - Model `assets/hf/giant.glb` (Higgsfield Tripo, ~9 kredi), simgeler `ic_rally.webp`, `ic_giant.webp`.
 
+### 5.29 Ekran kartı belleği sızıntısı düzeltmesi (iPhone SE siyah/çizgili ekran)
+- Sebep: dünya haritası ve savaş her açılışta yeni sahne kuruyor, kapanınca hiçbir şey silinmiyordu. En büyük kalem: her animasyonlu askerin (KayKit SkinnedMesh) iskelet dokusu (~280/açılış), ayrıca 2048 zemin dokusu, örneklenmiş ağaçlar, savaşta her seferinde yeni PMREM ortam dokusu. Birkaç açılıştan sonra az bellekli telefonda WebGL bozuluyordu.
+- `scenes.js → freeScene(scene)`: geometri, malzeme, dokular, iskeletler (`skeleton.dispose`), arka plan/ortam dokusu. `freeOnClose: true` olan sahneler (dünya haritası, savaş) kapanınca/başka sahne açılınca silinir. `freeSkeletons(obj)`: haritadan kalkan sefer orduları, zombiler, devler; kahraman görüntüleyici ve çağırmada değişen kahramanlar.
+- Ölçüm (Playwright, iPhone SE): önce her harita açılışı +280 doku kalıcı birikiyordu; şimdi her kapanışta 186'ya döner. Savaş da başlangıca döner.
+- `assets.js → LOW_MEM` (ekranın uzun kenarı < 740 px ya da deviceMemory ≤ 3): kahraman dokuları 1024'e küçültülür. `webglcontextlost` olursa kayıt alınır ve sayfa kendiliğinden yeniden yüklenir.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

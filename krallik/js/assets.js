@@ -111,6 +111,13 @@ export function character(n) {
 }
 
 // ---- Higgsfield kahramanları (animasyonlu, isteğe bağlı yüklenir) ----
+// küçük ekranlı / az bellekli telefonlarda (iPhone SE vb.) kahraman dokuları 1024'e indirilir
+export const LOW_MEM = Math.max(screen.width, screen.height) < 740 || (navigator.deviceMemory && navigator.deviceMemory <= 3);
+function shrinkTex(t, max = 1024) {
+  const im = t && t.image; if (!im || !(im.width > max)) return;
+  const c = document.createElement('canvas'); c.width = c.height = max; c.getContext('2d').drawImage(im, 0, 0, max, max);
+  if (im.close) im.close(); t.image = c; t.needsUpdate = true;
+}
 const h3 = new Map(), h3p = new Map();
 let h3loader = null;
 export function loadHero3d(id) {
@@ -118,7 +125,7 @@ export function loadHero3d(id) {
     h3loader = h3loader || (() => { const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder); return l; })();
     h3p.set(id, h3loader.loadAsync('assets/heroes3d/' + id + '.glb').then((g) => {
       const root = g.scene;
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.65; o.material.metalness = 0; if (o.material.map) { o.material.map.anisotropy = 8; o.material.map.needsUpdate = true; } } } });
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.65; o.material.metalness = 0; if (o.material.map) { if (LOW_MEM) shrinkTex(o.material.map); o.material.map.anisotropy = LOW_MEM ? 4 : 8; o.material.map.needsUpdate = true; } } } });
       root.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(root), sz = b.getSize(new THREE.Vector3());
       h3.set(id, { scene: root, clips: g.animations, h: sz.y, minY: b.min.y });

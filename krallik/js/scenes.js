@@ -34,15 +34,33 @@ const HI_DPR = Math.min(devicePixelRatio || 1, 3);
 function open(obj, theme = 'city') {
   setTheme(theme);
   if (obj.hiDpr) { C.renderer.setPixelRatio(HI_DPR); } else if (C.baseDpr) C.renderer.setPixelRatio(C.baseDpr);
-  if (active) active.dispose?.();
+  if (active) { active.dispose?.(); if (active.scene !== obj.scene) freeLater(active); }
   active = obj;
   ['top', 'side', 'nav', 'labels', 'rside', 'bottomHud'].forEach((id) => $(id).classList.add('hidden'));
   ov().classList.remove('hidden');
   addEventListener('resize', onResize);
   onResize();
 }
+// Tek seferlik sahneleri (dünya haritası, savaş) kapanınca ekran kartı belleğinden sil.
+// Paylaşılan model parçaları da silinebilir: three.js gerektiğinde yeniden yükler.
+const TEX_KEYS = ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'alphaMap', 'bumpMap', 'lightMap', 'envMap'];
+export function freeScene(scene) {
+  const seen = new Set(), freeTex = (t) => { if (t && t.isTexture && !seen.has(t)) { seen.add(t); t.dispose(); } };
+  scene.traverse((o) => {
+    if (o.geometry && !seen.has(o.geometry)) { seen.add(o.geometry); o.geometry.dispose(); }
+    if (o.isInstancedMesh) o.dispose?.();
+    if (o.isSkinnedMesh && o.skeleton && !seen.has(o.skeleton)) { seen.add(o.skeleton); o.skeleton.dispose(); }
+    for (const m of Array.isArray(o.material) ? o.material : o.material ? [o.material] : []) { if (seen.has(m)) continue; seen.add(m); for (const k of TEX_KEYS) freeTex(m[k]); m.dispose(); }
+  });
+  if (scene.background?.isTexture) freeTex(scene.background);
+  if (scene.environment?.isTexture) freeTex(scene.environment);
+  scene.clear();
+}
+export const freeSkeletons = (obj) => { const seen = new Set(); obj?.traverse((o) => { if (o.isSkinnedMesh && o.skeleton && !seen.has(o.skeleton)) { seen.add(o.skeleton); o.skeleton.dispose(); } }); };
+const freeLater = (o) => { if (o && o.freeOnClose) { const sc = o.scene; setTimeout(() => freeScene(sc), 0); } };
 function close() {
   if (!active) return;
+  freeLater(active);
   if (C.baseDpr) C.renderer.setPixelRatio(C.baseDpr);
   active.dispose?.();
   active = null;
@@ -385,7 +403,7 @@ export function openBattle(opts) {
     for (const f of sparks) { if (f.life > 0) { f.life -= dt; f.s.material.opacity = Math.max(0, f.life * 4); f.s.scale.setScalar(0.4 + (0.25 - f.life) * 4); } }
     if (T > 11.2) finish();
   };
-  open({ scene, camera, update, dispose: () => { clearTimeout(autoStart); disposeScene(scene); } }, 'battle');
+  open({ scene, camera, update, freeOnClose: true, dispose: () => { clearTimeout(autoStart); } }, 'battle');
 }
 
 // =====================================================================
@@ -482,7 +500,7 @@ function buildSummonScene() {
 export function openSummon() {
   if (!summonCtx) summonCtx = buildSummonScene();
   const S = summonCtx;
-  if (S.heroSlot) { S.scene.remove(S.heroSlot); S.heroSlot = null; }
+  if (S.heroSlot) { S.scene.remove(S.heroSlot); freeSkeletons(S.heroSlot); S.heroSlot = null; }
   let phase = 'idle', pT = 0, queue = [], results = [], idx = 0;
   const ui = () => {
     const free = G.freePullAvailable();
@@ -508,7 +526,7 @@ export function openSummon() {
     phase = 'charge'; pT = 0;
     S.bestColor = new THREE.Color(RARITY[best].color);
     S.best = best;
-    if (S.heroSlot) { S.scene.remove(S.heroSlot); S.heroSlot = null; }
+    if (S.heroSlot) { S.scene.remove(S.heroSlot); freeSkeletons(S.heroSlot); S.heroSlot = null; }
     ov().innerHTML = `<div class="ov-top"><div class="ov-title">🔮 Çağırılıyor…</div><button class="btn gray" id="sSkip" style="padding:8px 12px;font-size:13px">Geç ⏭</button></div>`;
     $('sSkip').onclick = () => { queue = []; showGrid(); };
     C.sfx('summon');
@@ -517,7 +535,7 @@ export function openSummon() {
   };
   const showHero = (r) => {
     const h = HERO_BY_ID[r.id];
-    if (S.heroSlot) S.scene.remove(S.heroSlot);
+    if (S.heroSlot) { S.scene.remove(S.heroSlot); freeSkeletons(S.heroSlot); }
     const m = createHero(h); m.position.set(0, S.heroBase, -0.45); m.rotation.y = 0;
     S.scene.add(m); S.heroSlot = m; S.heroState = 'cheer'; S.heroT = 0; S.wantMove = r.id;
     S.aura.material.color.set(RARITY[r.rarity].color); S.aura.material.opacity = 0.35;
@@ -534,7 +552,7 @@ export function openSummon() {
   };
   const showGrid = () => {
     phase = 'grid';
-    if (S.heroSlot) { S.scene.remove(S.heroSlot); S.heroSlot = null; }
+    if (S.heroSlot) { S.scene.remove(S.heroSlot); freeSkeletons(S.heroSlot); S.heroSlot = null; }
     S.aura.material.opacity = 0; S.beam.material.opacity = 0; S.beam2.material.opacity = 0;
     const cards = results.map((r, i) => { const h = HERO_BY_ID[r.id]; return `<div class="hcard" style="--rc:${RARITY[r.rarity].color};animation-delay:${i * 0.08}s"><div class="ph" data-portrait="${r.id}">⏳</div><span class="st">${stars(r.rarity)}</span>${r.isNew ? '<span class="lv" style="background:#c0302a">YENİ</span>' : ''}<div class="hn">${h.name}</div></div>`; }).join('');
     ov().innerHTML = `<div class="res10"><div class="hgrid">${cards}</div></div><div class="ov-bottom"><button class="btn gold" id="sOk">Tamam</button></div>`;
@@ -634,7 +652,7 @@ export function openHeroViewer(id) {
   let rot = 0, vel = 0, dragX = null, anim = 'idle', animT = 0, want = false, downX = 0, downT = 0;
   const setHero = () => {
     const h = list[cur];
-    if (H.model) H.scene.remove(H.model);
+    if (H.model) { H.scene.remove(H.model); freeSkeletons(H.model); const seen = new Set(); H.model.traverse((o) => { const m = o.material; if (m && m.map && !seen.has(m.map)) { seen.add(m.map); m.map.dispose(); } }); }
     H.model = createHero(h); H.model.position.y = 0.3; H.scene.add(H.model);
     H.aura.material.color.set(RARITY[h.rarity].color).multiplyScalar(1.4);
     H.aura.material.opacity = h.rarity >= 4 ? 0.7 : 0.25;

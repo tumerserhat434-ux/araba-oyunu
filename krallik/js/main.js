@@ -32,6 +32,12 @@ const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
 // ---------------------------------------------------------------------
 const canvas = $('c');
 export const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// grafik belleği dolup WebGL bağlamı kaybolursa: kaydet ve kendini yeniden yükle (siyah/çizgili ekranda kalma)
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault(); try { G.save(); } catch (er) { /* yok say */ }
+  const d = document.createElement('div'); d.style.cssText = 'position:fixed;inset:0;z-index:999;display:grid;place-items:center;background:#0b1430;color:#ffe08a;font:900 18px Nunito,sans-serif;text-align:center;padding:20px';
+  d.textContent = 'Grafik belleği yenileniyor…'; document.body.appendChild(d); setTimeout(() => location.reload(), 1200);
+});
 renderer.setPixelRatio(Math.min(devicePixelRatio, isMobile ? 1.6 : 2));
 renderer.setSize(innerWidth, innerHeight, false);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1628,4 +1634,4 @@ async function boot() {
 }
 boot().catch((e) => { console.error(e); setLoad(100, 'Hata: ' + e.message); });
 window.__dsShowDrop = (it) => showItemDrop(it);
-window.__ds = { openHeroViewer, openSummon, openBattle, online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };
+window.__ds = { renderer, openHeroViewer, openSummon, openBattle, online, G, cam, navigate, holders, openBuilding, createTank, closeModal, toast, get grass() { return grassField; } };
