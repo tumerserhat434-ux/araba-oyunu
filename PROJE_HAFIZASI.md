@@ -9,7 +9,7 @@
 ## 0. Hızlı özet
 
 - **Depo:** `tumerserhat434-ux/araba-oyunu` (GitHub)
-- **Çalışılan dal:** `claude/selam-naber-ilicoo` (güncel). Önceki dal `claude/forest-parkour-mobile-game-9oxplw` bunun içine alındı. `main` dalına hiç aktarılmadı.
+- **Çalışılan dal:** `claude/laughing-hamilton-eaghgm` (güncel, `claude/selam-naber-ilicoo` üzerine devam). Önceki dal `claude/forest-parkour-mobile-game-9oxplw` bunun içine alındı. `main` dalına hiç aktarılmadı.
 - **Oyunlar** (tarayıcıda çalışır, kurulum gerekmez):
   1. **Orman Kaçışı** (`orman-kacisi/`): Subway Surfers tarzı, yağmur ormanında gece geçen 3D sonsuz koşu. İlk çarpışmada ayı kovalar. **Tamamlandı, şu an dokunulmuyor.**
   2. **Demir Sancak** (`krallik/`): Rise of Kingdoms tarzı krallık kurma ve strateji oyunu. **Aktif geliştirilen proje.**
@@ -391,6 +391,15 @@ cd araba-oyunu && python3 -m http.server 8000
 - Gerçek oyuncular: haritayı açınca ve harita açıkken her 30 sn'de bir sunucudaki tüm oyuncular çekilir (`serverPlayers`); yeni katılanlar hemen görünür.
 - Işınlama: şehir kartında "📍 Yanına ışınlan", boş zemine dokununca "📍 Buraya ışınlan" (200 altın; seferdeyken olmaz; başka şehre 24 birimden yakın olmaz). `state.js → teleport / spotNear / spotFree`.
 - Sunucular 1'den başlar. Yeni oyuncu `online.assignServer()`: 300'den küçük en yüksek sunucu numarasını bulur, o sunucuda 500 oyuncu varsa bir sonrakini açar; `placeOnServer` boş bir yere yerleştirir. Eski 300 numaralı kayıtlar yeniden atanır.
+
+### 5.15 Dünya haritası v3 (akıcılık ve okunaklılık)
+- Kullanıcı haritayı "ucuz, akıcı değil" buldu, örnek olarak popüler bir mobil strateji oyununun harita videosunu gönderdi (yoğun şehirler, merkezde dev kale, her yerde yürüyen ordular).
+- **Kamera** (`worldmap.js`): parmağın altındaki dünya noktası sabit kalır (yer düzlemine ışın), bırakınca atalet (sürtünme e^-4.2t), iki parmakla parmak ortasına zoom + kaydırma, tekerlek imlece zoom, mesafe 80–700, eğim 39°→66°, şehre dokununca `flyTo` ile süzülür.
+- **Demir Taht**: haritanın ortası (`G.THRONE = {x:500,y:500,r:62}`), sur halkası, 6 kule, dönen rün halkası, kırmızı bölge; model townhall4 (yoksa en iyi mevcut kademe). Çevresine şehir kurulamaz/ışınlanılamaz; eski kayıtlar ve botlar tahtın dışına ücretsiz taşınır (`state.js`). Yeni oyuncular tahtın çevresindeki halkaya yerleşir.
+- **Görünüm**: daha aydınlık serin yeşil zemin, ince toprak yollar (şehir→taht, şehir→en yakın komşu), şehirlerde renkli bölge dairesi (sarı ben, mavi gerçek, kırmızı bot), taş kaide, çevresinde küçük evler; uzaklaştıkça şehirler ~2 kat büyür (LOD), uzakta yalnız seviye rozeti görünür. Yeni etiket stili (rozet + konturlu isim, `#wmLabels.far`). Kenarda vinyet.
+- **Canlılık**: barbar kampları (çadır, bayrak, ateş), kaynak noktaları, haritada sürekli yürüyen dekor ordular (kırmızı/camgöbeği akan oklu şerit `ribbon()`), oyuncu seferleri altın oklu şerit.
+- **Performans**: 420 rastgele meşale, kristaller, harabeler, gözetleme kuleleri ve bulutlar kaldırıldı; ağaç/kaya/çadır/sur instanced.
+- Test: Playwright, dokunmatik CDP olaylarıyla kaydırma/atalet/pinch doğrulandı. Gerçek iPhone'da denenmedi.
 
 ## 6. Önemli tasarım kararları (neden böyle)
 

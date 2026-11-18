@@ -368,11 +368,15 @@ function ensureMapKingdoms() {
   const base = Math.max(2500, armyPower(S.troops) + towerPower() + 6000);
   while (S.enemies.length < MAP_BOTS) { const i = S.enemies.length; S.enemies.push(makeEnemy(KINGDOM_NAMES[i % KINGDOM_NAMES.length] + ROMAN[Math.floor(i / KINGDOM_NAMES.length)], LORD_NAMES[(i * 7) % LORD_NAMES.length], base * rand(0.3, 1.9), i)); }
   if (S.enemies.length > MAP_BOTS) S.enemies = S.enemies.filter((e) => e.mapX != null).sort((a, b) => Math.hypot(a.mapX - S.mapX, a.mapY - S.mapY) - Math.hypot(b.mapX - S.mapX, b.mapY - S.mapY)).concat(S.enemies.filter((e) => e.mapX == null)).slice(0, MAP_BOTS);
-  S.enemies.forEach((e, i) => { if (e.mapX == null) placeOnMap(e, i); });
+  if (S.mapX != null && nearThrone(S.mapX, S.mapY, 12)) { const a = Math.atan2(S.mapY - THRONE.y, S.mapX - THRONE.x) || 0.7; S.mapX = Math.round(THRONE.x + Math.cos(a) * (THRONE.r + 40)); S.mapY = Math.round(THRONE.y + Math.sin(a) * (THRONE.r + 40)); }
+  S.enemies.forEach((e, i) => { if (e.mapX == null || nearThrone(e.mapX, e.mapY, 12)) { e.mapX = null; placeOnMap(e, i); } });
 }
 // Haritadaki dolu yerler (şehirler) — ışınlama ve yeni oyuncu yerleşimi için
 function occupied() { return S.enemies.concat(ONLINE.enemies.filter((e) => (e.server || 1) === (S.server || 1))).map((e) => [e.mapX, e.mapY]); }
-export const spotFree = (x, y, r = 24) => x > 30 && x < 970 && y > 30 && y < 970 && occupied().every(([a, b]) => Math.hypot(a - x, b - y) > r);
+// Haritanın ortasındaki Demir Taht kalesi: çevresine şehir kurulamaz
+export const THRONE = { x: 500, y: 500, r: 62 };
+const nearThrone = (x, y, pad = 0) => Math.hypot(x - THRONE.x, y - THRONE.y) < THRONE.r + pad;
+export const spotFree = (x, y, r = 24) => x > 30 && x < 970 && y > 30 && y < 970 && !nearThrone(x, y, 12) && occupied().every(([a, b]) => Math.hypot(a - x, b - y) > r);
 export const TELEPORT_COST = 200;
 export function teleport(x, y) {
   if (S.marches.length) return { ok: false, why: 'Seferdeki ordular dönmeden ışınlanamazsın' };
@@ -390,17 +394,19 @@ export function spotNear(x, y) {
 // Yeni sunucuya yerleş: rastgele boş bir yer
 export function placeOnServer(server) {
   S.server = server;
-  for (let k = 0; k < 60; k++) { const x = 120 + Math.random() * 760, y = 120 + Math.random() * 760; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
+  for (let k = 0; k < 80; k++) { const a = Math.random() * Math.PI * 2, d = 110 + Math.random() * (220 + k * 2), x = THRONE.x + Math.cos(a) * d, y = THRONE.y + Math.sin(a) * d; if (spotFree(x, y, 40)) { S.mapX = Math.round(x); S.mapY = Math.round(y); break; } }
   S.enemies.forEach((e, i) => placeOnMap(e, i)); save();
 }
 function placeOnMap(e, i) {
   for (let k = 0; k < 40; k++) {
     const ang = (i * 2.399) + rand(-0.4, 0.4), dist = 32 + Math.sqrt(i + 1) * 24 + rand(-8, 8);
     const x = Math.round(S.mapX + Math.cos(ang) * dist), y = Math.round(S.mapY + Math.sin(ang) * dist);
-    if (S.enemies.every((o) => o === e || o.mapX == null || Math.hypot(o.mapX - x, o.mapY - y) > 27)) { e.mapX = Math.max(20, Math.min(980, x)); e.mapY = Math.max(20, Math.min(980, y)); return; }
+    if (!nearThrone(x, y, 14) && Math.hypot(S.mapX - x, S.mapY - y) > 27 && S.enemies.every((o) => o === e || o.mapX == null || Math.hypot(o.mapX - x, o.mapY - y) > 27)) { e.mapX = Math.max(20, Math.min(980, x)); e.mapY = Math.max(20, Math.min(980, y)); return; }
   }
-  e.mapX = S.mapX + rand(-300, 300); e.mapY = S.mapY + rand(-300, 300);
+  e.mapX = Math.max(30, Math.min(970, S.mapX + rand(-300, 300))); e.mapY = Math.max(30, Math.min(970, S.mapY + rand(-300, 300)));
+  pushOutOfThrone(e);
 }
+function pushOutOfThrone(e) { if (!nearThrone(e.mapX, e.mapY, 12)) return; const a = Math.atan2(e.mapY - THRONE.y, e.mapX - THRONE.x) || 1; e.mapX = Math.round(THRONE.x + Math.cos(a) * (THRONE.r + 30)); e.mapY = Math.round(THRONE.y + Math.sin(a) * (THRONE.r + 30)); }
 function genEnemies(basePower) {
   const list = [];
   const names = [...KINGDOM_NAMES].sort(() => Math.random() - 0.5), lords = [...LORD_NAMES].sort(() => Math.random() - 0.5);
@@ -508,7 +514,7 @@ export function foreignBots(server) {
   const base = Math.max(3000, armyPower(S.troops) + towerPower() + 6000), out = [];
   for (let i = 0; i < 30; i++) {
     const e = { id: 'f' + server + '_' + i, name: KINGDOM_NAMES[(i * 5 + server) % KINGDOM_NAMES.length] + ' #' + server, lord: LORD_NAMES[(i * 3 + server) % LORD_NAMES.length], mapX: Math.round(80 + rnd() * 840), mapY: Math.round(80 + rnd() * 840), troops: {}, tower: 0, th: 1, res: {}, power: 0, shieldUntil: 0, foreign: server };
-    regenEnemy(e, base * (0.4 + rnd() * 1.6)); out.push(e);
+    pushOutOfThrone(e); regenEnemy(e, base * (0.4 + rnd() * 1.6)); out.push(e);
   }
   return out;
 }

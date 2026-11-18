@@ -1,8 +1,11 @@
 // =====================================================================
-//  DEMİR SANCAK — 3D krallık haritası
-//  Sunucudaki tüm şehirler (gerçek oyuncular 🌐 + bilgisayar krallıkları)
-//  geniş bir haritada; kaydır/yakınlaştır, şehre dokun → sefer,
-//  ordular haritada yürür, varınca savaşır, geri döner.
+//  DEMİR SANCAK — 3D krallık haritası (v3)
+//  - Akıcı kamera: parmağın altındaki nokta sabit kalır, bırakınca kayar
+//    (atalet), iki parmakla parmakların ortasına yakınlaşır, yaklaştıkça
+//    kamera eğilir, şehre dokununca kamera oraya süzülür.
+//  - Ortada Demir Taht kalesi; şehirlerin renkli bölgeleri; barbar kampları,
+//    kaynak noktaları ve haritada sürekli yürüyen ordular (parlayan oklar).
+//  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
 import * as A from './assets.js';
@@ -13,29 +16,43 @@ import { openScene, closeScene, sceneOverlay as ov } from './scenes.js';
 
 const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
 const fmtT = (s) => { s = Math.max(0, Math.ceil(s)); const m = Math.floor(s / 60); return m ? `${m}:${String(s % 60).padStart(2, '0')}` : `${s}sn`; };
-let C = null; // { renderer, toast, sfx, onAttack(id), onWatch(m), online, serverPlayers }
+let C = null; // { renderer, toast, sfx, onAttack(id), online, serverPlayers, onTeleport }
 let W = null; // açık harita durumu
 
 export function initWorldMap(ctx) { C = ctx; }
 export const worldOpen = () => !!W;
 
-function grassTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
-  x.fillStyle = '#6a9e3c'; x.fillRect(0, 0, 512, 512);
-  for (let i = 0; i < 9000; i++) { x.fillStyle = ['#5a8e30', '#7cb04a', '#6aa23a', '#8cbc58', '#4e8028'][i % 5]; x.globalAlpha = 0.25 + Math.random() * 0.5; x.fillRect(Math.random() * 512, Math.random() * 512, 1 + Math.random() * 3, 2 + Math.random() * 3); }
-  for (let i = 0; i < 40; i++) { const g = x.createRadialGradient(0, 0, 0, 0, 0, 60); g.addColorStop(0, 'rgba(120,150,60,.35)'); g.addColorStop(1, 'rgba(120,150,60,0)'); x.save(); x.translate(Math.random() * 512, Math.random() * 512); x.globalAlpha = 1; x.fillStyle = g; x.fillRect(-60, -60, 120, 120); x.restore(); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(70, 70); t.anisotropy = 4; return t;
-}
+const MAP = 1000, MIN_D = 80, MAX_D = 700;
+const TH = G.THRONE; // { x, y, r }
+const HOUSES = ['building_home_A_blue', 'building_home_B_blue', 'building_well_blue', 'building_home_A_blue', 'building_tavern_blue'];
+const COL = { me: 0xffc83a, real: 0x3a9cff, bot: 0xff4a32, throne: 0xff3a2a };
+
+// ---------------------------------------------------------------------
+// yardımcılar
+const canvasTex = (w, h, draw, srgb = true) => { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
+let glowT = null;
+const glowTex = () => glowT || (glowT = canvasTex(64, 64, (x) => { const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, 'rgba(255,255,255,.5)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); }, false));
+const glow = (color, size, op = 0.9) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.setScalar(size); return s; };
+// zemine yatık yumuşak ışık lekesi (sprite'tan ucuz, kameraya dönmez)
+let discT = null;
+const discTex = () => discT || (discT = canvasTex(128, 128, (x) => { const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(0.5, 'rgba(255,255,255,.35)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }, false));
+const discGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+const groundGlow = (color, size, op = 0.5) => { const m = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ map: discTex(), color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); m.scale.set(size, 1, size); return m; };
+
 function instancify(proto, matrices, scene) {
+  if (!matrices.length) return;
   proto.updateMatrixWorld(true);
   proto.traverse((m) => {
     if (!m.isMesh) return;
-    const im = new THREE.InstancedMesh(m.geometry, m.material, matrices.length); im.castShadow = false; im.receiveShadow = true;
+    const im = new THREE.InstancedMesh(m.geometry, m.material, matrices.length); im.castShadow = false; im.receiveShadow = false;
     const tmp = new THREE.Matrix4(); matrices.forEach((M, i) => { tmp.multiplyMatrices(M, m.matrixWorld); im.setMatrixAt(i, tmp); });
     im.computeBoundingSphere(); scene.add(im);
   });
 }
+const mat4 = (x, y, z, ry, s, sy = s) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, sy, s));
+
 const thKey = (L) => (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall');
 function cityModel(L) {
   let k = thKey(L); if (!A.hasHF(k)) { A.ensureHF(k); k = 'townhall'; }
@@ -44,40 +61,87 @@ function cityModel(L) {
 }
 
 // ---------------------------------------------------------------------
-// Gece haritası zemini: tek büyük boyalı doku (yollar, toprak, göl kıyıları) — tohumlu
-function nightGround(list, lakes, seed) {
-  const N = 2048, k = N / 1000, c = document.createElement('canvas'); c.width = c.height = N; const x = c.getContext('2d');
+// Zemin: tek büyük boyalı doku (toprak lekeleri, yollar, taht meydanı)
+function paintGround(list, lakes, seed) {
+  const N = 2048, k = N / MAP;
   let sd = seed; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
-  x.fillStyle = '#2c4636'; x.fillRect(0, 0, N, N);
-  for (let i = 0; i < 260; i++) { const r = 30 + rnd() * 160, g = x.createRadialGradient(0, 0, 0, 0, 0, r); const col = ['58,92,62', '40,66,66', '64,78,88', '50,82,56'][i % 4]; g.addColorStop(0, `rgba(${col},.55)`); g.addColorStop(1, `rgba(${col},0)`); x.save(); x.translate(rnd() * N, rnd() * N); x.fillStyle = g; x.fillRect(-r, -r, 2 * r, 2 * r); x.restore(); }
-  for (let i = 0; i < 26000; i++) { x.fillStyle = ['#2e5440', '#36584e', '#22402e', '#40644e', '#2a4636'][i % 5]; x.globalAlpha = 0.35 + rnd() * 0.4; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 3, 1 + rnd() * 3); }
-  x.globalAlpha = 1;
-  // yollar: her şehirden en yakın iki şehre kıvrımlı taş yol + rastgele patikalar
-  const road = (ax, ay, bx, by, w) => {
-    const mx = (ax + bx) / 2 + (rnd() - 0.5) * 60, my = (ay + by) / 2 + (rnd() - 0.5) * 60;
-    for (const [col, ww] of [['rgba(18,22,20,.6)', w + 8], ['#6e6a5e', w], ['rgba(150,142,120,.55)', w * 0.4]]) { x.strokeStyle = col; x.lineWidth = ww; x.lineCap = 'round'; x.beginPath(); x.moveTo(ax * k, ay * k); x.quadraticCurveTo(mx * k, my * k, bx * k, by * k); x.stroke(); }
-  };
-  const pts = list.map((c) => [c.mapX, c.mapY]);
-  for (let i = 0; i < 18; i++) pts.push([60 + rnd() * 880, 60 + rnd() * 880]);
-  pts.forEach((p, i) => { pts.map((q, j) => [Math.hypot(q[0] - p[0], q[1] - p[1]), j]).filter((d) => d[1] !== i).sort((a, b) => a[0] - b[0]).slice(0, 2).forEach(([, j]) => { if (j > i) road(p[0], p[1], pts[j][0], pts[j][1], 9); }); });
-  // göl kıyıları
-  for (const l of lakes) { x.fillStyle = 'rgba(70,74,90,.9)'; x.beginPath(); x.ellipse(l.x * k, l.z * k, (l.r + 5) * k, (l.r * 0.7 + 5) * k, l.a, 0, 7); x.fill(); }
-  // şehir meydanları
-  for (const c of list) { const g = x.createRadialGradient(c.mapX * k, c.mapY * k, 0, c.mapX * k, c.mapY * k, 26 * k); g.addColorStop(0, 'rgba(90,86,96,.9)'); g.addColorStop(1, 'rgba(90,86,96,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.mapX * k, c.mapY * k, 26 * k, 0, 7); x.fill(); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+  return canvasTex(N, N, (x) => {
+    // taban: ortası biraz daha açık, kenarlara doğru koyulaşan serin yeşil
+    const bg = x.createRadialGradient(N / 2, N / 2, 0, N / 2, N / 2, N * 0.75); bg.addColorStop(0, '#6a8662'); bg.addColorStop(0.6, '#587258'); bg.addColorStop(1, '#40584a'); x.fillStyle = bg; x.fillRect(0, 0, N, N);
+    // büyük doğal lekeler: çayır, taşlık, kuru toprak
+    for (let i = 0; i < 300; i++) { const r = 30 + rnd() * 170, g = x.createRadialGradient(0, 0, 0, 0, 0, r); const col = ['122,148,104', '86,112,90', '128,130,118', '104,128,88', '140,138,108'][i % 5]; g.addColorStop(0, `rgba(${col},.45)`); g.addColorStop(1, `rgba(${col},0)`); x.save(); x.translate(rnd() * N, rnd() * N); x.scale(1, 0.6 + rnd() * 0.8); x.fillStyle = g; x.fillRect(-r, -r, 2 * r, 2 * r); x.restore(); }
+    // ince doku: çim tutamları ve çakıl
+    for (let i = 0; i < 34000; i++) { x.fillStyle = ['#7a9670', '#55705a', '#8aa07c', '#4c6650', '#9a9c88'][i % 5]; x.globalAlpha = 0.25 + rnd() * 0.35; x.fillRect(rnd() * N, rnd() * N, 1 + rnd() * 2.5, 1 + rnd() * 2.5); }
+    x.globalAlpha = 1;
+    // yollar: her şehirden tahta ve en yakın komşuya yumuşak toprak yol
+    const road = (ax, ay, bx, by, w) => {
+      const mx = (ax + bx) / 2 + (rnd() - 0.5) * 70, my = (ay + by) / 2 + (rnd() - 0.5) * 70;
+      for (const [col, ww] of [['rgba(40,46,36,.35)', w + 7], ['#a89a78', w], ['rgba(200,186,150,.5)', w * 0.35]]) { x.strokeStyle = col; x.lineWidth = ww; x.lineCap = 'round'; x.beginPath(); x.moveTo(ax * k, ay * k); x.quadraticCurveTo(mx * k, my * k, bx * k, by * k); x.stroke(); }
+    };
+    const pts = list.map((c) => [c.mapX, c.mapY]);
+    pts.forEach((p, i) => {
+      const nn = pts.map((q, j) => [Math.hypot(q[0] - p[0], q[1] - p[1]), j]).filter((d) => d[1] !== i).sort((a, b) => a[0] - b[0]);
+      nn.slice(0, 1).forEach(([, j]) => road(p[0], p[1], pts[j][0], pts[j][1], 5));
+      const a = Math.atan2(p[1] - TH.y, p[0] - TH.x); road(p[0], p[1], TH.x + Math.cos(a) * TH.r, TH.y + Math.sin(a) * TH.r, 6);
+    });
+    // göl kıyıları
+    for (const l of lakes) { x.fillStyle = 'rgba(150,140,110,.9)'; x.beginPath(); x.ellipse(l.x * k, l.z * k, (l.r + 4) * k, (l.r * 0.7 + 4) * k, l.a, 0, 7); x.fill(); }
+    // taht meydanı: koyu taş halka ve ışınsal taş döşeme
+    const cx = TH.x * k, cy = TH.y * k, R = (TH.r + 10) * k;
+    const pg = x.createRadialGradient(cx, cy, 0, cx, cy, R); pg.addColorStop(0, '#5a5a62'); pg.addColorStop(0.8, '#4a4a54'); pg.addColorStop(1, 'rgba(60,60,70,0)'); x.fillStyle = pg; x.beginPath(); x.arc(cx, cy, R, 0, 7); x.fill();
+    x.strokeStyle = 'rgba(30,30,36,.45)'; x.lineWidth = 2;
+    for (let r = 14; r < TH.r; r += 9) { x.beginPath(); x.arc(cx, cy, r * k, 0, 7); x.stroke(); }
+    for (let a = 0; a < 48; a++) { const an = a / 48 * Math.PI * 2; x.beginPath(); x.moveTo(cx + Math.cos(an) * 14 * k, cy + Math.sin(an) * 14 * k); x.lineTo(cx + Math.cos(an) * TH.r * k, cy + Math.sin(an) * TH.r * k); x.stroke(); }
+    // şehir meydanları
+    for (const c of list) { const g = x.createRadialGradient(c.mapX * k, c.mapY * k, 0, c.mapX * k, c.mapY * k, 16 * k); g.addColorStop(0, 'rgba(120,116,104,.95)'); g.addColorStop(1, 'rgba(120,116,104,0)'); x.fillStyle = g; x.beginPath(); x.arc(c.mapX * k, c.mapY * k, 16 * k, 0, 7); x.fill(); }
+  });
 }
-let glowT = null;
-function glowTex() { if (glowT) return glowT; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); glowT = new THREE.CanvasTexture(c); return glowT; }
-const glow = (color, size, op = 0.9) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.setScalar(size); return s; };
 
+// bölge dokusu: kenarı belirgin, içi hafif dolu daire
+let terrT = null;
+const terrTex = () => terrT || (terrT = canvasTex(256, 256, (x) => {
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, 'rgba(255,255,255,.10)'); g.addColorStop(0.86, 'rgba(255,255,255,.22)'); g.addColorStop(0.9, 'rgba(255,255,255,.95)'); g.addColorStop(0.94, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+}, false));
+// taht rün halkası
+let runeT = null;
+const runeTex = () => runeT || (runeT = canvasTex(512, 512, (x) => {
+  x.translate(256, 256); x.strokeStyle = '#fff'; x.fillStyle = '#fff';
+  x.lineWidth = 6; x.beginPath(); x.arc(0, 0, 240, 0, 7); x.stroke(); x.lineWidth = 3; x.beginPath(); x.arc(0, 0, 214, 0, 7); x.stroke();
+  for (let i = 0; i < 36; i++) { x.save(); x.rotate(i / 36 * Math.PI * 2); x.fillRect(-3, -238, 6, 22); if (i % 3 === 0) { x.beginPath(); x.moveTo(0, -206); x.lineTo(8, -192); x.lineTo(0, -178); x.lineTo(-8, -192); x.closePath(); x.fill(); } x.restore(); }
+}, false));
+// akan ok şeridi dokusu
+let arrowT = null;
+const arrowTex = () => {
+  if (arrowT) return arrowT;
+  arrowT = canvasTex(128, 64, (x) => {
+    x.shadowColor = '#fff'; x.shadowBlur = 10; x.fillStyle = '#fff';
+    x.beginPath(); x.moveTo(30, 10); x.lineTo(78, 32); x.lineTo(30, 54); x.lineTo(44, 32); x.closePath(); x.fill();
+    x.globalAlpha = 0.55; x.fillRect(0, 28, 128, 8);
+  }, false);
+  arrowT.wrapS = THREE.RepeatWrapping; return arrowT;
+};
+// A→B arasında zemine yatık, uçtan uca akan oklu şerit
+function ribbon(ax, az, bx, bz, color, w = 2.6, op = 0.95) {
+  const L = Math.max(1, Math.hypot(bx - ax, bz - az));
+  const geo = new THREE.PlaneGeometry(L, w).rotateX(-Math.PI / 2);
+  const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * L / (w * 1.6));
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: arrowTex(), color, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending }));
+  m.position.set((ax + bx) / 2, 0.45, (az + bz) / 2); m.rotation.y = -Math.atan2(bz - az, bx - ax);
+  return m;
+}
+
+// ---------------------------------------------------------------------
 export function openWorldMap(opts = {}) {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x0a1226);
-  scene.fog = new THREE.Fog(0x0a1226, 380, 820);
-  const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 1, 1600);
-  scene.add(new THREE.HemisphereLight(0xb0c0f0, 0x2a3424, 1.7));
-  const moon = new THREE.DirectionalLight(0xc8d4ff, 1.9); moon.position.set(-160, 300, 120); scene.add(moon);
-  scene.add(new THREE.AmbientLight(0x30406a, 0.6));
+  const SKY = 0x1c2a44;
+  scene.background = new THREE.Color(SKY);
+  scene.fog = new THREE.Fog(SKY, 300, 900);
+  const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 1, 2200);
+  scene.add(new THREE.HemisphereLight(0xe4ecff, 0x3c4a3a, 2.0));
+  const moon = new THREE.DirectionalLight(0xfff2dc, 2.3); moon.position.set(-200, 340, 160); scene.add(moon);
+  const rim = new THREE.DirectionalLight(0x9ab8ff, 0.8); rim.position.set(220, 160, -200); scene.add(rim);
+  scene.add(new THREE.AmbientLight(0x50608a, 0.45));
 
   const S = G.S, myServer = S.server || 1, server = opts.server || myServer, home = server === myServer;
   // şehirler
@@ -89,87 +153,142 @@ export function openWorldMap(opts = {}) {
   for (const e of realList) list.push(e);
 
   let seed = server * 131 + 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-  const free = (x, z, r) => list.every((c) => Math.hypot(c.mapX - x, c.mapY - z) > r);
+  const nearCity = (x, z, r) => list.some((c) => Math.hypot(c.mapX - x, c.mapY - z) < r);
+  const inThrone = (x, z, pad) => Math.hypot(x - TH.x, z - TH.y) < TH.r + pad;
+  const free = (x, z, r) => !nearCity(x, z, r) && !inThrone(x, z, r * 0.6) && x > 20 && x < MAP - 20 && z > 20 && z < MAP - 20;
+
   // göller
-  const lakes = []; for (let i = 0; i < 7; i++) { const l = { x: 80 + rnd() * 840, z: 80 + rnd() * 840, r: 18 + rnd() * 26, a: rnd() * 3 }; if (free(l.x, l.z, l.r + 26)) lakes.push(l); }
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: nightGround(list, lakes, server * 977 + 3), roughness: 1 }));
-  ground.position.set(500, 0, 500); scene.add(ground);
-  const outer = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x14222e, roughness: 1 })); outer.position.set(500, -0.4, 500); scene.add(outer);
-  const waterMat = new THREE.MeshStandardMaterial({ color: 0x1e4a7a, roughness: 0.15, metalness: 0.4, emissive: 0x0a2050, emissiveIntensity: 0.5 });
-  for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.15, l.z); scene.add(w); const sh = glow(0x5a9aff, l.r * 0.9, 0.1); sh.position.set(l.x, 1, l.z); scene.add(sh); }
-  // orman kümeleri (çam)
+  const lakes = []; for (let i = 0; i < 6; i++) { const l = { x: 80 + rnd() * 840, z: 80 + rnd() * 840, r: 16 + rnd() * 22, a: rnd() * 3 }; if (free(l.x, l.z, l.r + 26)) lakes.push(l); }
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ map: paintGround(list, lakes, server * 977 + 3) }));
+  ground.material.map.anisotropy = 8; ground.position.set(MAP / 2, 0, MAP / 2); scene.add(ground);
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x3e5446 })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x3a7ab8, roughness: 0.12, metalness: 0.3, emissive: 0x0c2a5a, emissiveIntensity: 0.6 });
+  for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
+
+  // ormanlar: kümeler halinde, şehir ve tahttan uzak; harita kenarında daha sık
   for (let v = 0; v < 3; v++) {
     const ms = []; let tries = 0;
-    while (ms.length < 800 && tries++ < 9000) {
-      const cx = rnd() * 1000, cz = rnd() * 1000;
-      for (let j = 0; j < 10 && ms.length < 800; j++) { const x = cx + (rnd() - 0.5) * 56, z = cz + (rnd() - 0.5) * 56; if (!free(x, z, 15) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 4)) continue; const s = 1.2 + rnd() * 0.9; ms.push(new THREE.Matrix4().compose(new THREE.Vector3(x, 0, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rnd() * 6.28, 0)), new THREE.Vector3(s, s * 1.15, s))); }
+    while (ms.length < 520 && tries++ < 6000) {
+      const edge = rnd() < 0.45, cx = edge ? (rnd() < 0.5 ? rnd() * 90 : MAP - rnd() * 90) : rnd() * MAP, cz = rnd() * MAP;
+      const [ax, az] = rnd() < 0.5 ? [cx, cz] : [cz, cx];
+      for (let j = 0; j < 9 && ms.length < 520; j++) { const x = ax + (rnd() - 0.5) * 48, z = az + (rnd() - 0.5) * 48; if (!free(x, z, 20) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 4)) continue; const s = 1.1 + rnd() * 0.8; ms.push(mat4(x, 0, z, rnd() * 6.28, s, s * 1.15)); }
     }
     instancify(BLD.createTree(v === 2 ? 3 : v), ms, scene);
   }
-  // kayalık uçurumlar ve dağlar
+  // dağlar: haritayı çevreleyen sıra + içeride birkaç tane
   const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees'];
-  for (let i = 0; i < 18; i++) { const x = rnd() * 1000, z = rnd() * 1000; if (!free(x, z, 50)) continue; const m = A.model(mts[i % 4]); if (!m) continue; m.scale.setScalar(16 + rnd() * 14); m.position.set(x, -0.5, z); m.rotation.y = rnd() * 6; scene.add(m); }
-  for (let i = 0; i < 40; i++) { const x = rnd() * 1000, z = rnd() * 1000; if (!free(x, z, 22)) continue; const r = BLD.createRock(3 + rnd() * 5); r.position.set(x, 0, z); r.rotation.y = rnd() * 6; scene.add(r); }
-  // meşaleler, gözetleme kuleleri, harabeler, kristaller
-  const flames = [];
-  const torch = (x, z, h = 2.6, s = 1) => { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * s, 0.24 * s, h, 6), new THREE.MeshStandardMaterial({ color: 0x3a2a1a })); post.position.set(x, h / 2, z); scene.add(post); const f = glow(0xff9a30, 3.4 * s), c = glow(0xffe070, 1.4 * s, 1); f.position.set(x, h + 0.5, z); c.position.copy(f.position); scene.add(f, c); flames.push({ f, c, s, ph: rnd() * 6 }); };
-  const KT = (n) => 'building_' + n + '_blue';
-  for (let i = 0; i < 26; i++) {
-    const x = 60 + rnd() * 880, z = 60 + rnd() * 880; if (!free(x, z, 30)) continue;
-    const tn = rnd() < 0.5 ? KT('tower_A') : KT('tower_B'), m = A.tinted ? A.tinted(tn, 0x8a8aa0) : A.model(tn), ts = A.modelSize(tn); if (!m || !ts) continue;
-    m.scale.setScalar(9 / Math.max(ts.x, ts.z)); m.position.set(x, 0, z); scene.add(m);
-    const top = ts.y * 9 / Math.max(ts.x, ts.z); const f = glow(0xff8a20, 7), c = glow(0xffe080, 3, 1); f.position.set(x, top + 1.2, z); c.position.copy(f.position); scene.add(f, c); flames.push({ f, c, s: 2, ph: rnd() * 6 });
-    const fl = A.model('flag_red'); if (fl) { fl.scale.setScalar(5); fl.position.set(x + 2, top - 1, z); scene.add(fl); }
-    torch(x + 6, z + 5); torch(x - 6, z + 5);
+  for (let i = 0; i < 44; i++) {
+    const side = i % 4, t = rnd() * MAP, off = -30 - rnd() * 40;
+    const [x, z] = side === 0 ? [t, off] : side === 1 ? [t, MAP - off] : side === 2 ? [off, t] : [MAP - off, t];
+    const m = A.model(mts[i % 4]); if (!m) continue; m.scale.setScalar(26 + rnd() * 20); m.position.set(x, -0.5, z); m.rotation.y = rnd() * 6; scene.add(m);
   }
-  for (let i = 0; i < 16; i++) {
-    const x = 60 + rnd() * 880, z = 60 + rnd() * 880; if (!free(x, z, 28)) continue;
-    const ws = A.modelSize('wall_straight'); if (!ws) break;
-    for (let j = 0; j < 3; j++) { const w = A.tinted('wall_straight', 0x9a94a0); if (!w) break; w.scale.setScalar(7 / ws.x); const a = rnd() * 6; w.position.set(x + Math.cos(a) * 5, -rnd() * 1.5, z + Math.sin(a) * 5); w.rotation.y = a + 1.57; w.rotation.z = (rnd() - 0.5) * 0.3; scene.add(w); }
-    torch(x, z, 1.6, 1.4);
-  }
-  const crysMat = new THREE.MeshStandardMaterial({ color: 0x6ab8ff, emissive: 0x2a7aff, emissiveIntensity: 1.6, roughness: 0.2 });
-  for (let i = 0; i < 26; i++) { const x = rnd() * 1000, z = rnd() * 1000; if (!free(x, z, 18)) continue; for (let j = 0; j < 4; j++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(1, 0), crysMat); m.scale.set(0.9, 2.2 + rnd() * 2, 0.9); m.position.set(x + (rnd() - 0.5) * 4, 1.5, z + (rnd() - 0.5) * 4); m.rotation.set((rnd() - 0.5) * 0.5, rnd() * 3, (rnd() - 0.5) * 0.5); scene.add(m); } const g = glow(0x4a9aff, 14, 0.5); g.position.set(x, 3, z); scene.add(g); }
-  for (let i = 0; i < 420; i++) { const x = rnd() * 1000, z = rnd() * 1000; if (!free(x, z, 14)) continue; torch(x, z); }
-  for (const c of list) for (let j = 0; j < 4; j++) { const a = j / 4 * Math.PI * 2 + 0.4; torch(c.mapX + Math.cos(a) * 13.5, c.mapY + Math.sin(a) * 13.5, 2.2); }
-  // bulutlar
-  const clouds = [];
-  for (let i = 0; i < 16; i++) { const c = A.model(i % 2 ? 'cloud_big' : 'cloud_small'); if (!c) continue; c.scale.setScalar(26 + rnd() * 20); c.position.set(rnd() * 1000, 70 + rnd() * 40, rnd() * 1000); c.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.35; o.material.color.setHex(0x3a4a7a); o.material.depthWrite = false; } }); scene.add(c); clouds.push(c); }
+  for (let i = 0; i < 10; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!free(x, z, 55)) continue; const m = A.model(mts[i % 4]); if (!m) continue; m.scale.setScalar(14 + rnd() * 10); m.position.set(x, -0.5, z); m.rotation.y = rnd() * 6; scene.add(m); }
+  { const ms = []; for (let i = 0; i < 70; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (free(x, z, 18)) ms.push(mat4(x, 0, z, rnd() * 6, 2.5 + rnd() * 3)); } const r = A.model('rock_single_A'); if (r) instancify(r, ms, scene); }
 
-  // şehir nesneleri
+  // canlı alevler (titreşim için listede tutulur)
+  const flames = [];
+  const flame = (x, y, z, s = 1, parent = scene) => { const f = glow(0xff8a24, 5 * s, 0.85), c = glow(0xffe07a, 1.8 * s, 1); f.position.set(x, y, z); c.position.set(x, y, z); parent.add(f, c); flames.push({ f, s, ph: rnd() * 6 }); };
+
+  // kaynak noktaları (çiftlik, kereste, taş) — dekor, kümeler halinde
+  const RES = [['resource_lumber', 4.5], ['resource_stone', 4.5], ['building_grain', 5.5], ['sack', 6]];
+  for (const [n, sc] of RES) {
+    const ms = []; for (let i = 0; i < 26; i++) { const x = 40 + rnd() * 920, z = 40 + rnd() * 920; if (!free(x, z, 26)) continue; ms.push(mat4(x, 0, z, rnd() * 6, sc)); if (n === 'building_grain') ms.push(mat4(x + 4, 0, z + 1, rnd() * 6, sc)); }
+    const p = A.model(n); if (p) instancify(p, ms, scene);
+  }
+  // barbar kampları: çadırlar, kırmızı bayrak, kamp ateşi
+  const camps = [];
+  { const tents = [], flags = [];
+    for (let i = 0; i < 18; i++) { const x = 50 + rnd() * 900, z = 50 + rnd() * 900; if (!free(x, z, 30)) continue; camps.push([x, z]); for (let j = 0; j < 3; j++) { const a = j / 3 * 6.28 + rnd(); tents.push(mat4(x + Math.cos(a) * 4.5, 0, z + Math.sin(a) * 4.5, -a + 1.57, 4.2)); } flags.push(mat4(x + 2, 0, z - 2, rnd() * 6, 4.2)); flame(x, 1.2, z, 0.9); const gg = groundGlow(0xff7a2a, 14, 0.4); gg.position.set(x, 0.3, z); scene.add(gg); }
+    const t = A.model('tent'); if (t) instancify(t, tents, scene); const f = A.model('flag_red'); if (f) instancify(f, flags, scene);
+  }
+
+  // ---- Demir Taht: merkezdeki dev kale ----
+  const throne = new THREE.Group(); throne.position.set(TH.x, 0, TH.y); scene.add(throne);
+  const zone = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: terrTex(), color: COL.throne, transparent: true, opacity: 0.85, depthWrite: false })); zone.scale.set(TH.r * 2.3, 1, TH.r * 2.3); zone.position.y = 0.2; throne.add(zone);
+  const rune = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: runeTex(), color: 0xffb040, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); rune.scale.set(60, 1, 60); rune.position.y = 0.3; throne.add(rune);
+  const tGlow = groundGlow(0xff5a2a, 120, 0.35); tGlow.position.y = 0.25; throne.add(tGlow);
+  { // sur halkası
+    const ws = A.modelSize('wall_straight'), R = 34, n = 22;
+    if (ws) { const ms = []; for (let i = 0; i < n; i++) { if (i % (n / 2) === 0) continue; const a = i / n * Math.PI * 2; const sc = (2 * Math.PI * R / n) / ws.x * 1.04; ms.push(new THREE.Matrix4().compose(new THREE.Vector3(TH.x + Math.cos(a) * R, 0, TH.y + Math.sin(a) * R), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -a + Math.PI / 2, 0)), new THREE.Vector3(sc, sc * 1.3, sc))); } const w = A.tinted('wall_straight', 0x8a8a98); if (w) instancify(w, ms, scene); }
+    const tn = 'building_tower_B_blue', ts = A.modelSize(tn);
+    if (ts) for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.PI / 6; const m = A.tinted(tn, 0x9a9aa8); if (!m) break; const sc = 11 / Math.max(ts.x, ts.z); m.scale.setScalar(sc); m.position.set(Math.cos(a) * 34, 0, Math.sin(a) * 34); throne.add(m); flame(Math.cos(a) * 34, ts.y * sc + 1.6, Math.sin(a) * 34, 1.5, throne); }
+    for (const a of [0, Math.PI]) { const gx = Math.cos(a) * 34, gz = Math.sin(a) * 34; flame(gx + Math.sin(a) * 4, 4, gz + Math.cos(a) * 4, 1, throne); flame(gx - Math.sin(a) * 4, 4, gz - Math.cos(a) * 4, 1, throne); }
+  }
+  let throneModel = null, throneKey = '';
+  const setThroneModel = () => {
+    const k = ['townhall4', 'townhall3', 'townhall2', 'townhall'].find((q) => A.hasHF(q)); if (!k || k === throneKey) return;
+    if (throneModel) throne.remove(throneModel);
+    const m = A.hfModel(k), sz = A.hfSize(k); m.scale.setScalar(36 / Math.max(sz.x, sz.z)); throne.add(m); throneModel = m; throneKey = k;
+  };
+  A.ensureHF('townhall4'); setThroneModel();
+  const crown = glow(0xffc040, 40, 0.5); crown.position.y = 34; throne.add(crown);
+  const throneCity = { id: 'throne', throne: true, name: 'Demir Taht', mapX: TH.x, mapY: TH.y };
+
+  // ---- şehirler ----
   const hitMat = new THREE.MeshBasicMaterial({ visible: false }), hits = [];
-  const ringGeo = new THREE.RingGeometry(8.5, 9.6, 48).rotateX(-Math.PI / 2);
   const shieldMat = new THREE.MeshStandardMaterial({ color: 0x7ac8ff, transparent: true, opacity: 0.22, emissive: 0x2a6aff, emissiveIntensity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+  const baseMat = new THREE.MeshLambertMaterial({ color: 0x8a8478 }), baseGeo = new THREE.CylinderGeometry(9.6, 10.4, 0.8, 32);
   const labels = $('wmLabels') || (() => { const d = document.createElement('div'); d.id = 'wmLabels'; document.body.appendChild(d); return d; })();
   labels.innerHTML = ''; labels.classList.remove('hidden');
+  const kind = (c) => (c.me ? 'me' : c.real ? 'real' : 'bot');
   const makeCity = (c) => {
+    if (inThrone(c.mapX, c.mapY, 10)) { const a = Math.atan2(c.mapY - TH.y, c.mapX - TH.x) || 1; c.mapX = TH.x + Math.cos(a) * (TH.r + 24); c.mapY = TH.y + Math.sin(a) * (TH.r + 24); }
+    const col = COL[kind(c)];
     const g = new THREE.Group(); g.position.set(c.mapX, 0, c.mapY); scene.add(g);
-    const base = new THREE.Mesh(new THREE.CircleGeometry(9.4, 40).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0x4a4656, roughness: 1 })); base.position.y = 0.05; g.add(base);
-    const ring = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: new THREE.Color(c.me ? 0xffd040 : c.real ? 0x4aa0ff : 0xff4a2a).multiplyScalar(1.6), transparent: true, opacity: 0.95 })); ring.position.y = 0.1; g.add(ring);
-    const rg = glow(c.me ? 0xffc040 : c.real ? 0x3a8aff : 0xff4020, 26, 0.35); rg.position.y = 0.5; g.add(rg);
-    const cm = cityModel(c.th || 1); if (c.me) cm.scale.multiplyScalar(1.25); g.add(cm);
-    if (c.me) for (const sx of [-1, 1]) { const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 12, 6), new THREE.MeshStandardMaterial({ color: 0xd8a830, metalness: 0.6, roughness: 0.4 })); pole.position.set(sx * 11, 6, 6); g.add(pole); const fl = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 5.4), new THREE.MeshStandardMaterial({ color: 0x2a4ab8, side: THREE.DoubleSide, emissive: 0x0a1a5a })); fl.position.set(sx * 11 + sx * 1.8, 9, 6); g.add(fl); const f = glow(0xffa040, 5); f.position.set(sx * 11, 12.6, 6); g.add(f); }
-    const hit = new THREE.Mesh(new THREE.CylinderGeometry(10, 10, 14, 10), hitMat); hit.position.y = 7; hit.userData.city = c; g.add(hit); hits.push(hit);
+    const terr = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: terrTex(), color: col, transparent: true, opacity: 0.8, depthWrite: false })); terr.scale.set(c.me ? 44 : 38, 1, c.me ? 44 : 38); terr.position.y = 0.18 + (c.me ? 0.02 : 0); g.add(terr);
+    const base = new THREE.Mesh(baseGeo, baseMat); base.position.y = 0.4; g.add(base);
+    const cm = cityModel(c.th || 1); cm.position.y = 0.8; if (c.me) cm.scale.multiplyScalar(1.2); g.add(cm);
+    const gg = groundGlow(0xffa040, 26, 0.35); gg.position.y = 0.3; g.add(gg);
+    { let h = 0; for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const hr = () => ((h = (h * 16807) % 2147483647) / 2147483647);
+      const n = c.me ? 8 : 6;
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + hr() * 0.4 + 0.3; if (Math.abs(Math.sin(a) - 1) < 0.25 && c.me) continue; const nm = HOUSES[Math.floor(hr() * HOUSES.length)], m = A.model(nm); if (!m) break; const rr = 14 + hr() * 3; m.scale.setScalar(3.3 + hr() * 0.6); m.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr); m.rotation.y = -a + Math.PI / 2; g.add(m); }
+      for (let i = 0; i < 3; i++) { const a = hr() * 6.28, m = A.model(i ? 'barrel' : 'crate_A_big'); if (!m) break; m.scale.setScalar(3); m.position.set(Math.cos(a) * 11, 0.8, Math.sin(a) * 11); g.add(m); } }
+    flame(-7.5, 3.2, 7.5, 0.8, g); flame(7.5, 3.2, 7.5, 0.8, g);
+    if (c.me) for (const sx of [-1, 1]) { const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 12, 6), new THREE.MeshStandardMaterial({ color: 0xd8a830, metalness: 0.6, roughness: 0.4 })); pole.position.set(sx * 11, 6, 6); g.add(pole); const fl = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 5.4), new THREE.MeshStandardMaterial({ color: 0x2a4ab8, side: THREE.DoubleSide, emissive: 0x0a1a5a })); fl.position.set(sx * 11 + sx * 1.8, 9, 6); g.add(fl); flame(sx * 11, 12.6, 6, 1, g); }
+    const hit = new THREE.Mesh(new THREE.CylinderGeometry(11, 11, 16, 10), hitMat); hit.position.y = 8; hit.userData.city = c; g.add(hit); hits.push(hit);
     let shield = null;
-    if (c.shieldUntil > Date.now() / 1000) { shield = new THREE.Mesh(new THREE.SphereGeometry(12, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), shieldMat); g.add(shield); }
-    const el = document.createElement('div'); el.className = 'wm-l' + (c.me ? ' me' : c.real ? ' real' : '');
+    if (c.shieldUntil > Date.now() / 1000) { shield = new THREE.Mesh(new THREE.SphereGeometry(13, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), shieldMat); g.add(shield); }
+    const el = document.createElement('div'); el.className = 'wm-l ' + kind(c);
     el.innerHTML = `<b>${c.th || 1}</b><span>${c.me ? 'Krallığım' : c.real ? '🌐 ' + c.name : c.name}</span>${shield ? '<i>🛡️</i>' : ''}`;
     labels.appendChild(el);
-    return { c, g, el, shield };
+    return { c, g, el, shield, terr, y: 0 };
   };
   const cities = list.map(makeCity);
+  // taht etiketi ve dokunma alanı
+  const tHit = new THREE.Mesh(new THREE.CylinderGeometry(30, 30, 40, 12), hitMat); tHit.position.set(TH.x, 20, TH.y); tHit.userData.city = throneCity; scene.add(tHit); hits.push(tHit);
+  const tEl = document.createElement('div'); tEl.className = 'wm-l throne'; tEl.innerHTML = '<b>👑</b><span>Demir Taht</span><small>Tarafsız</small>'; labels.appendChild(tEl);
+  const tLabel = { c: throneCity, g: throne, el: tEl, y: 46 };
 
-  // seferler: yol çizgisi + yürüyen ordu
+  // ---- haritada sürekli dolaşan ordular (canlılık) ----
+  const ambient = [];
+  { const ends = list.map((c) => [c.mapX, c.mapY]).concat(camps);
+    const n = Math.min(9, 3 + ends.length);
+    for (let i = 0; i < n; i++) {
+      let a = ends[Math.floor(rnd() * ends.length)] || [rnd() * MAP, rnd() * MAP];
+      if (!ends.length || rnd() < 0.3) { const an = rnd() * 6.28, d = 180 + rnd() * 260; a = [clamp(TH.x + Math.cos(an) * d, 40, 960), clamp(TH.y + Math.sin(an) * d, 40, 960)]; }
+      let b;
+      if (rnd() < 0.55) { const an = Math.atan2(a[1] - TH.y, a[0] - TH.x) + (rnd() - 0.5) * 0.6; b = [TH.x + Math.cos(an) * (TH.r - 6), TH.y + Math.sin(an) * (TH.r - 6)]; }
+      else b = camps.length ? camps[Math.floor(rnd() * camps.length)] : [rnd() * MAP, rnd() * MAP];
+      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 60) continue;
+      const enemy = rnd() < 0.55, col = enemy ? 0xff3a2a : 0x3ae0ff;
+      const line = ribbon(a[0], a[1], b[0], b[1], col, 2.2, 0.75); scene.add(line);
+      const army = new THREE.Group();
+      for (let j = 0; j < 3; j++) { const u = createSoldier(j === 1 ? 'cavalry' : 'infantry', enemy ? 'red' : 'blue'); u.scale.setScalar(2.2); u.position.set((j - 1) * 2, 0, (j % 2) * -1.5); army.add(u); }
+      scene.add(army);
+      ambient.push({ a: new THREE.Vector3(a[0], 0, a[1]), b: new THREE.Vector3(b[0], 0, b[1]), army, line, dur: 40 + rnd() * 50, t0: rnd() });
+    }
+  }
+
+  // ---- oyuncunun seferleri: oklu şerit + yürüyen ordu ----
   const marchObjs = new Map();
-  const dashMat = new THREE.LineDashedMaterial({ color: 0x4ad0ff, dashSize: 4, gapSize: 3, transparent: true, opacity: 0.95 });
   const syncMarches = () => {
     for (const [id, o] of marchObjs) if (!S.marches.find((m) => m.id === id)) { scene.remove(o.line, o.army); o.el.remove(); marchObjs.delete(id); }
     for (const m of S.marches) {
       if (marchObjs.has(m.id) || !home || m.foreign) continue;
-      const a = new THREE.Vector3(S.mapX, 0.6, S.mapY), b = new THREE.Vector3(m.tx, 0.6, m.ty);
-      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), dashMat); line.computeLineDistances(); scene.add(line);
+      const a = new THREE.Vector3(S.mapX, 0, S.mapY), b = new THREE.Vector3(m.tx, 0, m.ty);
+      const line = ribbon(a.x, a.z, b.x, b.z, 0xffd040, 3.2, 1); scene.add(line);
       const army = new THREE.Group();
-      for (let i = 0; i < 3; i++) { const u = createSoldier(i === 1 ? 'cavalry' : 'infantry', 'blue'); u.scale.setScalar(2.4); u.position.set((i - 1) * 2.2, 0, (i % 2) * -1.6); army.add(u); }
+      for (let i = 0; i < 3; i++) { const u = createSoldier(i === 1 ? 'cavalry' : 'infantry', 'blue'); u.scale.setScalar(2.6); u.position.set((i - 1) * 2.2, 0, (i % 2) * -1.6); army.add(u); }
       const flag = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.6), new THREE.MeshBasicMaterial({ color: 0x2a6ae0, side: THREE.DoubleSide })); flag.position.set(0, 7, 0); army.add(flag);
       scene.add(army);
       const el = document.createElement('div'); el.className = 'wm-m'; labels.appendChild(el);
@@ -178,32 +297,90 @@ export function openWorldMap(opts = {}) {
   };
   syncMarches();
 
-  // kamera ve kontroller
+  // =====================================================================
+  //  Kamera
+  // =====================================================================
   const startC = opts.focus ? list.find((c) => c.id === opts.focus) : list.find((c) => c.me) || list[0];
-  const cam = { tx: startC ? startC.mapX : 500, tz: startC ? startC.mapY : 500, h: 260, ht: 190 };
-  const cv = C.renderer.domElement, pts = new Map(); let downAt = null, moved = 0, pinch0 = 0, h0 = 0;
-  const pd = (e) => { if (e.target !== cv) return; pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pts.size === 1) { downAt = { x: e.clientX, y: e.clientY }; moved = 0; } if (pts.size === 2) { const [p1, p2] = [...pts.values()]; pinch0 = Math.hypot(p1.x - p2.x, p1.y - p2.y); h0 = cam.ht; } };
+  const cam = { tx: startC ? startC.mapX : TH.x, tz: startC ? startC.mapY : TH.y, d: 520, dT: 230, vx: 0, vz: 0, fly: null, anchor: null };
+  const pitchOf = (d) => lerp(0.68, 1.15, clamp((d - MIN_D) / (MAX_D - MIN_D), 0, 1)); // 39° → 66°
+  const placeCam = () => {
+    const p = pitchOf(cam.d);
+    camera.position.set(cam.tx, cam.d * Math.sin(p), cam.tz + cam.d * Math.cos(p));
+    camera.lookAt(cam.tx, 0, cam.tz); camera.updateMatrixWorld();
+  };
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), ray = new THREE.Raycaster(), v2 = new THREE.Vector2(), hitP = new THREE.Vector3();
+  const pick = (sx, sy) => { v2.set(sx / innerWidth * 2 - 1, -(sy / innerHeight) * 2 + 1); ray.setFromCamera(v2, camera); return ray.ray.intersectPlane(plane, hitP) ? { x: hitP.x, z: hitP.z } : null; };
+  const clampCam = () => { cam.tx = clamp(cam.tx, -20, MAP + 20); cam.tz = clamp(cam.tz, -20, MAP + 20); };
+  // ekrandaki (sx,sy) noktasının altındaki dünya noktasını sabit tutarak zoom
+  const zoomAt = (newD, sx, sy) => {
+    placeCam(); const before = pick(sx, sy);
+    cam.d = clamp(newD, MIN_D, MAX_D); placeCam(); const after = pick(sx, sy);
+    if (before && after) { cam.tx += before.x - after.x; cam.tz += before.z - after.z; }
+    clampCam();
+  };
+  placeCam();
+
+  const cv = C.renderer.domElement, pts = new Map();
+  let downAt = null, moved = 0, pinch = null, lastMove = 0, samples = [];
+  const pd = (e) => {
+    if (e.target !== cv) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    cam.vx = cam.vz = 0; cam.fly = null; cam.anchor = null; cam.dT = cam.d; samples = [];
+    if (pts.size === 1) { downAt = { x: e.clientX, y: e.clientY, t: performance.now() }; moved = 0; }
+    if (pts.size === 2) { const [p1, p2] = [...pts.values()]; pinch = { dist: Math.hypot(p1.x - p2.x, p1.y - p2.y), d: cam.d, mx: (p1.x + p2.x) / 2, my: (p1.y + p2.y) / 2 }; moved = 99; }
+  };
   const pm = (e) => {
     const p = pts.get(e.pointerId); if (!p) return;
-    if (pts.size === 2) { p.x = e.clientX; p.y = e.clientY; const [p1, p2] = [...pts.values()]; const d = Math.hypot(p1.x - p2.x, p1.y - p2.y); cam.ht = clamp(h0 * pinch0 / Math.max(20, d), 70, 420); moved = 99; return; }
-    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
-    const k = cam.h / innerHeight * 1.25; cam.tx = clamp(cam.tx - dx * k, 0, 1000); cam.tz = clamp(cam.tz - dy * k, 0, 1000);
+    const px = p.x, py = p.y; p.x = e.clientX; p.y = e.clientY;
+    if (pts.size >= 2 && pinch) {
+      const [p1, p2] = [...pts.values()], mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2, dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+      // iki parmakla kaydırma: önceki orta noktanın altındaki yer yeni orta noktaya gelsin
+      placeCam(); const a = pick(pinch.mx, pinch.my), b = pick(mx, my); if (a && b) { cam.tx += a.x - b.x; cam.tz += a.z - b.z; }
+      zoomAt(pinch.d * pinch.dist / Math.max(20, dist), mx, my); cam.dT = cam.d;
+      pinch.mx = mx; pinch.my = my; return;
+    }
+    moved += Math.abs(e.clientX - px) + Math.abs(e.clientY - py);
+    placeCam(); const a = pick(px, py), b = pick(e.clientX, e.clientY); if (!a || !b) return;
+    const dx = a.x - b.x, dz = a.z - b.z; cam.tx += dx; cam.tz += dz; clampCam();
+    const now = performance.now(); samples.push({ t: now, dx, dz }); while (samples.length && now - samples[0].t > 110) samples.shift(); lastMove = now;
   };
-  const ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
   const pu = (e) => {
     if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId);
-    if (pts.size === 0 && downAt && moved < 10) { v2.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(v2, camera); const hit = ray.intersectObjects(hits)[0]; if (hit) select(hit.object.userData.city); else { const gh = ray.intersectObject(ground)[0]; select(gh && home ? { ground: true, id: 'g', mapX: gh.point.x, mapY: gh.point.z } : null); } }
+    if (pts.size === 1) { pinch = null; samples = []; return; }
+    if (pts.size > 0) return;
+    pinch = null;
+    const now = performance.now();
+    // atalet: son ~90 ms'deki hızla kaymaya devam et
+    if (samples.length && now - lastMove < 120) { const span = Math.max(16, now - samples[0].t); let sx = 0, sz = 0; for (const s of samples) { sx += s.dx; sz += s.dz; } cam.vx = sx / span * 1000; cam.vz = sz / span * 1000; const sp = Math.hypot(cam.vx, cam.vz), mx = cam.d * 6; if (sp > mx) { cam.vx *= mx / sp; cam.vz *= mx / sp; } }
+    samples = [];
+    if (downAt && moved < 10) tap(e.clientX, e.clientY);
+    downAt = null;
   };
-  const wh = (e) => { cam.ht = clamp(cam.ht * (1 + Math.sign(e.deltaY) * 0.12), 70, 420); };
+  const wh = (e) => { cam.dT = clamp(cam.dT * (1 + Math.sign(e.deltaY) * 0.16), MIN_D, MAX_D); cam.anchor = { x: e.clientX, y: e.clientY }; cam.fly = null; };
   cv.addEventListener('pointerdown', pd); addEventListener('pointermove', pm); addEventListener('pointerup', pu); addEventListener('pointercancel', pu); cv.addEventListener('wheel', wh, { passive: true });
+  const flyTo = (x, z, d) => { cam.fly = { x0: cam.tx, z0: cam.tz, d0: cam.d, x, z, d: d ?? cam.d, t: 0 }; cam.vx = cam.vz = 0; cam.anchor = null; };
+  const tap = (sx, sy) => {
+    placeCam(); v2.set(sx / innerWidth * 2 - 1, -(sy / innerHeight) * 2 + 1); ray.setFromCamera(v2, camera);
+    const hit = ray.intersectObjects(hits)[0];
+    if (hit) { const c = hit.object.userData.city; select(c); flyTo(c.mapX, c.mapY + (c.throne ? 0 : 14), Math.min(cam.d, c.throne ? 260 : 200)); return; }
+    const gp = pick(sx, sy);
+    select(gp && home && !inThrone(gp.x, gp.z, 0) ? { ground: true, id: 'g', mapX: gp.x, mapY: gp.z } : null);
+  };
 
-  // arayüz
+  // =====================================================================
+  //  Arayüz
+  // =====================================================================
   let sel = null;
   const render = () => {
     const c = sel;
     let card = '';
-    if (c && !c.me) {
-      const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, mine = c.power, ratio = mine / Math.max(1, G.cityPower());
+    if (c && c.throne) {
+      card = `<div class="wm-card"><div class="wm-ch"><b>👑 Demir Taht</b><span>Sunucu #${server}</span></div>
+        <p class="desc" style="margin:0 0 8px">Krallıkların ortasındaki kadim kale. Şu an <b>tarafsız</b>. Çevresine şehir kurulamaz.</p>
+        <div class="wm-cs"><div><small>Durum</small><b>Tarafsız</b></div><div><small>Konum</small><b>X:${TH.x} Y:${TH.y}</b></div></div>
+        <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button></div></div>`;
+    } else if (c && !c.me && !c.ground) {
+      const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, ratio = c.power / Math.max(1, G.cityPower());
       const diff = ratio < 0.6 ? ['Kolay', '#7dff9a'] : ratio < 1 ? ['Orta', '#ffe68a'] : ratio < 1.5 ? ['Zor', '#ffaa6a'] : ['Çok zor', '#ff6a5a'];
       card = `<div class="wm-card"><div class="wm-ch"><b>${c.real ? '🌐 ' : ''}${c.name}</b><span>Belediye Sv.${c.th || 1}</span></div>
         <div class="wm-cs"><div><small>${c.real ? 'Gerçek oyuncu' : c.lord}</small><b>⚔ ${G.fmt(c.power)}</b><em style="color:${diff[1]}">${diff[0]}</em></div><div><small>Konum</small><b>X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}</b><em>⏱ ${fmtT(t)}</em></div></div>
@@ -217,11 +394,13 @@ export function openWorldMap(opts = {}) {
         <div class="wm-cb"><button class="btn gray" id="wmClose">Kapat</button><button class="btn blue" id="wmTpHere" ${okSpot ? '' : 'disabled'}>📍 Buraya ışınlan • 🪙 ${G.TELEPORT_COST}</button></div></div>`;
     } else if (c && c.me) card = `<div class="wm-card"><div class="wm-ch"><b>🏰 ${G.S.name}</b><span>Belediye Sv.${G.thLevel()}</span></div><div class="wm-cs"><div><small>Güç</small><b>⚔ ${G.fmt(G.cityPower())}</b></div><div><small>Konum</small><b>X:${G.S.mapX} Y:${G.S.mapY}</b></div></div><div class="wm-cb"><button class="btn gold" id="wmCity">🏰 Şehre gir</button></div></div>`;
     const marches = G.S.marches.map((m) => `<div class="wm-mr" data-mid="${m.id}"><span>${m.phase === 'go' ? '⚔' : '↩'} ${m.tname}</span><b data-mt="${m.id}">${fmtT(m.arrive - Date.now() / 1000)}</b>${m.phase === 'go' ? `<button data-recall="${m.id}">Geri çağır</button>` : ''}</div>`).join('');
-    ov().innerHTML = `<div class="wm-top"><button class="wm-srv" id="wmSrv">🌐 Sunucu #${server}${home ? '' : ' (yabancı)'} ⇄</button><span class="wm-xy" id="wmXY"></span><button class="x" id="wmX">✕</button></div>
+    ov().innerHTML = `<div class="wm-vig"></div><div class="wm-top"><button class="wm-srv" id="wmSrv">🌐 Sunucu #${server}${home ? '' : ' (yabancı)'} ⇄</button><span class="wm-xy" id="wmXY"></span><button class="x" id="wmX">✕</button></div>
       ${home ? '' : '<div class="wm-war">⚔ Krallıklar arası savaş: bu sunucudaki krallıklara saldırabilirsin (yürüyüş uzun sürer).</div>'}
-      <div class="wm-side"><button id="wmHome" title="Şehrim">🏰</button></div>
+      <div class="wm-side"><button id="wmHome" title="Şehrim">🏰</button><button id="wmThrone" title="Demir Taht">👑</button></div>
       <div class="wm-bottom">${marches ? `<div class="wm-ms">${marches}</div>` : ''}${card}</div>`;
-    $('wmX').onclick = closeWorld; $('wmHome').onclick = () => { const me = list.find((q) => q.me); if (me) { cam.tx = me.mapX; cam.tz = me.mapY; } else closeWorld(); };
+    $('wmX').onclick = closeWorld;
+    $('wmHome').onclick = () => { const me = list.find((q) => q.me); if (me) flyTo(me.mapX, me.mapY, 230); else closeWorld(); };
+    $('wmThrone').onclick = () => { flyTo(TH.x, TH.y + 10, 300); select(throneCity); };
     $('wmSrv').onclick = () => { const next = server === myServer ? myServer + 1 : myServer; closeWorld(true); openWorldMap({ server: next }); C.toast(next === myServer ? '🏠 Kendi sunucuna döndün' : `🌐 Sunucu #${next} görüntüleniyor`); };
     if ($('wmClose')) $('wmClose').onclick = () => select(null);
     if ($('wmAtk')) $('wmAtk').onclick = () => C.onAttack(sel.id);
@@ -231,7 +410,7 @@ export function openWorldMap(opts = {}) {
     if ($('wmCity')) $('wmCity').onclick = closeWorld;
     ov().querySelectorAll('[data-recall]').forEach((b) => (b.onclick = () => { G.recallMarch(b.dataset.recall); render(); }));
   };
-  const select = (c) => { sel = c; if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); render(); };
+  const select = (c) => { sel = c; if (c) C.sfx('click'); cities.forEach((o) => o.el.classList.toggle('sel', o.c === c)); tEl.classList.toggle('sel', c === throneCity); render(); };
   W = { scene, render, select, syncMarches, cities, list, server, home };
   window.__wmSelect = select;
   render();
@@ -251,37 +430,68 @@ export function openWorldMap(opts = {}) {
   const fetchReal = () => { if (C.online.ready) { lastFetch = performance.now(); C.serverPlayers(server).then(addReal); } };
   fetchReal();
 
-
+  // =====================================================================
+  //  Kare döngüsü
+  // =====================================================================
   const _v = new THREE.Vector3(); let lastUi = 0;
+  const putLabel = (o, y, dz = 0) => {
+    _v.set(o.c.mapX, y, o.c.mapY + dz).project(camera);
+    if (_v.z > 1 || Math.abs(_v.x) > 1.2 || Math.abs(_v.y) > 1.2) { o.el.style.display = 'none'; return false; }
+    o.el.style.display = ''; o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px,0) translate(-50%,0)`;
+    return true;
+  };
   const update = (dt, t) => {
-    cam.h += (cam.ht - cam.h) * Math.min(1, dt * 6);
-    for (const f of flames) { const q = 0.85 + Math.sin(t * 11 + f.ph) * 0.1 + Math.sin(t * 6.3 + f.ph) * 0.07; f.f.scale.setScalar(3.4 * f.s * q); }
-    for (const c of clouds) { c.position.x += dt * 2; if (c.position.x > 1100) c.position.x = -100; }
-    camera.position.set(cam.tx, cam.h, cam.tz + cam.h * 0.55); camera.lookAt(cam.tx, 0, cam.tz);
-    // etiketler
-    for (const o of cities) {
-      const d = Math.hypot(o.c.mapX - cam.tx, o.c.mapY - cam.tz); o.g.visible = d < 480;
-      if (!o.g.visible || cam.h > 340 && !o.c.me && !o.c.real) { o.el.style.display = 'none'; continue; }
-      _v.set(o.c.mapX, 15, o.c.mapY).project(camera);
-      if (_v.z > 1) { o.el.style.display = 'none'; continue; }
-      o.el.style.display = ''; o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(0)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(0)}px,0) translate(-50%,-100%)`;
-      if (o.shield) o.shield.material.opacity = 0.18 + Math.sin(t * 2) * 0.06;
+    dt = Math.min(dt, 0.05);
+    // kamera: süzülme, atalet, tekerlek zoom'u
+    if (cam.fly) {
+      const f = cam.fly; f.t = Math.min(1, f.t + dt / 0.55); const k = 1 - Math.pow(1 - f.t, 3);
+      cam.tx = lerp(f.x0, f.x, k); cam.tz = lerp(f.z0, f.z, k); cam.d = cam.dT = lerp(f.d0, f.d, k); if (f.t >= 1) cam.fly = null;
+    } else if (!pts.size) {
+      if (cam.vx || cam.vz) { cam.tx += cam.vx * dt; cam.tz += cam.vz * dt; const fr = Math.exp(-dt * 4.2); cam.vx *= fr; cam.vz *= fr; if (Math.hypot(cam.vx, cam.vz) < 2) cam.vx = cam.vz = 0; clampCam(); }
+      if (Math.abs(cam.dT - cam.d) > 0.05) { const nd = lerp(cam.d, cam.dT, Math.min(1, dt * 10)); if (cam.anchor) zoomAt(nd, cam.anchor.x, cam.anchor.y); else cam.d = nd; }
     }
-    // seferler
+    placeCam();
+    const near = clamp(1 - (cam.d - 120) / 380, 0, 1); // 1: yakın, 0: uzak
+    scene.fog.near = cam.d * 1.15; scene.fog.far = cam.d * 3.4 + 300;
+    for (const f of flames) { const q = 0.85 + Math.sin(t * 11 + f.ph) * 0.1 + Math.sin(t * 6.3 + f.ph) * 0.07; f.f.scale.setScalar(5 * f.s * q); }
+    rune.rotation.y = t * 0.12; crown.material.opacity = 0.42 + Math.sin(t * 1.6) * 0.1;
+    arrowTex().offset.x = -t * 0.9;
+    if (!throneModel || throneKey !== 'townhall4') setThroneModel();
+    // etiketler: uzakta yalnızca seviye rozeti, yakında isim de
+    labels.classList.toggle('far', cam.d > 420);
+    labels.style.setProperty('--wm-s', (0.82 + near * 0.3).toFixed(3));
+    const lod = 1 + clamp((cam.d - 200) / 320, 0, 1) * 1.1; // uzakta şehirler ~2 kat büyük görünür
+    for (const o of cities) {
+      const d = Math.hypot(o.c.mapX - cam.tx, o.c.mapY - cam.tz); o.g.visible = d < cam.d * 2.6 + 120;
+      if (o.g.scale.x !== lod) o.g.scale.setScalar(lod);
+      if (!o.g.visible) { o.el.style.display = 'none'; continue; }
+      putLabel(o, -3 * lod);
+      if (o.shield) o.shield.material.opacity = 0.18 + Math.sin(t * 2) * 0.06;
+      if (o.c === sel) o.terr.material.opacity = 0.75 + Math.sin(t * 6) * 0.2; else o.terr.material.opacity = 0.8;
+    }
+    putLabel(tLabel, 0, 40);
+    zone.material.opacity = sel === throneCity ? 0.75 + Math.sin(t * 6) * 0.2 : 0.85;
+    // dolaşan ordular
+    for (const a of ambient) {
+      const k = ((t / a.dur + a.t0) % 1), from = a.a, to = a.b;
+      a.army.position.lerpVectors(from, to, k); a.army.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      const vis = Math.hypot(a.army.position.x - cam.tx, a.army.position.z - cam.tz) < cam.d * 1.8;
+      a.army.visible = vis; if (vis && cam.d < 420) a.army.children.forEach((u) => u.userData && animateUnit(u, 'run', t, dt));
+    }
+    // oyuncunun seferleri
     syncMarches();
     const now = Date.now() / 1000;
     for (const m of G.S.marches) {
       const o = marchObjs.get(m.id); if (!o) continue;
       const k = clamp((now - m.start) / Math.max(1, m.arrive - m.start), 0, 1), from = m.phase === 'go' ? o.a : o.b, to = m.phase === 'go' ? o.b : o.a;
-      o.army.position.lerpVectors(from, to, k); o.army.position.y = 0; o.army.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+      o.army.position.lerpVectors(from, to, k); o.army.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
       o.army.children.forEach((u) => u.userData && animateUnit(u, 'run', t, dt));
-      dashMat.dashOffset = -t * 6;
       _v.set(o.army.position.x, 9, o.army.position.z).project(camera);
-      o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(0)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(0)}px,0) translate(-50%,-100%)`;
+      o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px,0) translate(-50%,-100%)`;
       o.el.textContent = `${m.phase === 'go' ? '⚔' : '↩'} ${fmtT(m.arrive - now)}`;
     }
     if (performance.now() - lastFetch > 30000) fetchReal();
-    if (t - lastUi > 0.5) {
+    if (t - lastUi > 0.25) {
       lastUi = t;
       const xy = $('wmXY'); if (xy) xy.textContent = `X:${Math.round(cam.tx)} Y:${Math.round(cam.tz)}`;
       ov().querySelectorAll('[data-mt]').forEach((el) => { const m = G.S.marches.find((q) => q.id === el.dataset.mt); if (m) el.textContent = fmtT(m.arrive - now); });
@@ -290,10 +500,10 @@ export function openWorldMap(opts = {}) {
   };
   const dispose = () => {
     cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); removeEventListener('pointercancel', pu); cv.removeEventListener('wheel', wh);
-    labels.innerHTML = ''; labels.classList.add('hidden'); W = null;
+    labels.innerHTML = ''; labels.classList.add('hidden'); labels.classList.remove('far'); W = null;
   };
   openScene({ scene, camera, update, dispose }, 'city');
 }
-function closeWorld(keep) { if (!W) return; closeScene(); }
+function closeWorld() { if (!W) return; closeScene(); }
 export function closeWorldMap() { closeWorld(); }
 export function refreshWorldUI() { W?.render(); }

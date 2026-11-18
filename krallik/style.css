@@ -644,12 +644,23 @@ nav#nav .dot::after { content: '!'; position: absolute; inset: 0; display: grid;
 .kd.real .kp { background: linear-gradient(180deg, #2a5ad0, #142a78); color: #fff; box-shadow: 0 0 0 1px #9fd0ff; }
 /* ===== 3D krallık haritası ===== */
 #wmLabels { position: fixed; inset: 0; pointer-events: none; z-index: 34; overflow: hidden; }
-.wm-l { position: absolute; left: 0; top: 0; display: flex; align-items: center; gap: 4px; white-space: nowrap; padding: 2px 8px 2px 2px; border-radius: 12px; background: rgba(12, 14, 34, .78); color: #fff; font-family: 'Lilita One', sans-serif; font-size: 12.5px; text-shadow: 0 1px 0 #000; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
-.wm-l b { min-width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-weight: 400; font-size: 11px; background: radial-gradient(circle at 50% 35%, #e05a4a, #8a1a10); box-shadow: 0 0 0 1.5px #ffe08a; }
-.wm-l.real b { background: radial-gradient(circle at 50% 35%, #5aa8ff, #1a4ab0); } .wm-l.real span { color: #bfe0ff; }
-.wm-l.me { background: rgba(40, 30, 6, .85); box-shadow: 0 0 0 1.5px #ffd040, 0 2px 8px rgba(0,0,0,.5); } .wm-l.me b { background: radial-gradient(circle at 50% 35%, #ffe070, #c08a10); color: #3a2000; }
-.wm-l.sel { box-shadow: 0 0 0 2px #fff, 0 0 12px #fff; }
-.wm-l i { font-style: normal; font-size: 12px; }
+.wm-l { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; white-space: nowrap; color: #fff; font-family: 'Lilita One', sans-serif; font-size: calc(13px * var(--wm-s, 1)); line-height: 1.05; will-change: transform;
+  text-shadow: -1.5px -1.5px 0 #0a0e1c, 1.5px -1.5px 0 #0a0e1c, -1.5px 1.5px 0 #0a0e1c, 1.5px 1.5px 0 #0a0e1c, 0 2px 4px rgba(0,0,0,.8); }
+.wm-l b { min-width: calc(24px * var(--wm-s, 1)); height: calc(24px * var(--wm-s, 1)); padding: 0 4px; border-radius: 50% 50% 46% 46% / 42% 42% 58% 58%; display: grid; place-items: center; font-weight: 400; font-size: calc(13px * var(--wm-s, 1)); text-shadow: 0 1px 0 rgba(0,0,0,.6);
+  background: radial-gradient(circle at 50% 30%, #ff7a5a, #b0281a 70%); box-shadow: 0 0 0 1.5px #1a0806, 0 0 0 3px #ffd88a, 0 3px 6px rgba(0,0,0,.6); }
+.wm-l span { padding: 0 2px; }
+.wm-l.bot span { color: #ffd2c8; }
+.wm-l.real b { background: radial-gradient(circle at 50% 30%, #7ac0ff, #1a56c8 70%); } .wm-l.real span { color: #cfe6ff; }
+.wm-l.me b { background: radial-gradient(circle at 50% 30%, #fff08a, #d89a10 70%); color: #3a2000; text-shadow: none; box-shadow: 0 0 0 1.5px #2a1800, 0 0 0 3px #fff, 0 0 12px rgba(255,210,80,.9); }
+.wm-l.me span { color: #9dff7a; font-size: 1.08em; }
+.wm-l.throne b { background: radial-gradient(circle at 50% 30%, #ffb05a, #a8320a 70%); font-size: calc(15px * var(--wm-s, 1)); min-width: calc(30px * var(--wm-s, 1)); height: calc(30px * var(--wm-s, 1)); }
+.wm-l.throne span { font-family: 'Cinzel', serif; font-weight: 900; font-size: 1.25em; color: #ffe08a; letter-spacing: .5px; }
+.wm-l.throne small { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: .78em; color: #fff; background: rgba(10,14,30,.7); padding: 1px 8px; border-radius: 8px; text-shadow: none; }
+.wm-l.sel b { box-shadow: 0 0 0 1.5px #000, 0 0 0 3px #fff, 0 0 14px #fff; }
+.wm-l.sel span { color: #fff; }
+.wm-l i { font-style: normal; font-size: 12px; position: absolute; right: -14px; top: 2px; }
+#wmLabels.far .wm-l:not(.me):not(.throne) span { display: none; }
+.wm-vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(4,8,20,.55) 100%); }
 .wm-m { position: absolute; left: 0; top: 0; padding: 2px 8px; border-radius: 10px; background: #1a4ab0; color: #fff; font-family: 'Lilita One', sans-serif; font-size: 12px; box-shadow: 0 0 0 1.5px #9fd0ff; white-space: nowrap; }
 .wm-top { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
 .wm-srv { border: 0; padding: 7px 12px; border-radius: 14px; font-family: 'Lilita One', sans-serif; font-size: 14px; color: #fff; background: linear-gradient(180deg, #2a4ab8, #142a78); box-shadow: 0 0 0 1.5px #0a0f22, 0 0 0 3px #b27a1c, 0 4px 8px rgba(0,0,0,.4); }
