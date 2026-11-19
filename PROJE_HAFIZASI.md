@@ -663,6 +663,9 @@ cd araba-oyunu && python3 -m http.server 8000
 - Sağ sütun kısa ekranlarda görev çubuğuna taşmasın diye `fitRside()` ile orantılı küçülür (`transform: scale`, en az 0,5).
 - Test notu: yerel http sunucusu başlatma izni verilmedi; Playwright `ctx.route('http://game.local/**')` ile dosyaları diskten sunarak test edildi.
 
+### 5.51 Dünya haritası kenarında bulutlar
+- Harita dışı eskiden koyu yeşil düz zemindi (siyah gibi görünüyordu) ve kenarda KayKit dağ sırası vardı. Dağ sırası kaldırıldı (rastgele dizisi bozulmasın diye `rnd()` çağrıları korundu); `worldmap.js → cloudLayer(map, y, seed, op)`: 7000×7000 düzlemde fbm gürültülü ShaderMaterial bulut, iki katman (y 6 ve 28), `uT` ile yavaşça kayar. Kutu mesafesine göre sınırın ~25 birim içinden itibaren tamamen kapalı, içeri doğru dalgalı kabarık saçak (~260 birim). Güneş yönünde ikinci örnekle kabarık gölge. Dış zemin açık gri-mavi (`0xd4e2ee`).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

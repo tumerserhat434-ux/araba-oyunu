@@ -9,17 +9,17 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import * as A from './assets.js?v=2611200110';
-import { createSkinFX, SKINS } from './skins.js?v=2611200110';
-import * as BLD from './buildings.js?v=2611200110';
-import * as G from './state.js?v=2611200110';
-import { SPEEDUPS } from './data.js?v=2611200110';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611200110';
-import { createFire } from './fire.js?v=2611200110';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611200110';
+import * as A from './assets.js?v=2611200205';
+import { createSkinFX, SKINS } from './skins.js?v=2611200205';
+import * as BLD from './buildings.js?v=2611200205';
+import * as G from './state.js?v=2611200205';
+import { SPEEDUPS } from './data.js?v=2611200205';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611200205';
+import { createFire } from './fire.js?v=2611200205';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611200205';
 
 const $ = (id) => document.getElementById(id);
-const UI = (n) => `assets/ui/${n}.webp?v=2611200110`;
+const UI = (n) => `assets/ui/${n}.webp?v=2611200205`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
@@ -82,7 +82,7 @@ function windify(mat, amp, yMin, yMax) {
   return mat;
 }
 // her karede güncellenen etiket: simge yalnızca değişince çizilir, metin her kare (emoji → simge gözlemcisi çalışmasın)
-function icLabel(el, ic, txt) { if (el.dataset.ic !== ic) { el.dataset.ic = ic; el.innerHTML = (ic ? `<img class="ic-emo ic-gold" src="assets/ui/${ic}.webp?v=2611200110" alt="">` : '') + '<span></span>'; } if (el.lastChild.textContent !== txt) el.lastChild.textContent = txt; }
+function icLabel(el, ic, txt) { if (el.dataset.ic !== ic) { el.dataset.ic = ic; el.innerHTML = (ic ? `<img class="ic-emo ic-gold" src="assets/ui/${ic}.webp?v=2611200205" alt="">` : '') + '<span></span>'; } if (el.lastChild.textContent !== txt) el.lastChild.textContent = txt; }
 const mat4 = (x, y, z, ry, s, sy = s) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, sy, s));
 
 const thKey = (L) => (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall');
@@ -146,7 +146,7 @@ function paintGround(list, lakes, seed) {
 const GT = {};
 function groundTex(name) {
   if (GT[name]) return GT[name];
-  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611200110');
+  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611200205');
   t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
   return (GT[name] = t);
 }
@@ -285,6 +285,38 @@ function makeHeli() {
   return g;
 }
 
+// ---- Bulut katmanı: harita sınırının dışını kaplar; fbm gürültüsüyle kabarık, yavaşça kayar ----
+function cloudLayer(map, y, seed, op) {
+  const mat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, fog: false,
+    uniforms: { uT: { value: 0 }, uMap: { value: map }, uSeed: { value: seed }, uOp: { value: op } },
+    vertexShader: `varying vec2 vW; void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `precision highp float; varying vec2 vW; uniform float uT, uMap, uSeed, uOp;
+      float h(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1, 0)), f.x), mix(h(i + vec2(0, 1)), h(i + vec2(1, 1)), f.x), f.y); }
+      float fbm(vec2 p) { float v = 0.0, a = 0.5; for (int k = 0; k < 5; k++) { v += a * n(p); p = p * 2.03 + 17.1; a *= 0.5; } return v; }
+      void main() {
+        vec2 drift = vec2(uT * 2.2, uT * 1.1);
+        vec2 p = (vW + drift) / 170.0 + uSeed;
+        float a1 = fbm(p), a2 = fbm(p * 2.7 - 5.3);
+        float sh = fbm(p + vec2(0.07, 0.05)); // güneş yönünde örnek: kabarık gölge
+        float hm = uMap * 0.5; vec2 q = abs(vW - hm) - hm; float d = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0); // kutu mesafesi: içeride negatif
+        float wav = fbm(vW / 160.0 + uSeed * 3.0 + uT * 0.003);
+        float edge = d + (wav - 0.5) * 320.0;
+        float puff = smoothstep(0.38, 0.68, a1 * 0.8 + a2 * 0.35);
+        float fringe = smoothstep(-260.0, -60.0, edge) * mix(0.3, 1.0, puff);
+        float a = max(fringe, smoothstep(-110.0, -25.0, d)); // sınır çizgisi hiç görünmesin: biraz içeriden itibaren tamamen kapalı
+        float light = clamp(0.6 + (a1 - sh) * 11.0 + (a2 - 0.5) * 0.7, 0.0, 1.0);
+        vec3 shadow = vec3(0.64, 0.73, 0.87), lit = vec3(1.0, 0.995, 0.98);
+        vec3 col = mix(shadow, lit, light);
+        col = mix(col * 0.93, col, puff);
+        gl_FragColor = vec4(col, a * uOp);
+      }`,
+  });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(7000, 7000).rotateX(-Math.PI / 2), mat);
+  m.position.set(map / 2, y, map / 2); m.renderOrder = 5; m.frustumCulled = false;
+  return m;
+}
 export function openWorldMap(opts = {}) {
   ['w_pine', 'w_oak', 'w_rock'].forEach((k) => A.ensureHF(k));
   const scene = new THREE.Scene();
@@ -316,7 +348,9 @@ export function openWorldMap(opts = {}) {
   const lakes = []; for (let i = 0; i < 12; i++) { const l = { x: 80 + rnd() * (MAP - 160), z: 80 + rnd() * (MAP - 160), r: 16 + rnd() * 22, a: rnd() * 3 }; if (free(l.x, l.z, l.r + 26)) lakes.push(l); }
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP).rotateX(-Math.PI / 2), groundMaterial(list, lakes, server * 977 + 3));
   ground.material.map.anisotropy = 4; ground.position.set(MAP / 2, 0, MAP / 2); scene.add(ground);
-  const outer = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x1c3024 })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd4e2ee, fog: false })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
+  // harita dışı: süzülen yumuşak bulutlar (kenarda dalgalı hatla haritanın biraz içine taşar)
+  const clouds = [cloudLayer(MAP, 6, 0, 1), cloudLayer(MAP, 28, 7.3, 0.55)]; for (const c of clouds) scene.add(c);
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x2f5f6a, roughness: 0.15, metalness: 0.35, emissive: 0x0c2a34, emissiveIntensity: 0.8 }); // zeminle uyumlu, soluk derin su
   for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
 
@@ -348,7 +382,7 @@ export function openWorldMap(opts = {}) {
     const soilT = groundTex('dirt'), soilMat = new THREE.MeshLambertMaterial({ map: soilT, color: 0x8a6a48, polygonOffset: true, polygonOffsetFactor: -2 });
     const soilGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     const cropGeo = (() => { const a = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), b = a.clone().rotateY(Math.PI / 2); return BufferGeometryUtils.mergeGeometries([a, b]); })();
-    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611200110'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
+    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611200205'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
     const cropMats = [cropMat('crop_wheat'), cropMat('crop_barley')];
     const crops = [[], []], farms = [], q = new THREE.Quaternion(), e3 = new THREE.Euler(), cm = new THREE.Matrix4(), cv = new THREE.Vector3(), cs = new THREE.Vector3();
     for (let i = 0; i < 120 && farms.length < 26 * D; i++) {
@@ -372,11 +406,7 @@ export function openWorldMap(opts = {}) {
   { const ms = []; for (let i = 0; i < 500; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 12)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(tinted(BLD.createTree(1), new THREE.Color(0.72, 0.84, 0.46)), ms, scene); }
   // dağlar: haritayı çevreleyen sıra + içeride birkaç tane
   const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees'];
-  for (let i = 0; i < 80; i++) {
-    const side = i % 4, t = rnd() * MAP, off = -30 - rnd() * 40;
-    const [x, z] = side === 0 ? [t, off] : side === 1 ? [t, MAP - off] : side === 2 ? [off, t] : [MAP - off, t];
-    const m = A.model(mts[i % 4]); if (!m) continue; m.scale.setScalar(26 + rnd() * 20); m.position.set(x, -0.5, z); m.rotation.y = rnd() * 6; scene.add(m);
-  }
+  for (let i = 0; i < 80; i++) { rnd(); rnd(); } // eski kenar dağları kaldırıldı (bulutlar örtüyor); rastgele dizisi aynı kalsın
   for (let i = 0; i < 20; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!free(x, z, 55)) continue; const m = A.model(mts[i % 4]); if (!m) continue; m.scale.setScalar(14 + rnd() * 10); m.position.set(x, -0.5, z); m.rotation.y = rnd() * 6; scene.add(m); }
   { const ms = []; for (let i = 0; i < 150; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (free(x, z, 18)) ms.push(mat4(x, 0, z, rnd() * 6, 2.5 + rnd() * 3)); } const r = A.model('rock_single_A'); if (r) instancify(r, ms, scene); }
 
@@ -915,6 +945,7 @@ export function openWorldMap(opts = {}) {
     placeCam();
     const near = clamp(1 - (cam.d - 120) / 380, 0, 1); // 1: yakın, 0: uzak
     scene.fog.near = cam.d * 1.15; scene.fog.far = cam.d * 3.4 + 300;
+    for (const c of clouds) c.material.uniforms.uT.value = t;
     for (const f of flames) { const q = 0.85 + Math.sin(t * 11 + f.ph) * 0.1 + Math.sin(t * 6.3 + f.ph) * 0.07; f.f.scale.setScalar(5 * f.s * q); }
     rune.rotation.y = t * 0.12; crown.material.opacity = 0.42 + Math.sin(t * 1.6) * 0.1;
     arrowTex().offset.x = -t * 0.9;
@@ -982,7 +1013,7 @@ export function openWorldMap(opts = {}) {
         o.army.children.forEach((u) => u.userData && animateUnit(u, 'run', t, dt));
         _v.set(o.army.position.x, 9, o.army.position.z).project(camera);
         o.el.style.transform = `translate3d(${((_v.x + 1) / 2 * innerWidth).toFixed(1)}px,${((1 - _v.y) / 2 * innerHeight).toFixed(1)}px,0) translate(-50%,-100%)`;
-        { const ic = m.phase === 'wait' || m.phase === 'muster' ? 'ic_rally' : m.phase === 'go' ? 'ic_giant' : '', tx = ` ${fmtT((m.phase === 'wait' || m.phase === 'muster' ? m.endsAt : m.arrive) - now)}`; if (o.el.dataset.ic !== ic) { o.el.dataset.ic = ic; o.el.innerHTML = (ic ? `<img class="ic-emo ic-gold" src="assets/ui/${ic}.webp?v=2611200110" alt="">` : '↩') + '<span></span>'; } o.el.lastChild.textContent = tx; } // her karede yalnızca süre güncellenir
+        { const ic = m.phase === 'wait' || m.phase === 'muster' ? 'ic_rally' : m.phase === 'go' ? 'ic_giant' : '', tx = ` ${fmtT((m.phase === 'wait' || m.phase === 'muster' ? m.endsAt : m.arrive) - now)}`; if (o.el.dataset.ic !== ic) { o.el.dataset.ic = ic; o.el.innerHTML = (ic ? `<img class="ic-emo ic-gold" src="assets/ui/${ic}.webp?v=2611200205" alt="">` : '↩') + '<span></span>'; } o.el.lastChild.textContent = tx; } // her karede yalnızca süre güncellenir
         continue;
       }
       const gat = m.phase === 'gather', k = gat ? 1 : clamp((now - m.start) / Math.max(1, m.arrive - m.start), 0, 1), from = m.phase === 'go' || gat ? o.a : o.b, to = m.phase === 'go' || gat ? o.b : o.a;
