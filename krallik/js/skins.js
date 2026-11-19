@@ -4,8 +4,8 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191436';
-import { rigQueen, poseQueen } from './queenrig.js?v=2611191436';
+import * as A from './assets.js?v=2611191505';
+import { rigQueen, poseQueen } from './queenrig.js?v=2611191505';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -13,8 +13,8 @@ export const SKINS = {
   xmas: { name: 'Yılbaşı Şatosu', desc: 'Belediye binan karlı bir yılbaşı şatosuna dönüşür; Noel Baba ren geyikli kızağıyla etrafında uçup hediye yağdırır.', color: '#ff5a5a', model: 'th_xmas', pulse: 0.14 },
   aurora: { name: 'Buz Sarayı', desc: 'Belediye binan bir buz sarayına dönüşür; Buz Kraliçesi büyü yapar, bulutlardan kar yağar, yerden buz dikenleri fışkırır.', color: '#6affc8', model: 'th_aurora' },
   dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan ejderhanın sarıldığı volkanik bir kaleye dönüşür; ateş girdabı ve uçuşan korlar.', color: '#ff6a2a', model: 'th_dragon', pulse: 0.12 },
-  vip7: { name: 'Zümrüt Taç Sarayı', desc: 'VIP 7 ayrıcalığı: belediye binan zümrüt kubbeli kraliyet sarayına dönüşür; zümrüt kristaller döner, gökten ışık sütunu iner.', color: '#3affa0', model: 'th_vip7', pulse: 0.12, vip: 7 },
-  vip8: { name: 'Güneş İmparatorluğu', desc: 'VIP 8 ayrıcalığı: belediye binan altın güneş sarayına dönüşür; iki anka kuşu ateş izi bırakarak uçar, güneş halesi döner, altın havai fişekler patlar.', color: '#ffb030', model: 'th_vip8', pulse: 0.14, vip: 8 },
+  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { src: 'assets/ui/fb_vip7.webp?v=2611191505', cols: 8, rows: 6, n: 48, fps: 9.6 }, vip: 7 },
+  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { src: 'assets/ui/fb_vip8.webp?v=2611191505', cols: 8, rows: 6, n: 48, fps: 9.6 }, vip: 8 },
   shuttle: { name: 'Galaksi Üssü', desc: 'Belediye binan bir uzay üssüne dönüşür; 3-2-1 geri sayımla mekik fırlatılır, yörüngede döner ve rampaya geri iner.', color: '#5ad8ff', model: 'th_shuttle' },
 };
 export const SKIN_ORDER = ['vip8', 'vip7', 'shuttle', 'dragon', 'aurora', 'xmas', 'crown', 'fireworks'];
@@ -41,6 +41,26 @@ function lateModel(key, onReady) {
 }
 function fitModel(m, h) { const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()); m.scale.setScalar(h / Math.max(0.01, s.y)); return m; }
 
+// Kare kare animasyonlu kostüm (Higgsfield videosundan çıkarılmış sprite sayfası): bina gizlenir,
+// yerine kameraya bakan bir kart konur ve kareler sırayla oynatılır (önceden işlenmiş zengin animasyon).
+const flipTex = new Map();
+function flipbook(g, F, base, R, H) {
+  let tex = flipTex.get(F.src);
+  if (!tex) { tex = new THREE.TextureLoader().load(F.src); tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false; flipTex.set(F.src, tex); }
+  const t = tex.clone(); t.needsUpdate = true; t.repeat.set(1 / F.cols, 1 / F.rows);
+  const mat = new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.08, depthWrite: false });
+  const sp = new THREE.Sprite(mat); sp.center.set(0.5, 0.12); sp.renderOrder = 2;
+  let W = R * 3.2;
+  if (base) { const b = new THREE.Box3().setFromObject(base), s0 = b.getSize(new THREE.Vector3()); W = Math.max(s0.x, s0.z) * 1.9; base.visible = false; }
+  sp.scale.set(W, W, 1); sp.position.y = 0; g.add(sp);
+  g.userData.restore = () => { if (base) base.visible = true; };
+  let pop = 0;
+  return (time, dt) => {
+    const f = Math.floor(time * F.fps) % F.n, cx = f % F.cols, cy = Math.floor(f / F.cols);
+    t.offset.set(cx / F.cols, 1 - (cy + 1) / F.rows);
+    if (pop < 1) { pop = Math.min(1, pop + dt * 2.2); const e = pop * (1 + Math.sin(pop * Math.PI) * 0.12); sp.scale.set(W * e, W * e, 1); }
+  };
+}
 // Kostüm: binanın kendisi temalı modelle değişir (base gizlenir), malzemeler tema renginde nabız gibi parlar
 function costume(g, id, base, R, H) {
   const sk = SKINS[id]; if (!sk?.model || !base) return () => {};
@@ -516,84 +536,7 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
       stars.rotation.y = t * 0.08; stars.material.opacity = 0.7 + Math.sin(t * 2) * 0.3;
     };
   }
-  if (id === 'vip7') {
-    // ZÜMRÜT TAÇ: yerde dönen VIP rün halkası, dönen zümrüt kristaller, yükselen parıltılar; 7 sn'de bir gökten zümrüt ışık sütunu + şok dalgası
-    const top = H * 1.32, CYC = 7;
-    const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d'); x.translate(256, 256);
-    x.strokeStyle = '#ffe070'; x.shadowColor = '#3affa0'; x.shadowBlur = 18;
-    for (const [r, w] of [[244, 6], [226, 2], [176, 3]]) { x.lineWidth = w; x.beginPath(); x.arc(0, 0, r, 0, 7); x.stroke(); }
-    x.font = '900 34px Cinzel, serif'; x.fillStyle = '#fff0a0';
-    for (let i = 0; i < 8; i++) { x.save(); x.rotate(i / 8 * Math.PI * 2); x.fillText('VIP', -32, -192); x.restore(); }
-    for (let i = 0; i < 16; i++) { x.save(); x.rotate((i + 0.5) / 16 * Math.PI * 2); x.beginPath(); x.moveTo(0, -176); x.lineTo(9, -160); x.lineTo(0, -144); x.lineTo(-9, -160); x.closePath(); x.fillStyle = i % 2 ? '#3affa0' : '#ffe070'; x.fill(); x.restore(); }
-    const rt = new THREE.CanvasTexture(c); rt.colorSpace = THREE.SRGBColorSpace;
-    const ring = new THREE.Mesh(new THREE.PlaneGeometry(R * 3.4, R * 3.4).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: rt, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.85 })); ring.position.y = 0.15; g.add(ring);
-    const crysMat = new THREE.MeshStandardMaterial({ color: 0x40ffa8, emissive: 0x10c070, emissiveIntensity: 1.2, roughness: 0.15, metalness: 0.2, transparent: true, opacity: 0.92 });
-    const crys = []; for (let i = 0; i < 8; i++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(R * 0.12, 0), crysMat); m.scale.y = 1.9; const gl = spr(0x3affa0, R * 0.55, 0.6); m.add(gl); g.add(m); crys.push(m); }
-    const crown = spr(0xffe070, H * 0.55, 0.7); crown.position.y = top; g.add(crown);
-    const pillarMat = new THREE.MeshBasicMaterial({ color: 0x5affb8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.35, R * 0.7, H * 3, 24, 1, true), pillarMat); pillar.position.y = H * 1.5; g.add(pillar);
-    const novaMat = new THREE.MeshBasicMaterial({ color: 0x7affc8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    const nova = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 64).rotateX(-Math.PI / 2), novaMat); nova.position.y = 0.3; g.add(nova);
-    const sp = smokePool(g, 50, 0xfff0a0, true), sp2 = smokePool(g, 30, 0x5affb8, true);
-    const L = new THREE.PointLight(0x5affb0, 10, R * 5, 1.6); L.position.y = H * 0.7; g.add(L);
-    tick = (t, dt) => {
-      dt = Math.min(dt, 0.05); const cc = t % CYC, flash = cc < 1.2 ? sstep(cc / 0.25) * (1 - sstep((cc - 0.4) / 0.8)) : 0;
-      ring.rotation.y = t * 0.25; ring.material.opacity = 0.65 + Math.sin(t * 2) * 0.15 + flash * 0.3;
-      crys.forEach((m, i) => { const a = i / 8 * Math.PI * 2 + t * 0.6, r = R * (1.3 + Math.sin(t * 0.8 + i) * 0.08); m.position.set(Math.cos(a) * r, H * (0.55 + Math.sin(t * 1.6 + i * 0.8) * 0.12), Math.sin(a) * r); m.rotation.y = t * 2 + i; });
-      crown.material.opacity = 0.55 + Math.sin(t * 3) * 0.2 + flash * 0.4; crown.scale.setScalar(H * (0.5 + flash * 0.4));
-      pillarMat.opacity = flash * 0.45; pillar.scale.set(1 + flash * 0.4, 1, 1 + flash * 0.4);
-      const nk = cc / 1.6; if (nk < 1) { const r = R * (0.6 + nk * 2.6); nova.scale.set(r, 1, r); novaMat.opacity = (1 - nk) * 0.8; } else novaMat.opacity = 0;
-      if (Math.random() < dt * 22) { const a = rnd(0, 6.28), r = R * rnd(0.3, 1.5); sp.spawn(new THREE.Vector3(Math.cos(a) * r, 0.3, Math.sin(a) * r), new THREE.Vector3(0, H * rnd(0.25, 0.5), 0), H * 0.05, H * 0.01, rnd(1.4, 2.4), 0.9); }
-      if (flash > 0.5 && Math.random() < dt * 60) { const a = rnd(0, 6.28); sp2.spawn(new THREE.Vector3(Math.cos(a) * R * 0.4, H * rnd(0.2, 2), Math.sin(a) * R * 0.4), new THREE.Vector3(Math.cos(a) * R, rnd(-1, 1), Math.sin(a) * R), H * 0.1, H * 0.02, 1, 0.9); }
-      sp.update(dt, 0.99); sp2.update(dt, 0.94); L.intensity = 8 + flash * 30 + Math.sin(t * 2) * 2;
-    };
-  } else if (id === 'vip8') {
-    // GÜNEŞ İMPARATORLUĞU: dev dönen güneş halesi, sekiz çizerek uçan iki anka kuşu (ateş izi), altın havai fişekler, kızıl-altın yer halkası
-    const top = H * 1.35;
-    const rc = document.createElement('canvas'); rc.width = rc.height = 512; const rx = rc.getContext('2d'); rx.translate(256, 256);
-    for (let i = 0; i < 24; i++) { rx.save(); rx.rotate(i / 24 * Math.PI * 2); const gr = rx.createLinearGradient(0, 0, 0, -256); gr.addColorStop(0, 'rgba(255,240,170,.95)'); gr.addColorStop(0.5, 'rgba(255,180,40,.5)'); gr.addColorStop(1, 'rgba(255,120,0,0)'); rx.fillStyle = gr; rx.beginPath(); rx.moveTo(-(i % 2 ? 10 : 18), 0); rx.lineTo(0, i % 2 ? -200 : -256); rx.lineTo(i % 2 ? 10 : 18, 0); rx.fill(); rx.restore(); }
-    const rayT = new THREE.CanvasTexture(rc); rayT.colorSpace = THREE.SRGBColorSpace;
-    const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: rayT, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 })); sun.scale.setScalar(H * 1.9); sun.position.y = top; g.add(sun);
-    const sun2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: rayT, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.5 })); sun2.scale.setScalar(H * 1.3); sun2.position.y = top; g.add(sun2);
-    const core = spr(0xffe080, H * 0.7, 0.9); core.position.y = top; g.add(core);
-    const gc = document.createElement('canvas'); gc.width = gc.height = 256; const gx = gc.getContext('2d'); const gg = gx.createRadialGradient(128, 128, 60, 128, 128, 128); gg.addColorStop(0, 'rgba(255,60,20,0)'); gg.addColorStop(0.7, 'rgba(255,90,20,.55)'); gg.addColorStop(0.85, 'rgba(255,220,90,.9)'); gg.addColorStop(1, 'rgba(255,200,60,0)'); gx.fillStyle = gg; gx.fillRect(0, 0, 256, 256);
-    const gt = new THREE.CanvasTexture(gc); gt.colorSpace = THREE.SRGBColorSpace;
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(R * 3.6, R * 3.6).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: gt, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); ground.position.y = 0.15; g.add(ground);
-    // anka kuşları: parlak gövde + çırpan alev kanatları + ateş izi
-    const wingShape = new THREE.Shape(); wingShape.moveTo(0, 0); wingShape.quadraticCurveTo(0.5, 0.35, 1, 0.15); wingShape.quadraticCurveTo(0.7, -0.05, 0.85, -0.25); wingShape.quadraticCurveTo(0.4, -0.15, 0, -0.1);
-    const wingGeo = new THREE.ShapeGeometry(wingShape, 8); wingGeo.rotateX(-Math.PI / 2);
-    const wingMat = new THREE.MeshBasicMaterial({ color: 0xffa030, transparent: true, opacity: 0.95, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
-    const birds = [0, 1].map((k) => {
-      const b = new THREE.Group(), S = H * 0.42; b.add(spr(0xffd060, S * 0.55, 1)); const head = spr(0xffffff, S * 0.22, 1); head.position.x = S * 0.35; b.add(head);
-      const wl = new THREE.Mesh(wingGeo, wingMat), wr = new THREE.Mesh(wingGeo, wingMat); wl.scale.set(S, S, S); wr.scale.set(S, S, -S); b.add(wl, wr); b.userData = { wl, wr, k, prev: new THREE.Vector3() };
-      g.add(b); return b;
-    });
-    const trail = smokePool(g, 90, 0xff8a20, true);
-    const N = 90, bursts = [], COLS = [0xffd040, 0xff8a20, 0xfff0a0];
-    for (let k = 0; k < 3; k++) { const p = points(N, 0xffffff, H * 0.2); g.add(p); bursts.push({ p, v: new Float32Array(N * 3), life: 0, cd: 1 + k * 1.6 }); }
-    const L = new THREE.PointLight(0xffa040, 12, R * 6, 1.6); L.position.y = H * 0.8; g.add(L);
-    const UP = new THREE.Vector3(0, 1, 0);
-    tick = (t, dt) => {
-      dt = Math.min(dt, 0.05);
-      sun.material.rotation = t * 0.15; sun2.material.rotation = -t * 0.25; const pul = Math.sin(t * 2) * 0.5 + 0.5;
-      sun.scale.setScalar(H * (1.8 + pul * 0.15)); core.material.opacity = 0.7 + pul * 0.3; ground.rotation.y = t * 0.2;
-      for (const b of birds) {
-        const ud = b.userData, ph = t * 0.55 + ud.k * Math.PI, rr = R * 1.9;
-        const pos = new THREE.Vector3(Math.sin(ph) * rr, top * 0.75 + Math.sin(ph * 2) * H * 0.25 + ud.k * H * 0.15, Math.sin(ph) * Math.cos(ph) * rr * 1.1);
-        const vel = pos.clone().sub(ud.prev); ud.prev.copy(pos); b.position.copy(pos); if (vel.lengthSq() > 1e-8) aimX(b, vel, UP, dt * 6);
-        const flap = Math.sin(t * 9 + ud.k) * 0.7; ud.wl.rotation.x = flap; ud.wr.rotation.x = -flap;
-        if (Math.random() < dt * 50) trail.spawn(pos.clone(), new THREE.Vector3(rnd(-1, 1), rnd(-0.5, 1), rnd(-1, 1)).multiplyScalar(H * 0.05), H * 0.16, H * 0.02, rnd(0.6, 1.1), 0.9);
-      }
-      trail.update(dt, 0.95);
-      for (const B of bursts) {
-        const pos = B.p.geometry.attributes.position.array, col = B.p.geometry.attributes.color.array;
-        if (B.life <= 0) { B.cd -= dt; if (B.cd <= 0) { B.life = 1.6; B.cd = rnd(2.5, 4.5); const cx = rnd(-R, R), cy = top + H * rnd(0.3, 0.7), cz = rnd(-R, R), cl = new THREE.Color(COLS[Math.floor(rnd(0, 3))]); for (let i = 0; i < N; i++) { pos[i * 3] = cx; pos[i * 3 + 1] = cy; pos[i * 3 + 2] = cz; const a = rnd(0, 6.28), e = rnd(-1, 1), sp = H * rnd(0.5, 0.8); B.v[i * 3] = Math.cos(a) * Math.sqrt(1 - e * e) * sp; B.v[i * 3 + 1] = e * sp; B.v[i * 3 + 2] = Math.sin(a) * Math.sqrt(1 - e * e) * sp; col[i * 3] = cl.r; col[i * 3 + 1] = cl.g; col[i * 3 + 2] = cl.b; } } else { for (let i = 0; i < N; i++) pos[i * 3 + 1] = -999; } }
-        else { B.life -= dt; for (let i = 0; i < N; i++) { B.v[i * 3 + 1] -= H * 0.4 * dt; pos[i * 3] += B.v[i * 3] * dt; pos[i * 3 + 1] += B.v[i * 3 + 1] * dt; pos[i * 3 + 2] += B.v[i * 3 + 2] * dt; B.v[i * 3] *= 0.97; B.v[i * 3 + 2] *= 0.97; } B.p.material.opacity = Math.min(1, B.life); }
-        B.p.geometry.attributes.position.needsUpdate = true; B.p.geometry.attributes.color.needsUpdate = true;
-      }
-      L.intensity = 10 + pul * 8;
-    };
-  }
+  if (SKINS[id]?.flip) tick = flipbook(g, SKINS[id].flip, base, R, H);
   g.userData.update = (t, dt) => { costumeTick(t, dt); tick(t, dt); };
   return g;
 }

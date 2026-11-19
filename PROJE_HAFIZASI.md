@@ -630,6 +630,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Kostümler (`skins.js`):** `vip7` Zümrüt Taç Sarayı (`assets/hf/th_vip7.glb`, Tripo 9 kredi; dönen VIP rün halkası, 8 zümrüt kristal, 7 sn'de bir gökten ışık sütunu + şok dalgası, parıltılar), `vip8` Güneş İmparatorluğu (`th_vip8.glb`; dönen çift güneş halesi, sekiz çizen iki anka kuşu (ShapeGeometry kanat çırpma + ateş izi), altın havai fişekler, kızıl-altın yer halkası). Küçük resimler `thc_vip7/8.webp`.
 - **Çerçeve:** `FRAMES` içinde `{ id: 'vip8', vip: 8 }` (`frameOwned` VIP'e bakar, satın alınamaz), `fr_vip8.webp` delik yarıçapı 360'ta 102'ye oturtuldu; `.fa-vip8` altın-kızıl nabız + iki dönen ✦ ışıltı.
 
+### 5.45 Kare kare animasyonlu VIP kostümleri, önbellek, altın simgesi, VIP etiketleri
+- **Kullanıcının istediği kostüm tarzı:** kodla yapılan efektler değil, önceden işlenmiş zengin animasyon (referans: altın dünya kostümü videosu). Yöntem: Higgsfield `gpt_image_2_6` ile bina, **düz yeşil zeminde (#00FF00)** → `minimax_h3_max` ile 5 sn video (start_image = end_image, ~12,5 kredi, kesintisiz döngü) → 48 kare (`fps=48/5`), yeşil zemin temizlenip (scratchpad `chroma.py`: alfa = yeşil baskınlığı, yeşil taşma bastırma) 8×6 sprite sayfası (`assets/ui/fb_vip7.webp`, `fb_vip8.webp`, 384 px kare, ~1,7 MB).
+- `skins.js`: `SKINS[id].flip = { src, cols, rows, n, fps }` → `flipbook()` binayı gizler, kameraya bakan Sprite (alt merkezli) koyar, kareyi UV ofsetiyle oynatır. **vip7 = Ametist Gök Kalesi, vip8 = Altın Dünya.** Eski kodla yapılmış VIP kostümleri ve `th_vip7/8.glb` silindi. Küçük resimler `thc_vip7/8.webp`; listelerde `s.model || s.flip` ise thc_ kullanılır.
+- **Önbellek:** `surum.py` artık js/css/html içindeki tüm `.webp/.png/.jpg/.glb/.mp3` adlarına `?v=` ekler (eski kahraman resimleri sorunu). Test sunucuları sorguyu yok sayar.
+- **🪙 iPhone'da gri:** `main.js → coinFix` + MutationObserver, sayfadaki her 🪙'yi `img.ic-gold` (res_gold) yapar (bildirimler dahil).
+- **VIP amblemi:** üst barda isim/güç panelinin altında yatay plaka (`.vip-badge`, VIP 0 gri). **Sıralama:** `vipTag(n)` → `.vipt.v1..v8` (seviyeye göre renk; 7–8 taçlı, 8 gökkuşağı akışlı; hepsinde parlama geçişi), VIP 0'da gösterilmez; isim kısalır, etiket görünür kalır.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
