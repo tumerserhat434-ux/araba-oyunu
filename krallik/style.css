@@ -1681,3 +1681,25 @@ body[data-scene="world"] .chat-bar { bottom: calc(max(6px, env(safe-area-inset-b
 .ch-frow i { font-style: normal; font-size: 20px; color: #ffd860; } .ch-new { font-style: normal; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 6px; background: #2a9a4a; }
 .ch-dmh { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; } .ch-dmh b { display: block; font-size: 15px; } .ch-dmh small { font-size: 11px; color: #c8c0e0; font-weight: 700; }
 .al-send input { min-width: 0; flex: 1; } .al-send .w-btn { flex-shrink: 0; white-space: nowrap; }
+
+/* ===== Pencere başlığı ve yan sekmeler (v4) =====
+   Madalyon başlık yazısının üstüne biniyordu (yazının üst kısmı gömülü görünüyordu): madalyon küçüldü,
+   plakaya yalnızca çerçeve payı kadar biner. Yan sekmeler ve ittifak afişleri küçültüldü. */
+.w-head { top: -38px; }
+.w-medal { width: 50px; height: 50px; margin-bottom: -5px; }
+.w-medal img { width: 36px; height: 36px; }
+.w-plaque { padding: 8px 48px 8px; }
+.w-plaque span { display: inline-block; font-size: 22px; line-height: 1.15; }
+.w-body { padding-top: 54px; }
+.w-side { width: 64px; gap: 5px; padding-right: 6px; }
+.w-tab { padding: 5px 2px 4px; border-radius: 10px; font-size: 10px; gap: 1px; }
+.w-tab img { width: 28px; height: 28px; }
+.al2-feats { gap: 7px; }
+.al2-feat { height: 58px; padding-left: 12px; }
+.al2-ft b { font-size: 18px; }
+.al2-ft small { font-size: 11px; }
+.al2-feat img { width: 64px; height: 64px; margin: -8px 2px -4px 0; }
+@media (max-width: 400px) {
+  .w-plaque span { font-size: 19px; } .w-plaque { padding: 7px 42px 7px; } .laurel { width: 32px; height: 32px; }
+  .w-side { width: 58px; } .w-tab { font-size: 9.5px; } .w-tab img { width: 26px; height: 26px; }
+}
