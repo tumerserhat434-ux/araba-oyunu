@@ -4,8 +4,8 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191505';
-import { rigQueen, poseQueen } from './queenrig.js?v=2611191505';
+import * as A from './assets.js?v=2611191518';
+import { rigQueen, poseQueen } from './queenrig.js?v=2611191518';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -13,8 +13,8 @@ export const SKINS = {
   xmas: { name: 'Yılbaşı Şatosu', desc: 'Belediye binan karlı bir yılbaşı şatosuna dönüşür; Noel Baba ren geyikli kızağıyla etrafında uçup hediye yağdırır.', color: '#ff5a5a', model: 'th_xmas', pulse: 0.14 },
   aurora: { name: 'Buz Sarayı', desc: 'Belediye binan bir buz sarayına dönüşür; Buz Kraliçesi büyü yapar, bulutlardan kar yağar, yerden buz dikenleri fışkırır.', color: '#6affc8', model: 'th_aurora' },
   dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan ejderhanın sarıldığı volkanik bir kaleye dönüşür; ateş girdabı ve uçuşan korlar.', color: '#ff6a2a', model: 'th_dragon', pulse: 0.12 },
-  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { src: 'assets/ui/fb_vip7.webp?v=2611191505', cols: 8, rows: 6, n: 48, fps: 9.6 }, vip: 7 },
-  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { src: 'assets/ui/fb_vip8.webp?v=2611191505', cols: 8, rows: 6, n: 48, fps: 9.6 }, vip: 8 },
+  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611191518' }, vip: 7 },
+  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611191518' }, vip: 8 },
   shuttle: { name: 'Galaksi Üssü', desc: 'Belediye binan bir uzay üssüne dönüşür; 3-2-1 geri sayımla mekik fırlatılır, yörüngede döner ve rampaya geri iner.', color: '#5ad8ff', model: 'th_shuttle' },
 };
 export const SKIN_ORDER = ['vip8', 'vip7', 'shuttle', 'dragon', 'aurora', 'xmas', 'crown', 'fireworks'];
@@ -41,23 +41,44 @@ function lateModel(key, onReady) {
 }
 function fitModel(m, h) { const b = new THREE.Box3().setFromObject(m), s = b.getSize(new THREE.Vector3()); m.scale.setScalar(h / Math.max(0.01, s.y)); return m; }
 
-// Kare kare animasyonlu kostüm (Higgsfield videosundan çıkarılmış sprite sayfası): bina gizlenir,
-// yerine kameraya bakan bir kart konur ve kareler sırayla oynatılır (önceden işlenmiş zengin animasyon).
-const flipTex = new Map();
+// Videolu kostüm (Higgsfield videosu, yeşil zemin): bina gizlenir, yerine kameraya bakan bir kart konur,
+// video 24 kare/sn döngüde oynar; yeşil zemin shader'da anlık temizlenir (önceden işlenmiş zengin animasyon).
+const vidCache = new Map();
+function costumeVideo(src) {
+  let c = vidCache.get(src); if (c) return c;
+  const v = document.createElement('video'); v.src = src; v.muted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.crossOrigin = 'anonymous'; v.preload = 'auto'; v.autoplay = true;
+  v.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;z-index:-1'; document.body.appendChild(v); // iOS: sayfadaki video güvenilir oynar
+  const play = () => { if (v.paused) v.play().catch(() => {}); }; play();
+  // iOS: ilk dokunuşta oynatmayı garanti et; sekme geri gelince devam
+  ['pointerdown', 'touchend'].forEach((ev) => addEventListener(ev, play, { passive: true }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) play(); });
+  const t = new THREE.VideoTexture(v); t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
+  c = { v, t, play }; vidCache.set(src, c); return c;
+}
+function chromaMat(tex) {
+  const m = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }); // zemin altına girip kesilmesin
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+      { vec3 c = diffuseColor.rgb; float mx = max(c.r, c.b), d = c.g - mx;
+        float a = 1.0 - smoothstep(0.08, 0.26, d);
+        a *= 1.0 - step(0.55, c.g) * step(c.r, 0.45) * step(c.b, 0.45);
+        c.g = min(c.g, mx + max(d, 0.0) * 0.12);
+        diffuseColor = vec4(c, diffuseColor.a * a);
+        if (diffuseColor.a < 0.04) discard; }`);
+  };
+  m.customProgramCacheKey = () => 'chroma';
+  return m;
+}
 function flipbook(g, F, base, R, H) {
-  let tex = flipTex.get(F.src);
-  if (!tex) { tex = new THREE.TextureLoader().load(F.src); tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false; flipTex.set(F.src, tex); }
-  const t = tex.clone(); t.needsUpdate = true; t.repeat.set(1 / F.cols, 1 / F.rows);
-  const mat = new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.08, depthWrite: false });
-  const sp = new THREE.Sprite(mat); sp.center.set(0.5, 0.12); sp.renderOrder = 2;
+  const { t, play } = costumeVideo(F.video); play();
+  const sp = new THREE.Sprite(chromaMat(t)); sp.center.set(0.5, 0.1); sp.renderOrder = 3;
   let W = R * 3.2;
-  if (base) { const b = new THREE.Box3().setFromObject(base), s0 = b.getSize(new THREE.Vector3()); W = Math.max(s0.x, s0.z) * 1.9; base.visible = false; }
-  sp.scale.set(W, W, 1); sp.position.y = 0; g.add(sp);
+  if (base) { const b = new THREE.Box3().setFromObject(base), s0 = b.getSize(new THREE.Vector3()); W = Math.max(s0.x, s0.z) * 2.0; base.visible = false; }
+  sp.scale.set(W, W, 1); sp.position.y = 0.05; g.add(sp);
   g.userData.restore = () => { if (base) base.visible = true; };
   let pop = 0;
   return (time, dt) => {
-    const f = Math.floor(time * F.fps) % F.n, cx = f % F.cols, cy = Math.floor(f / F.cols);
-    t.offset.set(cx / F.cols, 1 - (cy + 1) / F.rows);
+    play();
     if (pop < 1) { pop = Math.min(1, pop + dt * 2.2); const e = pop * (1 + Math.sin(pop * Math.PI) * 0.12); sp.scale.set(W * e, W * e, 1); }
   };
 }
