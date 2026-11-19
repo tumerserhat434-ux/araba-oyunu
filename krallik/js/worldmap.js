@@ -9,17 +9,17 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import * as A from './assets.js?v=2611191518';
-import { createSkinFX, SKINS } from './skins.js?v=2611191518';
-import * as BLD from './buildings.js?v=2611191518';
-import * as G from './state.js?v=2611191518';
-import { SPEEDUPS } from './data.js?v=2611191518';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611191518';
-import { createFire } from './fire.js?v=2611191518';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191518';
+import * as A from './assets.js?v=2611191525';
+import { createSkinFX, SKINS } from './skins.js?v=2611191525';
+import * as BLD from './buildings.js?v=2611191525';
+import * as G from './state.js?v=2611191525';
+import { SPEEDUPS } from './data.js?v=2611191525';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611191525';
+import { createFire } from './fire.js?v=2611191525';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191525';
 
 const $ = (id) => document.getElementById(id);
-const UI = (n) => `assets/ui/${n}.webp?v=2611191518`;
+const UI = (n) => `assets/ui/${n}.webp?v=2611191525`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
@@ -144,7 +144,7 @@ function paintGround(list, lakes, seed) {
 const GT = {};
 function groundTex(name) {
   if (GT[name]) return GT[name];
-  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611191518');
+  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611191525');
   t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
   return (GT[name] = t);
 }
@@ -346,7 +346,7 @@ export function openWorldMap(opts = {}) {
     const soilT = groundTex('dirt'), soilMat = new THREE.MeshLambertMaterial({ map: soilT, color: 0x8a6a48, polygonOffset: true, polygonOffsetFactor: -2 });
     const soilGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     const cropGeo = (() => { const a = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), b = a.clone().rotateY(Math.PI / 2); return BufferGeometryUtils.mergeGeometries([a, b]); })();
-    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611191518'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
+    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611191525'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
     const cropMats = [cropMat('crop_wheat'), cropMat('crop_barley')];
     const crops = [[], []], farms = [], q = new THREE.Quaternion(), e3 = new THREE.Euler(), cm = new THREE.Matrix4(), cv = new THREE.Vector3(), cs = new THREE.Vector3();
     for (let i = 0; i < 120 && farms.length < 26 * D; i++) {
@@ -447,7 +447,7 @@ export function openWorldMap(opts = {}) {
     const gg = groundGlow(0xffa040, 32, 0.18); // gündüzde hafif gg.position.y = 0.3; g.add(gg);
     // belediye efekti (benim ya da efekti olan gerçek oyuncular)
     const sk = c.me ? G.S.skin : c.skin; let fx = null;
-    if (sk && SKINS[sk]) { fx = createSkinFX(sk, { R: c.me ? 8.5 : 7.5, H: c.me ? 13 : 11, base: cm }); fx.position.y = 0.8; g.add(fx); skinFxs.push(fx); }
+    if (sk && SKINS[sk]) { fx = createSkinFX(sk, { R: c.me ? 8.5 : 7.5, H: c.me ? 13 : 11, base: cm, world: true }); fx.position.y = 0.8; g.add(fx); skinFxs.push(fx); }
     { let h = 0; for (const ch of String(c.id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; const hr = () => ((h = (h * 16807) % 2147483647) / 2147483647);
       const n = c.me ? 8 : 6;
       for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + hr() * 0.4 + 0.3; if (Math.abs(Math.sin(a) - 1) < 0.25 && c.me) continue; const nm = HOUSES[Math.floor(hr() * HOUSES.length)], m = A.model(nm); if (!m) break; const rr = 14 + hr() * 3; m.scale.setScalar(3.3 + hr() * 0.6); m.position.set(Math.cos(a) * rr, 0, Math.sin(a) * rr); m.rotation.y = -a + Math.PI / 2; g.add(m); }

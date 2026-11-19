@@ -4,8 +4,8 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191518';
-import { rigQueen, poseQueen } from './queenrig.js?v=2611191518';
+import * as A from './assets.js?v=2611191525';
+import { rigQueen, poseQueen } from './queenrig.js?v=2611191525';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -13,8 +13,8 @@ export const SKINS = {
   xmas: { name: 'Yılbaşı Şatosu', desc: 'Belediye binan karlı bir yılbaşı şatosuna dönüşür; Noel Baba ren geyikli kızağıyla etrafında uçup hediye yağdırır.', color: '#ff5a5a', model: 'th_xmas', pulse: 0.14 },
   aurora: { name: 'Buz Sarayı', desc: 'Belediye binan bir buz sarayına dönüşür; Buz Kraliçesi büyü yapar, bulutlardan kar yağar, yerden buz dikenleri fışkırır.', color: '#6affc8', model: 'th_aurora' },
   dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan ejderhanın sarıldığı volkanik bir kaleye dönüşür; ateş girdabı ve uçuşan korlar.', color: '#ff6a2a', model: 'th_dragon', pulse: 0.12 },
-  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611191518' }, vip: 7 },
-  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611191518' }, vip: 8 },
+  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611191525' }, vip: 7 },
+  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611191525' }, vip: 8 },
   shuttle: { name: 'Galaksi Üssü', desc: 'Belediye binan bir uzay üssüne dönüşür; 3-2-1 geri sayımla mekik fırlatılır, yörüngede döner ve rampaya geri iner.', color: '#5ad8ff', model: 'th_shuttle' },
 };
 export const SKIN_ORDER = ['vip8', 'vip7', 'shuttle', 'dragon', 'aurora', 'xmas', 'crown', 'fireworks'];
@@ -69,9 +69,9 @@ function chromaMat(tex) {
   m.customProgramCacheKey = () => 'chroma';
   return m;
 }
-function flipbook(g, F, base, R, H) {
+function flipbook(g, F, base, R, H, world) {
   const { t, play } = costumeVideo(F.video); play();
-  const sp = new THREE.Sprite(chromaMat(t)); sp.center.set(0.5, 0.1); sp.renderOrder = 3;
+  const sp = new THREE.Sprite(chromaMat(t)); sp.center.set(0.5, world ? 0.27 : 0.1); sp.renderOrder = 3; // dünya haritasında kamera daha tepeden bakar: taban daha aşağı
   let W = R * 3.2;
   if (base) { const b = new THREE.Box3().setFromObject(base), s0 = b.getSize(new THREE.Vector3()); W = Math.max(s0.x, s0.z) * 2.0; base.visible = false; }
   sp.scale.set(W, W, 1); sp.position.y = 0.05; g.add(sp);
@@ -224,7 +224,7 @@ function makeDragon(S) {
   D.mouth = () => { group.updateWorldMatrix(true, true); const w = head.localToWorld(D.mouthLocal.clone()); return group.parent ? group.parent.worldToLocal(w) : w; };
   return D;
 }
-export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
+export function createSkinFX(id, { R = 6, H = 10, base = null, world = false } = {}) {
   const g = new THREE.Group(); g.name = 'skinfx'; let tick = () => {};
   const costumeTick = costume(g, id, base, R, H);
   if (id === 'fireworks') {
@@ -557,7 +557,7 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
       stars.rotation.y = t * 0.08; stars.material.opacity = 0.7 + Math.sin(t * 2) * 0.3;
     };
   }
-  if (SKINS[id]?.flip) tick = flipbook(g, SKINS[id].flip, base, R, H);
+  if (SKINS[id]?.flip) tick = flipbook(g, SKINS[id].flip, base, R, H, world);
   g.userData.update = (t, dt) => { costumeTick(t, dt); tick(t, dt); };
   return g;
 }
