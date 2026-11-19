@@ -4,7 +4,7 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611190948';
+import * as A from './assets.js?v=2611190955';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -339,12 +339,13 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
     // büyünün doruğunda yerden buz dikenleri fışkırır, buz dalgası halka halinde yayılır, mavi şimşek çakar
     const top = H * 1.3, CYC = 8;
     const QY = top * 0.5, QS = H * 0.52; // süzülme yüksekliği, kraliçe boyu
-    const queen = new THREE.Group(); queen.position.set(0, QY, R * 1.1); g.add(queen);
+    const queen = new THREE.Group(); queen.position.set(0, QY, R * 1.15); g.add(queen);
     const qL = new THREE.PointLight(0xbfefff, 18, H * 1.5, 1.4); qL.position.set(0, H * 0.5, H * 0.35); queen.add(qL);
     // İskelet modele kötü oturduğu için (kanat/elbise kollara bağlı) iskelet animasyonu elbiseyi parçalıyordu:
-    // model temiz bağlama duruşunda kalır, hareket (süzülme, salınım, büyü nabzı) kodla verilir.
+    // klip oynatılmaz, düğümlerin dinlenme duruşu bağlama duruşuyla aynı (temiz);
+    // skeleton.pose() KULLANMA: ölçekli hiyerarşide kemikleri bozup modeli yok ediyor. Hareket hareket (süzülme, salınım, büyü nabzı) kodla verilir.
     let qBody = null;
-    const addQueen = lateHero('fx_queen', () => { const h = A.hero3d('fx_queen', QS); if (!h) return; h.scene.rotation.y = Math.PI / 2; h.inner.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); }); queen.add(h.scene); qBody = h.scene; });
+    const addQueen = lateHero('fx_queen', () => { const h = A.hero3d('fx_queen', QS); if (!h) return; h.scene.rotation.y = Math.PI / 2; queen.add(h.scene); qBody = h.scene; });
     const qGlow = spr(0x7ae8ff, H * 0.5, 0.7); qGlow.position.y = 0.1; queen.add(qGlow);
     const orbs = []; for (let i = 0; i < 6; i++) { const s = spr(i % 2 ? 0xbff8ff : 0x6ad0ff, H * 0.09, 0.9); queen.add(s); orbs.push(s); }
     // kar bulutları
