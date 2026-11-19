@@ -648,7 +648,7 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Şehir HUD:** `#chipEnergy` (Ordu ve İnşaatçı'nın altında, ic_energy, x/200 ve mavi çubuk; dokununca sonraki enerji ve dolma süresi). `updateEnergy()` 0,5 sn döngüde.
 - **Fetih Yolu (`data.js → FY_TASKS` 100, `FY_DAYS [14×5, 15, 15]`, `FY_BONUS`):** 15 şablon (toplama, eğitim, yükseltme, zafer, zombi, enerji harcama, hızlandırma, kazım, gözetleme, öldürme, çağırma, iyileştirme, araştırma, tank, toplama-2), hedefler güne göre artar; ödüller dönüşümlü (5–8 enerji, 1–3×1dk, 1×5dk, 20–30 bin kaynak, 10–15 altın). Gün sandığı: 20 enerji / 4×5dk / 50 altın / 30 enerji + 2×15dk / 50 altın + 1sa / 40 enerji + 6×5dk / 100 altın + 50 enerji + 2×1sa.
 - `S.fy { start (gece yarısı), bases {gün: sayaç kopyası}, claimed, bonus }`; gün açılınca sayaçlar kopyalanır, ilerleme = sayaç − kopya; açılmış günler sonradan da tamamlanabilir; 7 gün sonra yeni sezon. `fyState`, `fyProg`, `claimFy`, `claimFyBonus`, `fyClaimable` (#evDot), `giveReward`. Yeni sayaçlar: `zombies`, `kills`, `gathers`, `scouts`, `energy`.
-- **Arayüz:** Görevler penceresinde ilk sekme "Fetih Yolu" (`fyBody`), "Etkinlikler" düğmesi bunu açar: afiş + kalan süre, 7 gün düğmesi (kilit/✓/nokta), gün ilerleme çizgisi (bölmeli) + gün sandığı, görev satırları (ilerleme, ödül çipleri, Al).
+- **Arayüz:** Görevler penceresinde ilk sekme "Fetih Yolu" (`fyBody`), "Etkinlikler" düğmesi bunu açar: afiş + kalan süre, 7 gün düğmesi (kilit/✓/nokta), gün ilerleme çizgisi (bölmeli) + gün sandığı (içeriği sürpriz, yalnızca açılınca bildirimde yazar), görev satırları (ilerleme, ödül çipleri, Al).
 
 ## 6. Önemli tasarım kararları (neden böyle)
 
