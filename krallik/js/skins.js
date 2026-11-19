@@ -4,7 +4,8 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611190955';
+import * as A from './assets.js?v=2611191003';
+import { rigQueen, poseQueen } from './queenrig.js?v=2611191003';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
@@ -341,11 +342,10 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
     const QY = top * 0.5, QS = H * 0.52; // süzülme yüksekliği, kraliçe boyu
     const queen = new THREE.Group(); queen.position.set(0, QY, R * 1.15); g.add(queen);
     const qL = new THREE.PointLight(0xbfefff, 18, H * 1.5, 1.4); qL.position.set(0, H * 0.5, H * 0.35); queen.add(qL);
-    // İskelet modele kötü oturduğu için (kanat/elbise kollara bağlı) iskelet animasyonu elbiseyi parçalıyordu:
-    // klip oynatılmaz, düğümlerin dinlenme duruşu bağlama duruşuyla aynı (temiz);
-    // skeleton.pose() KULLANMA: ölçekli hiyerarşide kemikleri bozup modeli yok ediyor. Hareket (süzülme, salınım, büyü nabzı) kodla verilir.
-    let qBody = null;
-    const addQueen = lateHero('fx_queen', () => { const h = A.hero3d('fx_queen', QS); if (!h) return; h.scene.rotation.y = Math.PI / 2; queen.add(h.scene); qBody = h.scene; });
+    // Modelin kendi iskeleti yanlış bağlı (hazır animasyon elbiseyi parçalıyordu); queenrig.js kodla yeni
+    // iskelet kurar: kollar ve baş hareket eder, etek ve pelerin gövdeye sabit kalır.
+    let qBody = null, qRig = null;
+    const addQueen = lateHero('fx_queen', () => { const h = A.hero3d('fx_queen', QS); if (!h) return; h.scene.rotation.y = Math.PI / 2; qRig = rigQueen(h.scene); queen.add(h.scene); qBody = h.scene; });
     const qGlow = spr(0x7ae8ff, H * 0.5, 0.7); qGlow.position.y = 0.1; queen.add(qGlow);
     const orbs = []; for (let i = 0; i < 6; i++) { const s = spr(i % 2 ? 0xbff8ff : 0x6ad0ff, H * 0.09, 0.9); queen.add(s); orbs.push(s); }
     // kar bulutları
@@ -367,7 +367,7 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
       addQueen(); dt = Math.min(dt, 0.05);
       const c = t % CYC, cast = sstep((c - 2.5) / 1.5) * (1 - sstep((c - 5.5) / 1)), peak = c >= 4 && c < 4.05 + dt;
       queen.position.y = QY + Math.sin(t * 1.5) * H * 0.03 + cast * H * 0.06; qL.intensity = 14 + cast * 20; queen.rotation.y = Math.sin(t * 0.4) * 0.25;
-      if (qBody) { qBody.rotation.z = Math.sin(t * 1.1) * 0.04; qBody.rotation.x = -cast * 0.12; qBody.scale.setScalar(1 + cast * 0.05 + (peak ? 0.04 : 0)); }
+      if (qBody) { poseQueen(qRig, t, cast); qBody.rotation.z = Math.sin(t * 1.1) * 0.03; qBody.scale.setScalar(1 + cast * 0.04 + (peak ? 0.03 : 0)); }
       qGlow.material.opacity = 0.5 + cast * 0.5; qGlow.scale.setScalar(H * (0.45 + cast * 0.35));
       orbs.forEach((s, i) => { const a = t * (2 + cast * 3) + i / 6 * Math.PI * 2, r = H * (0.16 + cast * 0.1); s.position.set(Math.cos(a) * r, H * (0.3 + Math.sin(t * 3 + i) * 0.08 + cast * 0.15), Math.sin(a) * r); });
       clouds.forEach((cl) => { cl.a += dt * 0.06; cl.s.position.set(Math.cos(cl.a) * cl.r, cl.y + Math.sin(t * 0.7 + cl.ph) * H * 0.03 - cast * H * 0.06, Math.sin(cl.a) * cl.r); cl.s.material.opacity = 0.42 + cast * 0.18; });
