@@ -617,6 +617,12 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Pencere teması her yerde:** `openModal` tüm `.win` pencerelere `rk-theme`, sıralama dışındakilere `win-lion` ekler (aslanlı kalkan + çapraz kılıç arması `assets/ui/win_crest.webp`). Köşe süsleri artık `head()` içinde. Koyu bileşen geçersiz kılmaları: `.w-card, .w-stat, .w-row, .pack, .sp-row, .al-card, .al-mrow, .rl-card` vb. (style.css sonu "Tüm pencereler" bloğu).
 - Araç: `gltf-transform` scratchpad'e kuruldu (`scratchpad/gt`), depoda değil.
 
+### 5.43 Ağaçlar 3D ve rüzgarlı, gerçek ekin tarlaları
+- Resim kartı ağaçlar kaldırıldı (kullanıcı: beyaz kenarlı, kağıt gibi). Yerine `assets/hf/w_pine.glb` (~1.700 üçgen) ve `w_oak.glb` (~4.100) 3D modeller; `chunked()` ile 250×250 bölgelere ayrılmış InstancedMesh'ler, ekran dışı bölgeler çizilmez. ~150 küme + ~220 tek ağaç (LOW_MEM yarı).
+- **Rüzgar:** `WIND` uniform'u (`WIND.value = t` kare döngüsünde), `windify(mat, amp, yMin, yMax)` vertex shader'da yüksekliğin karesiyle orantılı, instance konumuna göre fazlı sallanma. Ağaçlarda `hfProto(k, h, wind)`.
+- **Tarlalar:** düz `w_farm.webp` kaldırıldı. Sürülmüş toprak (gt2_dirt tonlu) + sıra sıra başak demetleri: Higgsfield `assets/ui/crop_wheat.webp`, `crop_barley.webp` (beyaz zemin kesilip kenar renkleri iç renklerle doldurularak, alfa 1 px daraltılarak → beyaz kenar yok), çapraz iki kart (`mergeGeometries`), `windify(…, 0.28)` ile dalgalanır. ~26 tarla, şehir çevresinde.
+- Kenar temizliği yöntemi (beyaz zeminli görsellerden saydam doku): beyaza uzaklık → alfa, bilinen katı piksellerden 12 tur komşu ortalamasıyla renk yayma, alfa 1 px erozyon.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

@@ -8,14 +8,15 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191347';
-import { createSkinFX, SKINS } from './skins.js?v=2611191347';
-import * as BLD from './buildings.js?v=2611191347';
-import * as G from './state.js?v=2611191347';
-import { SPEEDUPS } from './data.js?v=2611191347';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611191347';
-import { createFire } from './fire.js?v=2611191347';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191347';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import * as A from './assets.js?v=2611191355';
+import { createSkinFX, SKINS } from './skins.js?v=2611191355';
+import * as BLD from './buildings.js?v=2611191355';
+import * as G from './state.js?v=2611191355';
+import { SPEEDUPS } from './data.js?v=2611191355';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611191355';
+import { createFire } from './fire.js?v=2611191355';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191355';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -26,7 +27,7 @@ const fmtT = (s) => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 36
 let C = null; // { renderer, toast, sfx, onAttack(id), online, serverPlayers, onTeleport }
 let W = null; // açık harita durumu
 
-export function initWorldMap(ctx) { C = ctx; A.ensureHF('w_rock'); } // gerçekçi ağaç/kaya modelleri önceden yüklenir
+export function initWorldMap(ctx) { C = ctx; ['w_pine', 'w_oak', 'w_rock'].forEach((k) => A.ensureHF(k)); } // gerçekçi ağaç/kaya modelleri önceden yüklenir
 export const worldOpen = () => !!W;
 
 const MAP = G.MAP_SIZE, MIN_D = 80, MAX_D = 950;
@@ -62,6 +63,24 @@ function instancify(proto, matrices, scene) {
 // dünya haritası ağaçları: KayKit'in turkuaz yaprakları zeminle uyuşmuyordu; malzemeyi kopyalayıp orman yeşiline çevir
 const FOREST = new THREE.Color(0.78, 0.88, 0.5);
 const tinted = (proto, col = FOREST) => { proto.traverse((m) => { if (m.isMesh && m.material) { m.material = m.material.clone(); m.material.color.multiply(col); } }); return proto; };
+// rüzgar: ağaçlar ve ekinler yükseklikleriyle orantılı sallanır (instance konumuna göre faz)
+const WIND = { value: 0 };
+function windify(mat, amp, yMin, yMax) {
+  mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uWind = WIND;
+    sh.vertexShader = 'uniform float uWind;\n' + sh.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+      vec2 ip = instanceMatrix[3].xz;
+      #else
+      vec2 ip = vec2(0.0);
+      #endif
+      float hk = clamp((position.y - (${yMin.toFixed(3)})) / (${(yMax - yMin).toFixed(3)}), 0.0, 1.0); hk *= hk;
+      float w = sin(uWind * 1.7 + ip.x * 0.05 + ip.y * 0.04) * 0.65 + sin(uWind * 3.1 + ip.x * 0.11) * 0.35;
+      transformed.x += w * ${amp.toFixed(3)} * hk; transformed.z += cos(uWind * 1.3 + ip.y * 0.07) * ${(amp * 0.4).toFixed(3)} * hk;`);
+  };
+  mat.customProgramCacheKey = () => 'wind' + amp + yMin + yMax;
+  return mat;
+}
 const mat4 = (x, y, z, ry, s, sy = s) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, sy, s));
 
 const thKey = (L) => (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall');
@@ -265,7 +284,7 @@ function makeHeli() {
 }
 
 export function openWorldMap(opts = {}) {
-  A.ensureHF('w_rock');
+  ['w_pine', 'w_oak', 'w_rock'].forEach((k) => A.ensureHF(k));
   const scene = new THREE.Scene();
   const SKY = 0xa9c9e2; // gündüz pusu
   scene.background = new THREE.Color(SKY);
@@ -300,8 +319,8 @@ export function openWorldMap(opts = {}) {
   for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
 
   // doğa: gerçekçi çam ve meşe kümeleri (Higgsfield modelleri), kaya grupları, tarlalar — fazla kalabalık değil
-  const hfProto = (k, h) => { if (!A.hasHF(k)) return null; const m = A.hfModel(k), sz = A.hfSize(k); if (!m) return null; m.scale.setScalar(h / sz.y);
-    m.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.emissive?.setRGB(0, 0, 0); o.material.emissiveMap = null; o.material.roughness = 0.9; } }); /* gündüz: kendi ışığı yok */ const g = new THREE.Group(); g.add(m); return g; };
+  const hfProto = (k, h, wind = 0) => { if (!A.hasHF(k)) return null; const m = A.hfModel(k), sz = A.hfSize(k); if (!m) return null; m.scale.setScalar(h / sz.y);
+    m.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.emissive?.setRGB(0, 0, 0); o.material.emissiveMap = null; o.material.roughness = 0.9; if (wind) { o.geometry.computeBoundingBox(); const b = o.geometry.boundingBox; windify(o.material, (b.max.y - b.min.y) * wind, b.min.y, b.max.y); } } }); /* gündüz: kendi ışığı yok */ const g = new THREE.Group(); g.add(m); return g; };
   const okSpot = (x, z, r) => free(x, z, r) && !lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 5);
   const natureG = new THREE.Group(); scene.add(natureG);
   const buildNature = () => {
@@ -309,37 +328,44 @@ export function openWorldMap(opts = {}) {
     const scene = natureG;
     const pine = [], oak = [], rocks = [];
     const D = A.LOW_MEM ? 0.5 : 1; // düşük bellekli telefonlarda yarı yoğunluk
-    for (let c = 0; c < 230 * D; c++) {
+    for (let c = 0; c < 150 * D; c++) {
       const edge = rnd() < 0.35, cx = edge ? (rnd() < 0.5 ? 30 + rnd() * 80 : MAP - 30 - rnd() * 80) : 40 + rnd() * (MAP - 80), cz = 40 + rnd() * (MAP - 80);
       const [ax, az] = rnd() < 0.5 ? [cx, cz] : [cz, cx], n = 5 + Math.floor(rnd() * 9), kind = rnd();
       for (let j = 0; j < n; j++) { const x = ax + (rnd() - 0.5) * 46, z = az + (rnd() - 0.5) * 46; if (!okSpot(x, z, 20)) continue; const s = 0.8 + rnd() * 0.45; (kind < 0.62 ? pine : kind < 0.84 ? oak : (rnd() < 0.65 ? pine : oak)).push(mat4(x, 0, z, rnd() * 6.28, s, s)); }
     }
-    for (let i = 0; i < 420 * D; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 16)) continue; (rnd() < 0.7 ? pine : oak).push(mat4(x, 0, z, rnd() * 6.28, 0.75 + rnd() * 0.4)); } // tek tük ağaçlar
+    for (let i = 0; i < 220 * D; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 16)) continue; (rnd() < 0.7 ? pine : oak).push(mat4(x, 0, z, rnd() * 6.28, 0.75 + rnd() * 0.4)); } // tek tük ağaçlar
     for (let i = 0; i < 200 * D; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 14)) continue; rocks.push(mat4(x, 0, z, rnd() * 6.28, 0.6 + rnd() * 0.9, 0.5 + rnd() * 0.7)); }
     const pR = hfProto('w_rock', 3.2);
-    // ağaçlar: Higgsfield ağaç resimlerinden kameraya dönük kartlar (kamera hep aynı yönden bakar; binlerce ağaç tek çizimde)
-    const bbGeo = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0));
-    const shadowMat = new THREE.MeshBasicMaterial({ map: discTex(), color: 0x0a1406, transparent: true, opacity: 0.38, depthWrite: false });
-    const m4 = new THREE.Matrix4(), v3 = new THREE.Vector3(), sc3 = new THREE.Vector3(), col = new THREE.Color(), qId = new THREE.Quaternion();
-    const billboards = (list, tex, H, W) => {
-      if (!list.length) return;
-      const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
-      const im = new THREE.InstancedMesh(bbGeo, new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.42, side: THREE.DoubleSide }), list.length);
-      const sh = new THREE.InstancedMesh(discGeo, shadowMat, list.length);
-      list.forEach((M, i) => { v3.setFromMatrixPosition(M); sc3.setFromMatrixScale(M); const k = sc3.x;
-        im.setMatrixAt(i, m4.compose(v3, tilt, sc3.set(W * k * (rnd() < 0.5 ? 1 : -1), H * k, 1))); im.setColorAt(i, col.setScalar(0.82 + rnd() * 0.26));
-        sh.setMatrixAt(i, m4.compose(v3.setY(0.2), qId, sc3.set(W * k * 0.75, 1, W * k * 0.45))); });
-      im.frustumCulled = false; sh.frustumCulled = false; scene.add(sh, im);
-    };
-    billboards(pine, 'tr_pine', 15, 15); billboards(oak, 'tr_oak', 13.5, 13.5);
-    if (pR) instancify(pR, rocks, scene);
-    // tarlalar: şehirlerin çevresinde ve kırsalda düz tarla dokusu
-    const farmMat = new THREE.MeshLambertMaterial({ map: new THREE.TextureLoader().load('assets/ui/w_farm.webp', (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; }), polygonOffset: true, polygonOffsetFactor: -2 });
-    const farmGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), farms = [];
-    for (let i = 0; i < 140 && farms.length < 50; i++) { const c = list[Math.floor(rnd() * list.length)], base = c && rnd() < 0.7 ? [c.mapX, c.mapY] : [rnd() * MAP, rnd() * MAP], a = rnd() * 6.28, d = c ? 34 + rnd() * 18 : 0; const x = base[0] + Math.cos(a) * d, z = base[1] + Math.sin(a) * d; if (!okSpot(x, z, 18) || farms.some(([fx, fz]) => Math.hypot(fx - x, fz - z) < 30)) continue; farms.push([x, z]); const f = new THREE.Mesh(farmGeo, farmMat), sz = 16 + rnd() * 8; f.scale.set(sz, 1, sz * (0.8 + rnd() * 0.4)); f.rotation.y = rnd() * 6.28; f.position.set(x, 0.14, z); scene.add(f); }
+    const chunked = (proto, list) => { if (!proto || !list.length) return; const cells = new Map(); for (const M of list) { const k = Math.floor(M.elements[12] / 250) + ':' + Math.floor(M.elements[14] / 250); if (!cells.has(k)) cells.set(k, []); cells.get(k).push(M); } for (const ms of cells.values()) instancify(proto, ms, scene); };
+    // ağaçlar: gerçek 3D çam ve meşe (Higgsfield), rüzgarda hafifçe sallanır
+    const pP = hfProto('w_pine', 12, 0.025), pO = hfProto('w_oak', 10, 0.02);
+    if (pP) chunked(pP, pine); else instancify(tinted(BLD.createTree(1)), pine, scene);
+    if (pO) chunked(pO, oak); else instancify(tinted(BLD.createTree(0)), oak, scene);
+    chunked(pR, rocks);
+    // tarlalar: sürülmüş toprak + sıra sıra gerçek başak demetleri (çapraz kartlar), rüzgarda dalgalanır
+    const soilT = groundTex('dirt'), soilMat = new THREE.MeshLambertMaterial({ map: soilT, color: 0x8a6a48, polygonOffset: true, polygonOffsetFactor: -2 });
+    const soilGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    const cropGeo = (() => { const a = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), b = a.clone().rotateY(Math.PI / 2); return BufferGeometryUtils.mergeGeometries([a, b]); })();
+    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
+    const cropMats = [cropMat('crop_wheat'), cropMat('crop_barley')];
+    const crops = [[], []], farms = [], q = new THREE.Quaternion(), e3 = new THREE.Euler(), cm = new THREE.Matrix4(), cv = new THREE.Vector3(), cs = new THREE.Vector3();
+    for (let i = 0; i < 120 && farms.length < 26 * D; i++) {
+      const c = list[Math.floor(rnd() * list.length)], a = rnd() * 6.28, d = c ? 36 + rnd() * 16 : 0, base = c && rnd() < 0.75 ? [c.mapX, c.mapY] : [rnd() * MAP, rnd() * MAP];
+      const x = base[0] + Math.cos(a) * d, z = base[1] + Math.sin(a) * d; if (!okSpot(x, z, 18) || farms.some(([fx, fz]) => Math.hypot(fx - x, fz - z) < 32)) continue;
+      farms.push([x, z]); (window.__wmFarms ||= []).push([x, z]);
+      const W = 13 + rnd() * 5, L = 11 + rnd() * 5, ry = rnd() * 6.28, kind = rnd() < 0.6 ? 0 : 1, cos = Math.cos(ry), sin = Math.sin(ry);
+      const soil = new THREE.Mesh(soilGeo, soilMat); soil.scale.set(W + 1.6, 1, L + 1.6); soil.rotation.y = ry; soil.position.set(x, 0.13, z); scene.add(soil);
+      for (let u = -W / 2 + 0.6; u <= W / 2 - 0.6; u += 0.95) for (let v = -L / 2 + 0.5; v <= L / 2 - 0.5; v += 0.75) {
+        const lx = u + (rnd() - 0.5) * 0.3, lz = v + (rnd() - 0.5) * 0.25, h = 1.5 + rnd() * 0.5;
+        cv.set(x + lx * cos + lz * sin, 0.12, z - lx * sin + lz * cos); q.setFromEuler(e3.set(0, rnd() * 6.28, 0));
+        crops[kind].push(cm.compose(cv, q, cs.set(h * 0.95, h, h * 0.95)).clone());
+      }
+    }
+    crops.forEach((ms, k) => { const cells = new Map(); for (const M of ms) { const key = Math.floor(M.elements[12] / 250) + ':' + Math.floor(M.elements[14] / 250); if (!cells.has(key)) cells.set(key, []); cells.get(key).push(M); }
+      for (const list2 of cells.values()) { const im = new THREE.InstancedMesh(cropGeo, cropMats[k], list2.length); list2.forEach((M, n) => im.setMatrixAt(n, M)); im.computeBoundingSphere(); scene.add(im); } });
   };
   // modeller inene kadar bekle (en fazla 8 sn), sonra doğayı kur
-  { let tries = 0; const go = () => { if (!W && tries) return; if (A.hasHF('w_rock') || tries++ > 26) buildNature(); else setTimeout(go, 300); }; go(); }
+  { let tries = 0; const go = () => { if (!W && tries) return; if (['w_pine', 'w_oak', 'w_rock'].every((k) => A.hasHF(k)) || tries++ > 30) buildNature(); else setTimeout(go, 300); }; go(); }
   // küçük çalılar: zemine derinlik (az)
   { const ms = []; for (let i = 0; i < 500; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 12)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(tinted(BLD.createTree(1), new THREE.Color(0.72, 0.84, 0.46)), ms, scene); }
   // dağlar: haritayı çevreleyen sıra + içeride birkaç tane
@@ -896,6 +922,7 @@ export function openWorldMap(opts = {}) {
     labels.style.setProperty('--wm-s', (0.82 + near * 0.3).toFixed(3));
     const lod = 1 + clamp((cam.d - 200) / 320, 0, 1) * 1.1; // uzakta şehirler ~2 kat büyük görünür
     for (const fx of skinFxs) if (fx.parent?.visible) fx.userData.update(t, dt);
+    WIND.value = t;
     for (const o of cities) {
       const d = Math.hypot(o.c.mapX - cam.tx, o.c.mapY - cam.tz); o.g.visible = d < cam.d * 2.6 + 120;
       if (o.g.scale.x !== lod) o.g.scale.setScalar(lod);
