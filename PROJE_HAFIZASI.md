@@ -654,6 +654,9 @@ cd araba-oyunu && python3 -m http.server 8000
 - Kredi harcanmadan, CSS + mevcut görseller: koyu lacivert plaka, altın çift çerçeve + parlama, iki uçta kırmızı kurdele (`::before/::after`, clip-path; `.bad`'de gri), solda altın halkalı mor madalyon (`.toast i`, `margin-left -26px`) ve arkasında defne (`.laurel.tq-laurel`), Cinzel yazı. `main.js → TOAST_IC` emoji → görsel eşlemesi (🎁 ic_gift, ⚡ ic_energy, 🧟 boss_5, 🏆 ic_trophy, 🔥/🧯 ic_extinguisher, 👑 crown, 📯 ic_rally, 🗿 ic_giant …); eşleşmeyen emoji olduğu gibi kalır. Metindeki ⏩ → `sp_t1` kum saati. `#toasts` genişliği `100% − 60px` (kurdele kesilmesin).
 - Test notu: headless ekran görüntüsü yavaş, 2,6 sn'lik bildirim kaybolur; testte `setTimeout(…, 2600)` ve animasyon devre dışı bırakılır.
 
+### 5.49 Emoji → oyun simgesi (genel)
+- `main.js → coinFix` genelleşti: `EMOJI_IMG` (🪙 res_gold, 🌾 res_food, 🪵 res_wood, 🪨 res_stone, 🗿 ic_giant, 🧟/💀 ic_zombie (yeni, Higgsfield 0,25 kredi), 🔍 ic_search, ⚡ ic_energy, 🏆 ic_trophy, 🎁 ic_gift, 📯 ic_rally, 👑 crown, ⏩ sp_t1) + MutationObserver: sayfaya eklenen her metindeki bu emojiler `img.ic-emo` olur. **Kural:** her karede `textContent` ile yazılan metinlerde bu emojileri kullanma (gözlemci her karede çalışır); dünya haritası ralli etiketi buna göre img + span yapıldı. Yeni emoji eklemek = `EMOJI_IMG`'ye bir satır.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

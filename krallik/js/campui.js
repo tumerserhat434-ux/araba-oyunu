@@ -1,10 +1,10 @@
 // =====================================================================
 //  DEMİR SANCAK — Fetih Görevleri ekranı (bölüm haritası + görev kartı)
 // =====================================================================
-import * as G from './state.js?v=2611191926';
-import { HERO_BY_ID, RARITY } from './data.js?v=2611191926';
-import * as CP from './campaign.js?v=2611191926';
-import { rewardsHtml } from './scenes.js?v=2611191926';
+import * as G from './state.js?v=2611191932';
+import { HERO_BY_ID, RARITY } from './data.js?v=2611191932';
+import * as CP from './campaign.js?v=2611191932';
+import { rewardsHtml } from './scenes.js?v=2611191932';
 
 let C = null, viewCh = 1, sel = 0, busy = false;
 const $ = (id) => document.getElementById(id);
@@ -47,8 +47,8 @@ function nodeHtml(idx, i) {
   const face = boss || elite ? `<img class="cp-face" src="${CP.enemyAvatar(idx)}" alt="">` : `<i class="cp-num">${CP.stageOf(idx)}</i>`;
   return `<button class="${cls}" style="left:${x}%;top:${y}%" data-stage="${idx}">
     <span class="cp-disc">${face}${done ? '<em class="cp-ok">✓</em>' : ''}${locked ? '<em class="cp-lock">🔒</em>' : ''}</span>
-    ${boss ? '<img class="cp-crown" src="assets/ui/crown.webp?v=2611191926" alt="">' : ''}
-    ${isCur ? '<img class="cp-pin" src="assets/ui/ic_campaign.webp?v=2611191926" alt="">' : ''}
+    ${boss ? '<img class="cp-crown" src="assets/ui/crown.webp?v=2611191932" alt="">' : ''}
+    ${isCur ? '<img class="cp-pin" src="assets/ui/ic_campaign.webp?v=2611191932" alt="">' : ''}
     <b class="cp-lbl">${CP.stageLabel(idx)}</b></button>`;
 }
 
@@ -57,8 +57,8 @@ function cardHtml(idx) {
   const P = CP.stagePower(idx), mine = CP.myPower(), ch = CP.chance(idx);
   const army = CP.stageArmy(idx), rew = CP.stageRewards(idx);
   const pct = Math.min(100, mine / (mine + P) * 100);
-  const armyHtml = Object.entries(army).filter(([, n]) => n > 0).map(([t, n]) => `<span class="cp-u"><img src="assets/ui/${UNIT_IMG[t]}.webp?v=2611191926" alt=""><b>${G.fmt(n)}</b></span>`).join('');
-  const heroes = CP.campHeroes().map((id) => `<img class="cp-h" style="--rc:${RARITY[HERO_BY_ID[id].rarity].color}" src="assets/heroes/${id}_a.webp?v=2611191926" alt="">`).join('');
+  const armyHtml = Object.entries(army).filter(([, n]) => n > 0).map(([t, n]) => `<span class="cp-u"><img src="assets/ui/${UNIT_IMG[t]}.webp?v=2611191932" alt=""><b>${G.fmt(n)}</b></span>`).join('');
+  const heroes = CP.campHeroes().map((id) => `<img class="cp-h" style="--rc:${RARITY[HERO_BY_ID[id].rarity].color}" src="assets/heroes/${id}_a.webp?v=2611191932" alt="">`).join('');
   const tag = CP.isBoss(idx) ? '<em class="cp-tag boss">BÖLÜM PATRONU</em>' : CP.isElite(idx) ? '<em class="cp-tag elite">SEÇKİN KOMUTAN</em>' : '';
   let btn;
   if (done) btn = '<button class="cp-go done" disabled>✓ Tamamlandı</button>';
@@ -91,9 +91,9 @@ function render(anim, keepScroll = null) {
   const pts = NODE_POS, dAll = pathD(pts), dDone = doneN > 0 ? pathD(pts.slice(0, Math.min(CP.STAGES, doneN + 1))) : '';
   root().style.setProperty('--tc', th.color);
   root().innerHTML = `
-    <div class="cp-bg" style="background-image:url(assets/ui/cm_${k}.webp?v=2611191926)"></div>
+    <div class="cp-bg" style="background-image:url(assets/ui/cm_${k}.webp?v=2611191932)"></div>
     <div class="cp-scroll" id="cpScroll">
-      <div class="cp-board ${anim ? 'zoom' : ''}" style="background-image:url(assets/ui/cm_${k}.webp?v=2611191926)">
+      <div class="cp-board ${anim ? 'zoom' : ''}" style="background-image:url(assets/ui/cm_${k}.webp?v=2611191932)">
         <svg class="cp-path" viewBox="0 0 100 100" preserveAspectRatio="none">
           <path d="${dAll}" class="p-all"/>${dDone ? `<path d="${dDone}" class="p-done"/>` : ''}
         </svg>
@@ -121,10 +121,10 @@ function chapterDoneHtml(ch) {
   const th = CP.themeOf(ch), nx = CP.themeOf(ch + 1), k = themeNo(ch), kn = themeNo(ch + 1);
   return `<div class="cp-pop"><div class="cp-popbox">
     <div class="cp-rays"></div>
-    <img class="cp-pboss" src="assets/ui/boss_${k}.webp?v=2611191926" alt="">
+    <img class="cp-pboss" src="assets/ui/boss_${k}.webp?v=2611191932" alt="">
     <h2 class="cinzel">BÖLÜM ${ch} TAMAMLANDI!</h2>
     <p>${th.lords[2]} yenildi, ${th.name} artık senin.</p>
-    <div class="cp-next" style="background-image:url(assets/ui/cm_${kn}.webp?v=2611191926)"><div><small>Yeni bölüm açıldı</small><b>Bölüm ${ch + 1}: ${nx.name}</b><span>${nx.sub}</span></div></div>
+    <div class="cp-next" style="background-image:url(assets/ui/cm_${kn}.webp?v=2611191932)"><div><small>Yeni bölüm açıldı</small><b>Bölüm ${ch + 1}: ${nx.name}</b><span>${nx.sub}</span></div></div>
     <button class="btn gold" style="width:100%" data-act="nextch">🚩 Bölüm ${ch + 1}'e geç</button>
   </div></div>`;
 }
@@ -140,7 +140,7 @@ function fight() {
     report: r.report, title: CP.enemyLord(r.idx), enemyAva: CP.enemyAvatar(r.idx),
     plaque: `Görev ${CP.stageLabel(r.idx)} • ${CP.stageName(r.idx)}`,
     powers: { blue: r.mine, red: r.P },
-    theme: { ...th, bg: `assets/ui/cb_${k}.webp?v=2611191926` },
+    theme: { ...th, bg: `assets/ui/cb_${k}.webp?v=2611191932` },
     onClose: () => {
       busy = false;
       ['top', 'side', 'nav', 'labels', 'rside', 'bottomHud'].forEach((id) => $(id).classList.add('hidden'));

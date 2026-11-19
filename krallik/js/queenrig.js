@@ -1,5 +1,5 @@
 // Buz Kraliçesi için kodla kurulan iskelet.
-// fx_queen.glb?v=2611191926'deki otomatik iskelet modele yanlış bağlanmış (bir kol bacak kemiklerine, diğer kol
+// fx_queen.glb?v=2611191932'deki otomatik iskelet modele yanlış bağlanmış (bir kol bacak kemiklerine, diğer kol
 // ve eteğin bir kısmı el kemiklerine bağlı), bu yüzden hazır animasyon modeli parçalıyordu.
 // Burada modelin gerçek şekline göre yeni kemikler (gövde, baş, iki kolda omuz/dirsek/bilek) kurulur
 // ve her nokta yeniden ağırlıklandırılır: etek ve pelerin gövdeye sabit, kollar ve baş hareketli.

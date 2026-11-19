@@ -2,12 +2,12 @@
 //  DEMİR SANCAK — 3D katman sahneleri: savaş, çağırma, kahraman görüntüleyici
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611191926';
-import * as A from './assets.js?v=2611191926';
-import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js?v=2611191926';
-import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js?v=2611191926';
-import * as G from './state.js?v=2611191926';
-import { setTheme, playVoice } from './audio.js?v=2611191926';
+import * as BLD from './buildings.js?v=2611191932';
+import * as A from './assets.js?v=2611191932';
+import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js?v=2611191932';
+import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js?v=2611191932';
+import * as G from './state.js?v=2611191932';
+import { setTheme, playVoice } from './audio.js?v=2611191932';
 
 let C = null; // main.js bağlamı
 let active = null; // { scene, camera, update(dt,t), close() }
@@ -18,7 +18,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const ease = (t) => t * t * (3 - 2 * t);
 const stars = (n) => '★'.repeat(n);
 // kahramanın yıldızları: altın yıldızlar, Yüce seviyede onların yerine parlayan Yüce yıldızlar
-export const starsHtml = (h, ups = 0, sz = 18) => { const st = heroStars(h, ups); return st.asc ? `<span class="st-asc" style="--z:${sz}px">${'<img src="assets/ui/st_asc.webp?v=2611191926" alt="">'.repeat(st.asc)}</span>` : `<span class="st-gold" style="color:${RARITY[st.gold].color}">${stars(st.gold)}</span>`; };
+export const starsHtml = (h, ups = 0, sz = 18) => { const st = heroStars(h, ups); return st.asc ? `<span class="st-asc" style="--z:${sz}px">${'<img src="assets/ui/st_asc.webp?v=2611191932" alt="">'.repeat(st.asc)}</span>` : `<span class="st-gold" style="color:${RARITY[st.gold].color}">${stars(st.gold)}</span>`; };
 const ov = () => $('overlay');
 
 export function initScenes(ctx) { C = ctx; }
@@ -99,7 +99,7 @@ function disposeScene(scene) {
 let grassTex = null;
 let dirtTex = null, fadeTex = null;
 const battleBgs = new Map();
-function battleBackground(path = 'assets/ui/bg_battle.webp?v=2611191926') {
+function battleBackground(path = 'assets/ui/bg_battle.webp?v=2611191932') {
   let t = battleBgs.get(path);
   if (!t) { t = new THREE.TextureLoader().load(path); t.colorSpace = THREE.SRGBColorSpace; battleBgs.set(path, t); }
   return t;
@@ -217,16 +217,16 @@ function warDecor(scene, TH, camSide, AX, AZ, braziers, redSign) {
     for (const f of fogs) { f.s.position.x += f.v * dt; if (f.s.position.x > AX + 8) f.s.position.x = -AX - 8; if (f.s.position.x < -AX - 8) f.s.position.x = AX + 8; f.s.material.opacity = 0.1 + Math.sin(t * 0.7 + f.v * 9) * 0.04; }
   };
 }
-const RES_IMG = (r, sz = 22) => `<img src="assets/ui/res_${r}.webp?v=2611191926" width="${sz}" height="${sz}" alt="">`;
+const RES_IMG = (r, sz = 22) => `<img src="assets/ui/res_${r}.webp?v=2611191932" width="${sz}" height="${sz}" alt="">`;
 export function rewardsHtml(rew) {
   if (!rew) return '';
   const res = Object.entries(rew.res).filter(([, v]) => v > 0).map(([r, v]) => `<span class="rw">${RES_IMG(r)}<b>${G.fmt(v)}</b></span>`).join('');
-  const it = (rew.items || []).map((x) => `<span class="rw"><img src="assets/ui/sp_t${SPEEDUPS[x.id].tier}.webp?v=2611191926" width="22" height="22" alt=""><b>${SPEEDUPS[x.id].short} ×${x.n}</b></span>`).join('');
+  const it = (rew.items || []).map((x) => `<span class="rw"><img src="assets/ui/sp_t${SPEEDUPS[x.id].tier}.webp?v=2611191932" width="22" height="22" alt=""><b>${SPEEDUPS[x.id].short} ×${x.n}</b></span>`).join('');
   return res + it;
 }
 function campResultHtml(r, win, tot) {
   return `<div class="modal-box cp-result ${win ? 'win' : 'lose'}">
-    ${win ? '<img class="cp-chest" src="assets/ui/ic_chest.webp?v=2611191926" alt="">' : ''}<h2 class="cinzel">${win ? 'ZAFER!' : 'YENİLGİ'}</h2>
+    ${win ? '<img class="cp-chest" src="assets/ui/ic_chest.webp?v=2611191932" alt="">' : ''}<h2 class="cinzel">${win ? 'ZAFER!' : 'YENİLGİ'}</h2>
     <div class="stats">
       <div class="stat"><small>Kayıpların</small><b>0</b><br><small>Görev savaşında asker ölmez</small></div>
       <div class="stat"><small>Düşman kaybı</small><b>${tot(r.dLoss)}</b></div>
@@ -400,9 +400,9 @@ export function openBattle(opts) {
   const pw = (tr, team) => G.fmt(opts.powers ? opts.powers[team] : G.armyPower(tr || {}));
   const camp = opts.report?.kind === 'campaign';
   ov().innerHTML = `<div class="bt-top">
-      <div class="bt-side blue"><img class="bt-ava" src="assets/heroes/${myHero || G.S.commander || 'emre'}_a.webp?v=2611191926" alt=""><div><b>${G.S.name}</b><span>⚔ ${pw(sides.blue.troops, 'blue')}</span></div></div>
+      <div class="bt-side blue"><img class="bt-ava" src="assets/heroes/${myHero || G.S.commander || 'emre'}_a.webp?v=2611191932" alt=""><div><b>${G.S.name}</b><span>⚔ ${pw(sides.blue.troops, 'blue')}</span></div></div>
       <div class="bt-vs"><span>⚔</span></div>
-      <div class="bt-side red"><div><b>${opts.title}</b><span>⚔ ${pw(sides.red.troops, 'red')}</span></div><img class="bt-ava${opts.enemyAva ? ' own' : ''}" src="${opts.enemyAva || 'assets/heroes/oguz_a.webp?v=2611191926'}" alt=""></div>
+      <div class="bt-side red"><div><b>${opts.title}</b><span>⚔ ${pw(sides.red.troops, 'red')}</span></div><img class="bt-ava${opts.enemyAva ? ' own' : ''}" src="${opts.enemyAva || 'assets/heroes/oguz_a.webp?v=2611191932'}" alt=""></div>
     </div>
     <div class="bt-plaque">${opts.plaque || (opts.mode === 'attack' ? 'Savaş Alanı' : 'Şehir Savunması')}</div>
     <div class="ov-bottom bt-bottom" id="bHud">
@@ -562,7 +562,7 @@ function swirlTex() {
 }
 function buildSummonScene() {
   const scene = new THREE.Scene();
-  const bg = new THREE.TextureLoader().load('assets/ui/bg_summon.webp?v=2611191926'); bg.colorSpace = THREE.SRGBColorSpace; fitCover(bg, 768 / 1366);
+  const bg = new THREE.TextureLoader().load('assets/ui/bg_summon.webp?v=2611191932'); bg.colorSpace = THREE.SRGBColorSpace; fitCover(bg, 768 / 1366);
   scene.background = bg;
   scene.environment = C.makeEnv(0x8a6aff, 0x3a2a70, 0x140a28, false);
   scene.environmentIntensity = 1.0;
@@ -624,7 +624,7 @@ function buildSummonScene() {
   beam.position.set(0, 6, -0.6); scene.add(beam);
   const beam2 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.6, 12, 32, 1, true), beam.material.clone()); beam2.position.copy(beam.position); scene.add(beam2);
   // dönen arcane girdap (yapay zekâ dokusu, siyah zemin → toplamsal karışım)
-  const vxTex = new THREE.TextureLoader().load('assets/ui/fx_vortex.webp?v=2611191926'); vxTex.colorSpace = THREE.SRGBColorSpace;
+  const vxTex = new THREE.TextureLoader().load('assets/ui/fx_vortex.webp?v=2611191932'); vxTex.colorSpace = THREE.SRGBColorSpace;
   const vortex = new THREE.Sprite(new THREE.SpriteMaterial({ map: vxTex, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); vortex.position.set(0, P.ringY, -0.5); vortex.scale.set(3.2, 5.7, 1); scene.add(vortex);
   const vortex2 = new THREE.Sprite(vortex.material.clone()); vortex2.position.copy(vortex.position); vortex2.scale.set(2.2, 3.9, 1); scene.add(vortex2);
   const flash = sprite(0xffffff, 0.1, 0); flash.position.set(0, 1.5, 0); scene.add(flash);
@@ -801,7 +801,7 @@ export function openHeroViewer(id) {
     const cost = o ? heroLevelCost(o.level) : null;
     const maxed = o && o.level >= G.heroMaxLevel();
     const roleTxt = { infantry: '🗡️ Piyade komutanı', archer: '🏹 Okçu komutanı', cavalry: '🐎 Süvari komutanı', tank: '⚙️ Tank komutanı' }[h.role];
-    const rimg = (r) => `<img src="assets/ui/res_${r}.webp?v=2611191926" alt="">`;
+    const rimg = (r) => `<img src="assets/ui/res_${r}.webp?v=2611191932" alt="">`;
     ov().innerHTML = `<div class="hv-top">
         <button class="hv-nav" id="hPrev">◀</button>
         <div class="hv-plate" style="--rc:${RC}"><div class="hv-stars">${starsHtml(h, ups, 20)}</div><div class="hv-name">${h.name}</div>
@@ -817,12 +817,12 @@ export function openHeroViewer(id) {
           <div><i>✨</i><small>Bonus</small><b>+${bonus.toFixed(0)}%</b></div></div>
         <div class="hv-skill"><b>${h.skill.split(':')[0]}</b>${h.skill.includes(':') ? ':' + h.skill.split(':').slice(1).join(':') : ''}</div>
         ${o && maxed && o.level < HERO_MAX_LEVEL ? '<div class="hv-warn">Daha yüksek seviye: Karakter Deposu\'nu yükselt (+15)</div>' : ''}
-        ${o ? `<div class="hv-asc ${canUp ? 'ready' : ''}"><img src="assets/ui/st_asc.webp?v=2611191926" alt=""><div class="hv-ai"><b>${sc == null ? 'En yüksek yıldız!' : st.gold < 5 ? `${st.gold + 1}★ yükseltme` : `Yüce ${st.asc + 1}`}</b><div class="asc-bar"><i style="width:${sc ? Math.min(100, o.copies / sc * 100) : 100}%"></i></div><small>Kopya ${o.copies}/${sc ?? '—'} • güç +%15</small></div>
+        ${o ? `<div class="hv-asc ${canUp ? 'ready' : ''}"><img src="assets/ui/st_asc.webp?v=2611191932" alt=""><div class="hv-ai"><b>${sc == null ? 'En yüksek yıldız!' : st.gold < 5 ? `${st.gold + 1}★ yükseltme` : `Yüce ${st.asc + 1}`}</b><div class="asc-bar"><i style="width:${sc ? Math.min(100, o.copies / sc * 100) : 100}%"></i></div><small>Kopya ${o.copies}/${sc ?? '—'} • güç +%15</small></div>
             <button class="hv-btn asc" id="hAsc" ${canUp ? '' : 'disabled'}>✦ Yükselt</button></div>
           <div class="hv-row">
             <button class="hv-btn green" id="hLvl" ${maxed ? 'disabled' : ''}>${maxed ? 'Sınırda' : `<span>⬆ Seviye</span><small>${rimg('food')}${G.fmt(cost.food)} ${rimg('stone')}${G.fmt(cost.stone)}</small>`}</button>
             ${maxed ? '' : '<button class="hv-btn blue sq" id="hLvl10">x10</button>'}
-            <button class="hv-btn ${G.S.commander === h.id ? 'steel' : 'gold'}" id="hCmd"><img src="assets/ui/crown.webp?v=2611191926" alt="">${G.S.commander === h.id ? 'Komutan' : 'Komutan yap'}</button></div>`
+            <button class="hv-btn ${G.S.commander === h.id ? 'steel' : 'gold'}" id="hCmd"><img src="assets/ui/crown.webp?v=2611191932" alt="">${G.S.commander === h.id ? 'Komutan' : 'Komutan yap'}</button></div>`
         : `<button class="hv-btn violet wide" id="hGo">🔒 Henüz sahip değilsin — Çağır</button>`}
       </div></div>`;
     $('hClose').onclick = close;
@@ -877,8 +877,8 @@ function portraitRenderer() {
   pr = { renderer, scene, camera, canvas };
   return pr;
 }
-export function getPortrait(id) { return Promise.resolve('assets/heroes/' + id + '.webp?v=2611191926'); }
-export function getAvatar(id) { return Promise.resolve('assets/heroes/' + id + '_a.webp?v=2611191926'); }
+export function getPortrait(id) { return Promise.resolve('assets/heroes/' + id + '.webp?v=2611191932'); }
+export function getAvatar(id) { return Promise.resolve('assets/heroes/' + id + '_a.webp?v=2611191932'); }
 export function getPortrait3d(id) {
   if (portraitCache[id]) return portraitCache[id];
   portraitCache[id] = new Promise((resolve) => {

@@ -2,8 +2,8 @@
 //  DEMİR SANCAK — Fetih Görevleri (bölüm 1-1 … 1-15, sonra 2-1 …)
 //  Görev savaşlarında asker ölmez; güç yeterse zafer.
 // =====================================================================
-import { S, armyPowerMulti, heroPower, gainRes, addItem, save, emit, count } from './state.js?v=2611191926';
-import { TROOPS } from './data.js?v=2611191926';
+import { S, armyPowerMulti, heroPower, gainRes, addItem, save, emit, count } from './state.js?v=2611191932';
+import { TROOPS } from './data.js?v=2611191932';
 
 export const STAGES = 15;
 const UNIT_POW = (t) => { const d = TROOPS[t]; return d.atk + d.def + d.hp * 0.4; };
@@ -87,7 +87,7 @@ export function stageArmy(idx) {
 }
 export function enemyAvatar(idx) {
   const k = (chapterOf(idx) - 1) % THEMES.length + 1;
-  return `assets/ui/${isBoss(idx) ? 'boss' : 'cap'}_${k}.webp?v=2611191926`;
+  return `assets/ui/${isBoss(idx) ? 'boss' : 'cap'}_${k}.webp?v=2611191932`;
 }
 export function enemyLord(idx) { const th = themeOf(chapterOf(idx)), s = stageOf(idx); return th.lords[s <= 5 ? 0 : s <= 10 ? 1 : 2]; }
 
