@@ -576,6 +576,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - Dünya haritası piksel oranı 2 (`openScene({ dpr: 2 })`, LOW_MEM hariç); `scenes.js → open` artık `obj.dpr` destekler.
 - Test kancası: `window.__wm = { cam, flyTo }`. Çekim betiği scratchpad'de `wshot.js` (VIEWS ortam değişkeni).
 
+### 5.37 Profil vitrini ve oyuncu profili görüntüleme
+- **Vitrin (`state.js`):** `S.showcase` (null = en güçlü 5, `heroPower`'a göre), `showcaseIds()`, `setShowcase(ids)`, `SHOWCASE_N = 5`. Rozetler tek yerde: `BADGES` + `myBadges()`.
+- **Herkese açık profil (`publicProfile`)** artık: `cmd`, `showcase[{id,lv,ups}]`, `stats{wins,losses,kills,pulls}`, `badges[k]`, `alliance.name`. Firestore kuralı ek alanlara izin veriyor (değişiklik gerekmedi).
+- **Arayüz (`main.js`):** `profileCard(p, {me, actions})` ortak şablon: başlık, istatistikler, **Kahramanlarım** (rozetlerin üstünde, 5 küçük kart: resim, yıldız, Sv., isim; `.pf-*` stiller), rozetler. Kendi profilde küçük "✎ Düzenle" → `showcaseEditor()` (sıra numaralı seçim, En güçlü 5 / Vazgeç / Kaydet). Profil ID'si artık çevrimiçiyken `shortId` (arkadaş eklemede kullanılan 8 hane), çevrimdışıyken eski sayı.
+- **Oyuncu profili:** `modalKind = 'player'`, `openPlayer(uid, hint)` ( `getPlayer` ile tazeler; kendi uid'in ya da 'me' → kendi profilin), `playerUI()` (Geri, Arkadaş ekle / Mesaj). `window.__dsViewPlayer` dışarıdan açar. Genel öznitelik `data-pview` + `pvAttr(uid,name,hero,frame,pid)`: sohbet avatarı ve ismi (dünya/sunucu/arkadaş), DM başlığı, arkadaş listesi avatarı (satır hâlâ mesajı açar), sıralamadaki gerçek oyuncular ve kendi satırın, ittifak üyeleri (avatar; yönetilemeyen satırın tamamı). Haritada gerçek oyuncu şehir kartında küçük "👤 Profili gör".
+- **Hayalet filtresi (`online.js → ghost`)** artık Belediye Sv.1'in tamamı: sıralama, harita ve rakiplerde gizli (terk edilmiş misafirler ve test hesapları). Testlerde Firebase istekleri engellenir (`googleapis|firebaseio|gstatic firebasejs` abort); aksi halde test gerçek oyunculara görünen anonim hesap açar.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

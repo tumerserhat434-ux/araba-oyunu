@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191026';
+import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191107';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -77,7 +77,7 @@ export function load() {
   S.tankTraining ??= null;
   S.camp ||= { done: 0, tries: 0 };
   S.helpReq ||= {};
-  S.skins ||= {}; S.skin ??= null;
+  S.skins ||= {}; S.skin ??= null; S.showcase ??= null; // profil vitrini: seçilen 5 kahraman (null = en güçlü 5)
   dailyReset();
   catchUp();
   save();
@@ -838,10 +838,30 @@ export const troopsAway = () => { const o = {}; for (const m of S.marches) { con
 export function importSave(json) { localStorage.setItem(SAVE_KEY, json); }
 export function exportSave() { save(); return JSON.parse(JSON.stringify(S)); }
 // Diğer oyuncuların göreceği herkese açık profil (savunma bilgisi dahil)
+// Profil vitrini: oyuncunun seçtiği (ya da en güçlü) 5 kahraman
+export const SHOWCASE_N = 5;
+export function showcaseIds() {
+  const own = (id) => !!S.heroes[id] && !!HERO_BY_ID[id];
+  const picked = (S.showcase || []).filter(own).slice(0, SHOWCASE_N);
+  if (S.showcase && picked.length) return picked;
+  return Object.keys(S.heroes).filter(own).sort((a, b) => heroPower(b) - heroPower(a)).slice(0, SHOWCASE_N);
+}
+export function setShowcase(ids) { S.showcase = ids && ids.length ? ids.filter((id) => S.heroes[id]).slice(0, SHOWCASE_N) : null; save(); emit('profile'); }
+// Rozetler (profilde ve herkese açık profilde aynı liste)
+export const BADGES = [
+  { k: 'win1', n: 'İlk Zafer', i: 'ic_trophy' }, { k: 'pull10', n: 'Çağırıcı', i: 'ic_summon' }, { k: 'th5', n: 'Kale Lordu', i: 'nav_city' }, { k: 'harvest', n: 'Hasat Ustası', i: 'res_food' },
+  { k: 'win10', n: 'Fatih', i: 'nav_heroes' }, { k: 'gold', n: 'Hazine', i: 'nav_shop' }, { k: 'kills', n: 'Kâşif', i: 'nav_world' }, { k: 'legend', n: 'Efsane', i: 'ic_gift' },
+];
+export function myBadges() {
+  const ok = { win1: S.stats.wins >= 1, pull10: S.totalPulls >= 10, th5: thLevel() >= 5, harvest: (S.counters?.collects || 0) >= 20, win10: S.stats.wins >= 10, gold: S.res.gold >= 2000, kills: S.stats.kills >= 500, legend: Object.keys(S.heroes).some((x) => HERO_BY_ID[x]?.rarity === 5) };
+  return BADGES.filter((b) => ok[b.k]).map((b) => b.k);
+}
 export function publicProfile() {
   const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
-  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, mapVer: MAP_VER, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag } : null };
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: S.pvpShield || 0, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, mapVer: MAP_VER, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag, name: String(S.alliance.name || '').slice(0, 24) } : null,
+    cmd: S.commander || null, showcase: showcaseIds().map((id) => ({ id, lv: S.heroes[id].level || 1, ups: S.heroes[id].ups || 0 })),
+    stats: { wins: S.stats.wins || 0, losses: S.stats.losses || 0, kills: S.stats.kills || 0, pulls: S.totalPulls || 0 }, badges: myBadges() };
 }
 // Gerçek oyuncuyu haritadaki düşman biçimine çevir
 export function rivalToEnemy(p) {

@@ -8,13 +8,13 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191026';
-import { createSkinFX, SKINS } from './skins.js?v=2611191026';
-import * as BLD from './buildings.js?v=2611191026';
-import * as G from './state.js?v=2611191026';
-import { SPEEDUPS } from './data.js?v=2611191026';
-import { createSoldier, animateUnit } from './units.js?v=2611191026';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191026';
+import * as A from './assets.js?v=2611191107';
+import { createSkinFX, SKINS } from './skins.js?v=2611191107';
+import * as BLD from './buildings.js?v=2611191107';
+import * as G from './state.js?v=2611191107';
+import { SPEEDUPS } from './data.js?v=2611191107';
+import { createSoldier, animateUnit } from './units.js?v=2611191107';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191107';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -712,6 +712,7 @@ export function openWorldMap(opts = {}) {
       const diff = ratio < 0.6 ? ['Kolay', 'easy'] : ratio < 1 ? ['Orta', 'mid'] : ratio < 1.5 ? ['Zor', 'hard'] : ['Çok zor', 'vhard'];
       card = win(`${c.alliance?.tag ? '[' + c.alliance.tag + '] ' : ''}${c.real ? '🌐 ' : '🏰 '}${c.name}`, `🏛️ Belediye Sv.${c.th || 1}`, `
         <div class="wm-cs">${stat('⚔️', c.real ? 'Gerçek oyuncu' : c.lord, G.fmt(c.power), `<em class="wm-diff ${diff[1]}">${diff[0]}</em>`)}${stat('📍', 'Konum', `X:${Math.round(c.mapX)} Y:${Math.round(c.mapY)}`, `<em class="wm-times"><span>⏱ ${fmtT(t)}</span><span>🚁 ${fmtT(st)}</span></em>`)}</div>
+        ${c.real && c.uid ? '<button id="wmProf" class="wm-prof">👤 Profili gör</button>' : ''}
         ${sh ? `<div class="wm-shield">🛡️ Kalkan aktif: ${G.fmtTime(c.shieldUntil - Date.now() / 1000)}</div>` : ''}
         <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('violet', 'wmScout', scouting ? '🚁' : '👁', scouting ? 'Yolda…' : 'Gözetle', scouting ? '' : cost('🌾', G.SCOUT_COST.food), sh || scouting)}${isAlly(c) ? B('steel', 'wmAlly', '🤝', 'Müttefik', '', true) : B('crimson', 'wmAtk', '⚔', 'Saldır', '', sh)}</div>
         ${last ? `<div class="wm-cb">${B('gold wide', 'wmLastRep', '📜', `Son gözetleme raporu <small>(${agoS(last.t)})</small>`)}</div>` : ''}
@@ -763,6 +764,7 @@ export function openWorldMap(opts = {}) {
     $('wmSrv').onclick = () => { const next = server === myServer ? myServer + 1 : myServer; closeWorld(true); openWorldMap({ server: next }); C.toast(next === myServer ? '🏠 Kendi sunucuna döndün' : `🌐 Sunucu #${next} görüntüleniyor`); };
     if ($('wmClose')) $('wmClose').onclick = () => select(null);
     if ($('wmAtk')) $('wmAtk').onclick = () => C.onAttack(sel.id);
+    if ($('wmProf')) $('wmProf').onclick = () => window.__dsViewPlayer?.(sel.uid, { name: sel.name, hero: sel.hero?.id, frame: sel.frame });
     if ($('wmRally')) $('wmRally').onclick = () => C.onRally(sel.id);
     if ($('wmRecallMine')) $('wmRecallMine').onclick = () => { G.recallMarch(sel.busy); C.toast('↩ Kazım birliği geri çağrıldı'); syncMines(); render(); };
     if ($('wmScout')) $('wmScout').onclick = () => { const r = G.startScout(sel.id); if (!r.ok) return C.toast(r.why, true); C.sfx('horn'); C.toast(`🚁 Helikopter havalandı • ${fmtT(r.scout.dur * 2)} sonra rapor`); syncScouts(); render(); };

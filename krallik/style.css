@@ -1703,3 +1703,32 @@ body[data-scene="world"] .chat-bar { bottom: calc(max(6px, env(safe-area-inset-b
   .w-plaque span { font-size: 19px; } .w-plaque { padding: 7px 42px 7px; } .laurel { width: 32px; height: 32px; }
   .w-side { width: 58px; } .w-tab { font-size: 9.5px; } .w-tab img { width: 26px; height: 26px; }
 }
+
+/* ===== Profil: kahraman vitrini ve oyuncu profili ===== */
+.pf-card h4 { position: relative; }
+.pf-edit { margin-left: auto; border: 0; padding: 3px 9px; border-radius: 8px; font-family: 'Lilita One', sans-serif; font-size: 11.5px; color: #fff3c8; background: linear-gradient(180deg, rgba(255,210,120,.28), rgba(140,90,20,.35)); box-shadow: inset 0 0 0 1px rgba(255,210,120,.45); }
+.pf-cnt { margin-left: auto; font-size: 13px; color: #ffd860; }
+.pf-heroes, .pf-pick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.pf-h { position: relative; aspect-ratio: 3/4; border-radius: 9px; overflow: hidden; padding: 0; background: radial-gradient(circle at 50% 30%, #3a2e6a, #120c2a); border: 1.5px solid var(--rc, rgba(255,255,255,.18)); box-shadow: 0 0 8px -3px var(--rc, transparent), inset 0 0 0 1px rgba(0,0,0,.4); }
+.pf-h img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pf-st { position: absolute; left: 2px; top: 1px; font-size: 8.5px; line-height: 1; letter-spacing: -1px; text-shadow: 0 1px 2px #000; }
+.pf-st .st-asc img { width: 9px; height: 9px; }
+.pf-lv { position: absolute; right: 2px; top: 2px; padding: 0 3px; border-radius: 5px; font-size: 8.5px; font-weight: 900; color: #fff; background: rgba(0,0,0,.7); line-height: 1.35; }
+.pf-hn { position: absolute; left: 0; right: 0; bottom: 0; padding: 9px 2px 2px; font-size: 8.5px; font-weight: 900; color: #fff; text-align: center; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: linear-gradient(transparent, rgba(0,0,0,.92)); }
+.pf-empty { display: grid; place-items: center; font-size: 18px; color: rgba(255,255,255,.35); border-style: dashed; }
+.pf-pick { max-height: 46vh; overflow-y: auto; padding: 2px; }
+.pf-pick .pf-h { cursor: pointer; }
+.pf-pick .pf-h.on { box-shadow: 0 0 0 2px #ffd860, 0 0 10px rgba(255,216,96,.6); }
+.pf-pick .pf-h:not(.on) img { filter: saturate(.75) brightness(.8); }
+.pf-n { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-family: 'Lilita One', sans-serif; font-size: 12px; color: #2a1800; background: radial-gradient(circle at 40% 30%, #fff0a8, #f0b830); box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.pf-tip { margin: -4px 0 8px; font-size: 11.5px; color: #c8c0e8; }
+.pf-btns { display: flex; gap: 6px; justify-content: flex-end; margin-top: 10px; }
+.pf-btns .w-btn, .pf-acts .w-btn { padding: 6px 12px; font-size: 13px; }
+.pf-acts { display: flex; gap: 6px; justify-content: flex-end; }
+.pf-acts:empty { display: none; }
+.pf-al { margin-top: 2px; font-family: 'Lilita One', sans-serif; font-size: 13px; color: #ffe8a8; text-shadow: 0 1px 0 #000; }
+.pf-load { text-align: center; font-size: 12px; color: #c8c0e8; padding: 2px 0 6px; }
+.ch-av, .ch-nm, .rk-row.pv { cursor: pointer; }
+.ch-av { display: inline-flex; flex-shrink: 0; }
+.ch-nm { text-decoration: none; }
+.wm-prof { display: block; margin: 0 auto 6px; border: 0; padding: 4px 12px; border-radius: 9px; font-family: 'Lilita One', sans-serif; font-size: 12.5px; color: #fff; background: linear-gradient(180deg, rgba(110,90,220,.6), rgba(40,30,110,.8)); box-shadow: inset 0 0 0 1px rgba(200,180,255,.45); }

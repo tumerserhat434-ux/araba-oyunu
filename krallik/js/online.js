@@ -101,7 +101,9 @@ export async function topPlayers(n = 50) {
 }
 // Hiç ilerlememiş hesaplar (varsayılan isim, Belediye Sv.1, zafer yok) listelerde gösterilmez:
 // yeni oyunculara başlangıç koruması olur ve terk edilmiş misafir/test hesapları haritayı kirletmez.
-const ghost = (p) => (p.name || 'Krallığım') === 'Krallığım' && (p.th || 1) <= 1 && !p.wins;
+// Belediye Sv.1'deki hesaplar (yeni açılıp bırakılmış misafirler, test hesapları) listelerde gösterilmez;
+// gerçek oyuncu belediyeyi Sv.2'ye çıkarınca görünür.
+const ghost = (p) => (p.th || 1) <= 1;
 // Güce yakın rakipler (son 14 günde aktif olanlar)
 export async function rivals(power, n = 6) {
   if (!ready) return [];
