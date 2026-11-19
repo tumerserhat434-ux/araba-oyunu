@@ -650,6 +650,10 @@ cd araba-oyunu && python3 -m http.server 8000
 - `S.fy { start (gece yarısı), bases {gün: sayaç kopyası}, claimed, bonus }`; gün açılınca sayaçlar kopyalanır, ilerleme = sayaç − kopya; açılmış günler sonradan da tamamlanabilir; 7 gün sonra yeni sezon. `fyState`, `fyProg`, `claimFy`, `claimFyBonus`, `fyClaimable` (#evDot), `giveReward`. Yeni sayaçlar: `zombies`, `kills`, `gathers`, `scouts`, `energy`.
 - **Arayüz:** Görevler penceresinde ilk sekme "Fetih Yolu" (`fyBody`), "Etkinlikler" düğmesi bunu açar: afiş + kalan süre, 7 gün düğmesi (kilit/✓/nokta), gün ilerleme çizgisi (bölmeli) + gün sandığı (içeriği sürpriz, yalnızca açılınca bildirimde yazar), görev satırları (ilerleme, ödül çipleri, Al).
 
+### 5.48 Bildirimler (toast) ortaçağ plakası
+- Kredi harcanmadan, CSS + mevcut görseller: koyu lacivert plaka, altın çift çerçeve + parlama, iki uçta kırmızı kurdele (`::before/::after`, clip-path; `.bad`'de gri), solda altın halkalı mor madalyon (`.toast i`, `margin-left -26px`) ve arkasında defne (`.laurel.tq-laurel`), Cinzel yazı. `main.js → TOAST_IC` emoji → görsel eşlemesi (🎁 ic_gift, ⚡ ic_energy, 🧟 boss_5, 🏆 ic_trophy, 🔥/🧯 ic_extinguisher, 👑 crown, 📯 ic_rally, 🗿 ic_giant …); eşleşmeyen emoji olduğu gibi kalır. Metindeki ⏩ → `sp_t1` kum saati. `#toasts` genişliği `100% − 60px` (kurdele kesilmesin).
+- Test notu: headless ekran görüntüsü yavaş, 2,6 sn'lik bildirim kaybolur; testte `setTimeout(…, 2600)` ve animasyon devre dışı bırakılır.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

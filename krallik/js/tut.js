@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — öğretici (danışman eşliğinde adım adım eğitim)
 // =====================================================================
-import * as G from './state.js?v=2611191913';
+import * as G from './state.js?v=2611191926';
 
 const STEPS = [
   { id: 'welcome', text: 'Hoş geldin Lordum! Ben <b>Nöbetçi Emre</b>, senin danışmanınım. Bu topraklar artık senin. Gel, krallığını birlikte büyütelim!', btn: 'Başlayalım' },

@@ -101,7 +101,7 @@ export const TROOPS = {
   spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 40, wood: 40, stone: 0 }, time: 1.6, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
   archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 33, wood: 46, stone: 0 }, time: 1.9, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
   cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 78, wood: 40, stone: 26 }, time: 3, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
-  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611191913" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
+  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611191926" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
 // ---- Talimhane: asker seviyeleri (1–10) ----
 // Her seviye hasar/savunma/can +%12 (Sv.10 ≈ ×2,08: 11 hasar → 23). Bedel yüksek, süre kısa.
