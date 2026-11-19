@@ -2,28 +2,28 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611191355';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191355';
-import * as ASSETS from './assets.js?v=2611191355';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191355';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611191355';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191355';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191355';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191355';
-import * as G from './state.js?v=2611191355';
-import { getAvatar } from './scenes.js?v=2611191355';
-import { initCampaign, openCampaign } from './campui.js?v=2611191355';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191355';
-import { campIdx, stageLabel } from './campaign.js?v=2611191355';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191355';
-import { createFire } from './fire.js?v=2611191355';
-import { createGrass } from './grass.js?v=2611191355';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191355';
-import { initTutorial, tutEvent } from './tut.js?v=2611191355';
-import { icon } from './icons.js?v=2611191355';
-import { paintCity } from './terrain.js?v=2611191355';
-import { createLife, createVillager, animVillager } from './life.js?v=2611191355';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191355';
+import * as BLD from './buildings.js?v=2611191436';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191436';
+import * as ASSETS from './assets.js?v=2611191436';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191436';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611191436';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191436';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191436';
+import { VIP, VIP_MAX, ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191436';
+import * as G from './state.js?v=2611191436';
+import { getAvatar } from './scenes.js?v=2611191436';
+import { initCampaign, openCampaign } from './campui.js?v=2611191436';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191436';
+import { campIdx, stageLabel } from './campaign.js?v=2611191436';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191436';
+import { createFire } from './fire.js?v=2611191436';
+import { createGrass } from './grass.js?v=2611191436';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191436';
+import { initTutorial, tutEvent } from './tut.js?v=2611191436';
+import { icon } from './icons.js?v=2611191436';
+import { paintCity } from './terrain.js?v=2611191436';
+import { createLife, createVillager, animVillager } from './life.js?v=2611191436';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191436';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -599,6 +599,7 @@ const costHtml = (cost) => Object.entries(cost).filter(([, v]) => v > 0).map(([r
 const stars = (n) => '★'.repeat(n);
 let avatarFor = null, frameFor = null;
 function updateTop() {
+  updateVipBadge();
   for (const r of ['food', 'wood', 'stone', 'gold']) $('r_' + r).textContent = G.fmt(G.S.res[r]);
   const pw = G.cityPower(); $('power').textContent = G.fmt(pw);
   { const steps = [0, 5e3, 1e4, 2.5e4, 5e4, 1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8, 1e9, 2.5e9]; let i = steps.findIndex((v) => v > pw); if (i < 0) i = steps.length - 1; const lo = steps[i - 1] || 0; $('powBar').style.width = Math.min(100, (pw - lo) / Math.max(1, steps[i] - lo) * 100).toFixed(1) + '%'; }
@@ -789,7 +790,7 @@ function doCollect(id) {
 }
 $('sheet').addEventListener('click', (e) => {
   const sk = e.target.closest('[data-skin]');
-  if (sk) { const id = sk.dataset.skin; if (id && !G.S.skins[id]) { closeSheet(); navigate('offers'); return; } G.setSkin(id || null); sfx(id ? 'reveal' : 'click'); toast(id ? `✨ ${SKINS[id].name} etkin` : 'Kostüm çıkarıldı'); syncSoon(); return renderSheet(); }
+  if (sk) { const id = sk.dataset.skin; if (id && !G.S.skins[id]) { closeSheet(); navigate(SKINS[id].vip ? 'vip' : 'offers'); return; } G.setSkin(id || null); sfx(id ? 'reveal' : 'click'); toast(id ? `✨ ${SKINS[id].name} etkin` : 'Kostüm çıkarıldı'); syncSoon(); return renderSheet(); }
   const tr = e.target.closest('[data-troop]');
   if (tr) { trainSel = tr.dataset.troop; renderSheet(); return; }
   const go = e.target.closest('[data-go]');
@@ -842,7 +843,11 @@ function setNav(go) { document.querySelectorAll('nav button').forEach((b) => b.c
 document.querySelectorAll('nav button, #rside .rbtn').forEach((b) => b.addEventListener('click', () => navigate(b.dataset.go)));
 $('goldBtn').onclick = (e) => { e.stopPropagation(); shopTab = 'gold'; navigate('shop'); };
 document.querySelectorAll('#top .res[data-r]').forEach((el) => (el.onclick = () => { shopTab = 'res'; navigate('shop'); }));
-$('profileBtn').onclick = () => navigate('profile');
+$('profileBtn').onclick = (e) => { if (e.target.closest('#vipBtn')) return; navigate('profile'); };
+$('vipBtn').onclick = (e) => { e.stopPropagation(); sfx('open'); navigate('vip'); };
+function updateVipBadge() {
+  const L = G.S.vip || 0; $('vipLvl').textContent = 'VIP ' + L; $('vipBtn').classList.toggle('off', !L); $('vipDot').classList.toggle('hidden', !G.vipBoxReady());
+}
 $('chipTroops').onclick = () => navigate('army');
 
 let modalKind = '', worldSel = null, heroTab = 'mine';
@@ -850,6 +855,7 @@ export function navigate(go) {
   closeSheet();
   setNav(go);
   if (go === 'city') { closeModal(); return; }
+  if (go === 'vip') { modalKind = 'vip'; setNav(''); return renderModal(); }
   if (go === 'events') { questTab = 'daily'; go = 'quests'; }
 
   if (go === 'campaign') { closeModal(); closeSheet(); openCampaign(); return; }
@@ -883,6 +889,7 @@ function renderModalInner() {
   if (k === 'reports') { G.S.reportsSeen = G.S.reports.length ? G.S.reports[0].t : 0; G.save(); $('repDot').classList.add('hidden'); return openModal(reportsUI()); }
   if (k === 'profile') return openModal(profileUI());
   if (k === 'player') return openModal(playerUI());
+  if (k === 'vip') return openModal(vipUI());
   if (k === 'army') return openModal(armyUI());
   if (k === 'quests') return openModal(questsUI());
   if (k === 'ranking') return openModal(rankingUI());
@@ -1456,7 +1463,7 @@ function skinSheetHtml() {
   const cur = G.S.skin;
   return `<div class="sk-box"><div class="sk-h"><b>✨ Belediye Kostümleri</b><small>Belediye binan seçtiğin kostüme bürünür; şehrinde ve dünya haritasında görünür</small></div>
     <div class="sk-grid">${SKIN_ORDER.map((id) => { const s = SKINS[id], own = !!G.S.skins[id], on = cur === id;
-      return `<button class="sk-tile ${on ? 'on' : ''} ${own ? '' : 'lock'}" style="--sc:${s.color}" data-skin="${id}"><span class="sk-img" style="background-image:url(${UI('sk_' + id)})">${s.model ? `<img src="${UI('thc_' + id)}" alt="">` : ''}</span><b>${s.name}</b><em>${on ? '✓ Aktif' : own ? 'Kullan' : '🎁 Teklifte'}</em></button>`; }).join('')}</div>
+      return `<button class="sk-tile ${on ? 'on' : ''} ${own ? '' : 'lock'}" style="--sc:${s.color}" data-skin="${id}"><span class="sk-img" style="background-image:url(${UI('sk_' + id)})">${s.model ? `<img src="${UI('thc_' + id)}" alt="">` : ''}</span><b>${s.name}</b><em>${on ? '✓ Aktif' : own ? 'Kullan' : s.vip ? '👑 VIP ' + s.vip : '🎁 Teklifte'}</em></button>`; }).join('')}</div>
     ${cur ? '<button class="w-btn" style="width:100%;margin-top:6px" data-skin="">Kostümü çıkar</button>' : ''}</div>`;
 }
 function offersUI() {
@@ -1601,6 +1608,22 @@ function playerUI() {
   const note = PV.loading ? '<div class="pf-load">Profil yükleniyor…</div>' : PV.err && !p.power ? '<div class="pf-load">Profil bilgileri alınamadı.</div>' : '';
   return head('Oyuncu Profili', 'nav_heroes') + note + profileCard(p, { actions: acts });
 }
+// ---- VIP penceresi ----
+let vipView = 0;
+const VIP_ITEM_TXT = (b) => Object.entries(b.items || {}).map(([k, n]) => `${spIcon(k, 40, n)}`).join('') + (b.energy ? `<span class="vp-chip"><img src="${UI('ic_energy')}" alt="">${b.energy}</span>` : '') + (b.gold ? `<span class="vp-chip"><img src="${UI('res_gold')}" alt="">${b.gold}</span>` : '');
+function vipUI() {
+  const cur = G.S.vip || 0, L = vipView || Math.min(VIP_MAX, cur + 1) || 1, d = VIP[L], ready = G.vipBoxReady();
+  const lv = Array.from({ length: VIP_MAX }, (_, i) => i + 1).map((n) => `<button class="vp-lv ${n <= cur ? 'own' : ''} ${n === L ? 'on' : ''}" data-viplv="${n}"><img src="${UI('vip_badge')}" alt=""><b>${n}</b></button>`).join('');
+  const perks = [`<li>⛏ Madenlerden <b>+%${d.mine}</b> verim</li>`, `<li>🎁 Her <b>${d.every} günde bir</b> VIP kutusu: <span class="vp-box">${VIP_ITEM_TXT(d.box)}</span></li>`];
+  if (d.skin) perks.push(`<li class="vp-sk"><img src="${UI('thc_' + d.skin)}" alt=""><span>🏰 Özel animasyonlu belediye kostümü: <b>${SKINS[d.skin].name}</b></span></li>`);
+  if (d.frame) perks.push(`<li class="vp-fr">${frameHtml(G.S.commander, d.frame, 40)}<span>Özel hareketli avatar çerçevesi: <b>VIP İmparator</b></span></li>`);
+  const next = cur + 1, buyBtn = cur >= VIP_MAX ? '<div class="vp-max">👑 En yüksek VIP seviyesindesin</div>' : L === next ? `<button class="w-btn gold vp-buy" data-vipbuy>VIP ${next}'i aç • <img src="${UI('res_gold')}" alt=""> ${G.fmt(VIP[next].cost)}</button>` : L > next ? `<div class="vp-lock">🔒 Önce VIP ${next}'i açmalısın</div>` : '<div class="vp-own">✓ Bu seviye açık</div>';
+  return head('VIP', 'vip_badge') + `<div class="w-banner vp-ban" style="background-image:url(${UI('banner_vip')})"><div><div class="bt">VIP ${cur}</div><div class="bs">${cur ? 'Ayrıcalıkların aktif' : 'VIP ayrıcalıklarını aç'}</div></div><span class="vp-en"><img src="${UI('ic_energy')}" alt="">${G.fmt(G.S.energy || 0)}</span></div>
+    ${cur ? `<div class="w-card vp-claim"><h4>🎁 VIP ${cur} kutusu</h4><div class="vp-box">${VIP_ITEM_TXT(VIP[cur].box)}</div>${ready ? '<button class="w-btn green" data-vipclaim>Topla</button>' : `<small>Sonraki kutu: <b>${G.fmtTime(G.vipBoxIn())}</b></small>`}</div>` : ''}
+    <div class="vp-lvs">${lv}</div>
+    <div class="w-card"><h4><img src="${UI('vip_badge')}" alt="">VIP ${L} ayrıcalıkları</h4><ul class="vp-perks">${perks.join('')}</ul></div>
+    ${buyBtn}`;
+}
 let profTab = 'me';
 function profileUI() {
   const h = HERO_BY_ID[G.S.commander], th = G.thLevel();
@@ -1643,6 +1666,9 @@ $('modalBox').addEventListener('click', (e) => {
   if (e.target.closest('[data-pvback]')) { const b = PV.back; PV.back = null; modalKind = b || 'profile'; return renderModal(); }
   if (e.target.closest('[data-pvadd]')) { const p = PV.p || {}; addFriendLocal({ uid: PV.uid, name: p.name || 'Oyuncu', pid: p.pid || '', hero: p.cmd || null, frame: p.frame || null }); sfx('reveal'); toast(`🤝 ${p.name || 'Oyuncu'} arkadaş listene eklendi`); return renderModal(); }
   if (e.target.closest('[data-pvmsg]')) { const f = friendOf(PV.uid); PV.back = null; CH.tab = 'friends'; modalKind = 'chat'; if (f) openDm(f); else openChat('friends'); return; }
+  const vl = e.target.closest('[data-viplv]'); if (vl) { vipView = +vl.dataset.viplv; return renderModal(); }
+  if (e.target.closest('[data-vipbuy]')) { const r = G.buyVip(); if (!r.ok) { toast(r.why, true); if (r.needGold) { closeModal(); navigate('shop'); } return; } sfx('reveal'); toast(`👑 VIP ${r.level} açıldı!${VIP[r.level].skin ? ' Özel kostümün belediye binasında!' : ''}`); vipView = 0; updateTop(); updateVipBadge(); syncSoon(); return renderModal(); }
+  if (e.target.closest('[data-vipclaim]')) { const r = G.claimVipBox(); if (!r.ok) return toast(r.why, true); sfx('coin'); toast('🎁 VIP kutusu toplandı!'); updateTop(); updateVipBadge(); return renderModal(); }
   // profil vitrini düzenleme
   if (e.target.closest('[data-pfedit]')) { PF.edit = true; PF.sel = G.S.showcase ? G.showcaseIds() : []; return renderModal(); }
   const pk = e.target.closest('[data-pfpick]');

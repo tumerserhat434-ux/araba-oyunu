@@ -295,8 +295,23 @@ export const FRAMES = [
   { id: 'phoenix', name: 'Anka Ateşi', gold: 3800, tier: 5 },
   { id: 'shadow', name: 'Gölge Lordu', gold: 5200, tier: 5 },
   { id: 'dragon', name: 'Ejder Kral', gold: 7500, tier: 5, pro: true },
+  { id: 'vip8', name: 'VIP İmparator', vip: 8, tier: 5, pro: true },
 ];
 export const FRAME_BY_ID = Object.fromEntries(FRAMES.map((f) => [f.id, f]));
+// ---- VIP: 1→8 sırayla altınla açılır, kalıcıdır. Ödül kutusu her `every` günde bir toplanır. ----
+// mine: maden verimi bonusu (%), box: { items: {hızlandırma: adet}, energy, gold }
+export const VIP = [
+  null,
+  { cost: 700, mine: 6, every: 2, box: { items: { s1m: 10 }, energy: 100 } },
+  { cost: 1400, mine: 9, every: 2, box: { items: { s1m: 20 }, energy: 120, gold: 25 } },
+  { cost: 3500, mine: 15, every: 2, box: { items: { s5m: 10 }, energy: 150 } },
+  { cost: 5000, mine: 18, every: 2, box: { items: { s5m: 15, s15m: 3 }, energy: 150, gold: 50 } },
+  { cost: 7000, mine: 22, every: 2, box: { items: { s15m: 10 }, energy: 170, gold: 80 } },
+  { cost: 10000, mine: 26, every: 2, box: { items: { s1h: 3, s15m: 5 }, energy: 170, gold: 120 } },
+  { cost: 14000, mine: 30, every: 3, box: { items: { s1h: 5 }, energy: 170 }, skin: 'vip7' },
+  { cost: 20000, mine: 35, every: 2, box: { items: { s3d: 1 }, energy: 200 }, skin: 'vip8', frame: 'vip8' },
+];
+export const VIP_MAX = 8;
 // ---- Teklif paketleri (demo: gerçek ödeme alınmaz) ----
 // içerik: gold, res {food,wood,stone}, items {sXX: adet}, hero5 (rastgele 5★ kahraman), frames [id]
 export const OFFERS = [

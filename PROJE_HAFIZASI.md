@@ -623,6 +623,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Tarlalar:** düz `w_farm.webp` kaldırıldı. Sürülmüş toprak (gt2_dirt tonlu) + sıra sıra başak demetleri: Higgsfield `assets/ui/crop_wheat.webp`, `crop_barley.webp` (beyaz zemin kesilip kenar renkleri iç renklerle doldurularak, alfa 1 px daraltılarak → beyaz kenar yok), çapraz iki kart (`mergeGeometries`), `windify(…, 0.28)` ile dalgalanır. ~26 tarla, şehir çevresinde.
 - Kenar temizliği yöntemi (beyaz zeminli görsellerden saydam doku): beyaza uzaklık → alfa, bilinen katı piksellerden 12 tur komşu ortalamasıyla renk yayma, alfa 1 px erozyon.
 
+### 5.44 VIP sistemi (1–8)
+- **Veri (`data.js → VIP`, `VIP_MAX = 8`):** sırayla altınla açılır, kalıcı. Fiyatlar 700 / 1.400 / 3.500 / 5.000 / 7.000 / 10.000 / 14.000 / 20.000 (toplam 61.600). Maden verimi +%6 / 9 / 15 / 18 / 22 / 26 / 30 / 35. Kutu (yalnız mevcut seviyenin): V1 10×1dk + 100 enerji; V2 20×1dk + 120 enerji + 25 altın; V3 10×5dk + 150; V4 15×5dk + 3×15dk + 150 + 50 altın; V5 10×15dk + 170 + 80 altın; V6 3×1sa + 5×15dk + 170 + 120 altın; V7 (3 günde bir) 5×1sa + 170 + kostüm `vip7`; V8 (2 günde bir) 1×3gün + 200 + kostüm `vip8` + çerçeve `vip8`. V4–V6 ayrıntılarını Claude belirledi (kullanıcı enerjiyi 150/170/170 istedi).
+- **State:** `S.vip`, `S.vipBoxAt`, `S.energy` (**enerjinin kullanımı henüz yok; kullanıcı anlatacak**). `buyVip()`, `claimVipBox()`, `vipBoxReady()`, `vipBoxIn()`, `vipMine()` → `gatherRate` çarpanı. Açılışta VIP seviyesine göre kostüm/çerçeve verilir. `publicProfile.vip`.
+- **Arayüz:** üst barda avatarın sağ üstünde `#vipBtn` (Higgsfield `vip_badge.webp` + "VIP n"; VIP 0'da gri/donuk `.off`, kutu hazırsa kırmızı nokta) → `navigate('vip')` → `vipUI()` (afiş `banner_vip.webp`, enerji `ic_energy.webp`, kutu toplama, 8 seviye amblemi, seçili seviyenin ayrıcalıkları, sıradaki seviyeyi aç düğmesi). Kostüm listesinde VIP kostümleri "👑 VIP n", kilitliyse VIP penceresine gider.
+- **Kostümler (`skins.js`):** `vip7` Zümrüt Taç Sarayı (`assets/hf/th_vip7.glb`, Tripo 9 kredi; dönen VIP rün halkası, 8 zümrüt kristal, 7 sn'de bir gökten ışık sütunu + şok dalgası, parıltılar), `vip8` Güneş İmparatorluğu (`th_vip8.glb`; dönen çift güneş halesi, sekiz çizen iki anka kuşu (ShapeGeometry kanat çırpma + ateş izi), altın havai fişekler, kızıl-altın yer halkası). Küçük resimler `thc_vip7/8.webp`.
+- **Çerçeve:** `FRAMES` içinde `{ id: 'vip8', vip: 8 }` (`frameOwned` VIP'e bakar, satın alınamaz), `fr_vip8.webp` delik yarıçapı 360'ta 102'ye oturtuldu; `.fa-vip8` altın-kızıl nabız + iki dönen ✦ ışıltı.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

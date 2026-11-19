@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191355';
+import { VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191436';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -64,7 +64,7 @@ export function load() {
   S.scouts ||= []; S.scoutReports ||= [];
   S.items ||= {};
   if (S.pity5 >= 30) S.pity5 = 29;
-  S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {};
+  S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {}; S.vip ||= 0; S.vipBoxAt ??= 0; S.energy ||= 0; for (let L = 1; L <= (S.vip || 0); L++) { if (VIP[L].skin) S.skins[VIP[L].skin] = true; if (VIP[L].frame) S.frames[VIP[L].frame] = true; }
   S.alliance ??= null;
   S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
   S.mines ||= []; S.mineMax ||= { food: 0, wood: 0, stone: 0, gold: 0 }; S.mineNext ||= 0;
@@ -135,10 +135,11 @@ export function buySpeedup(id) {
   S.res.gold -= p.gold; addItem(id, 1); save(); emit('items'); return { ok: true };
 }
 // ---- Avatar çerçeveleri ----
-export const frameOwned = (id) => !!FRAME_BY_ID[id] && (FRAME_BY_ID[id].free || !!S.frames[id]);
+export const frameOwned = (id) => !!FRAME_BY_ID[id] && (FRAME_BY_ID[id].free || !!S.frames[id] || (FRAME_BY_ID[id].vip && S.vip >= FRAME_BY_ID[id].vip));
 export function setFrame(id) { if (!frameOwned(id)) return false; S.frame = id; save(); emit('frame'); return true; }
 export function buyFrame(id) {
   const f = FRAME_BY_ID[id]; if (!f || f.free || S.frames[id]) return { ok: false, why: 'Zaten sende' };
+  if (f.vip) return { ok: false, why: `VIP ${f.vip} ile açılır` };
   if (S.res.gold < f.gold) return { ok: false, why: 'Yetersiz altın', needGold: true };
   S.res.gold -= f.gold; S.frames[id] = true; S.frame = id; save(); emit('frame'); return { ok: true };
 }
@@ -934,7 +935,7 @@ export function myBadges() {
 export function publicProfile() {
   const protect = 0.3 + maxLevelOf('warehouse') * 0.02, h = heroOf(S.commander);
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
-  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: 0, cityHp: Math.round(myCityHp()), fire: !!S.city.fire, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, mapVer: MAP_VER, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag, name: String(S.alliance.name || '').slice(0, 24) } : null,
+  return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, vip: S.vip || 0, shieldUntil: 0, cityHp: Math.round(myCityHp()), fire: !!S.city.fire, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, mapVer: MAP_VER, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag, name: String(S.alliance.name || '').slice(0, 24) } : null,
     cmd: S.commander || null, showcase: showcaseIds().map((id) => ({ id, lv: S.heroes[id].level || 1, ups: S.heroes[id].ups || 0 })),
     stats: { wins: S.stats.wins || 0, losses: S.stats.losses || 0, kills: S.stats.kills || 0, pulls: S.totalPulls || 0 }, badges: myBadges(),
     heroPow5: heroPow5(), camp: S.camp?.done || 0 };
@@ -1108,10 +1109,32 @@ export const mineHours = (L) => 3 + (L - 1) * 0.5;
 export const mineRefPower = (L) => Math.round(6000 * Math.pow(1.75, L - 1));
 export const mineUnlocked = (type, L) => L <= (S.mineMax?.[type] || 0) + 1;
 // gönderilen gücün tam verim gücüne oranı (en az %25) × komutan bonusu (en fazla +%50)
+// ---- VIP ----
+export const vipMine = () => (S.vip ? VIP[S.vip].mine : 0);
+export const vipBoxReady = () => S.vip > 0 && now() >= (S.vipBoxAt || 0);
+export const vipBoxIn = () => Math.max(0, (S.vipBoxAt || 0) - now());
+export function buyVip() {
+  if (S.vip >= VIP_MAX) return { ok: false, why: 'En yüksek VIP seviyesindesin' };
+  const L = S.vip + 1, d = VIP[L];
+  if (S.res.gold < d.cost) return { ok: false, why: `${d.cost} altın gerekli`, needGold: true };
+  S.res.gold -= d.cost; S.vip = L;
+  if (d.skin) S.skins[d.skin] = true;
+  if (d.frame) S.frames[d.frame] = true;
+  if (L === 1 || !S.vipBoxAt) S.vipBoxAt = 0; // ilk kutu hemen
+  save(); emit('vip', L); return { ok: true, level: L };
+}
+export function claimVipBox() {
+  if (!vipBoxReady()) return { ok: false, why: 'Kutu henüz hazır değil' };
+  const d = VIP[S.vip], b = d.box;
+  for (const [id, n] of Object.entries(b.items || {})) addItem(id, n);
+  S.energy = (S.energy || 0) + (b.energy || 0);
+  if (b.gold) S.res.gold += b.gold;
+  S.vipBoxAt = now() + d.every * 86400; save(); emit('vip', S.vip); return { ok: true, box: b };
+}
 export function gatherRate(type, L, troops, heroIds) {
   const pw = armyPowerMulti(troops, heroIds), f = Math.max(0.25, Math.min(1, pw / mineRefPower(L)));
   const hb = 1 + Math.min(0.5, combinedBonus(heroesOf(heroIds)) / 200);
-  return Math.max(1, Math.round(mineRate(type, L) * f * hb));
+  return Math.max(1, Math.round(mineRate(type, L) * f * hb * (1 + vipMine() / 100)));
 }
 function finishGather(m, at) {
   const hrs = Math.max(0, Math.min(m.hours, (at - m.gStart) / 3600)), amount = Math.floor(m.rate * hrs);
