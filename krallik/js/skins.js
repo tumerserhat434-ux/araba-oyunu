@@ -4,17 +4,17 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191541';
-import { rigQueen, poseQueen } from './queenrig.js?v=2611191541';
+import * as A from './assets.js?v=2611191554';
+import { rigQueen, poseQueen } from './queenrig.js?v=2611191554';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
   crown: { name: 'Altın Taç Sarayı', desc: 'Belediye binan altın kubbeli, dev taçlı bir saraya dönüşür; rün halkaları hızlanır, tepeden altın sikke ve mücevher fışkırır.', color: '#ffd060', model: 'th_crown', pulse: 0.1 },
   xmas: { name: 'Yılbaşı Şatosu', desc: 'Belediye binan karlı bir yılbaşı şatosuna dönüşür; Noel Baba ren geyikli kızağıyla etrafında uçup hediye yağdırır.', color: '#ff5a5a', model: 'th_xmas', pulse: 0.14 },
   aurora: { name: 'Buz Sarayı', desc: 'Belediye binan bir buz sarayına dönüşür; Buz Kraliçesi büyü yapar, bulutlardan kar yağar, yerden buz dikenleri fışkırır.', color: '#6affc8', model: 'th_aurora' },
-  dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan volkanik bir kaleye dönüşür; tepesindeki dev ejderha kanat çırpar, kükreyip göğe ateş püskürtür, duvarlardan lav akar.', color: '#ff6a2a', flip: { video: 'assets/ui/fv_dragon.mp4?v=2611191541' } },
-  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611191541' }, vip: 7 },
-  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611191541' }, vip: 8 },
+  dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan volkanik bir kaleye dönüşür; tepesindeki dev ejderha kanat çırpar, kükreyip göğe ateş püskürtür, duvarlardan lav akar.', color: '#ff6a2a', flip: { video: 'assets/ui/fv_dragon.mp4?v=2611191554', k: 1.65 } },
+  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611191554' }, vip: 7 },
+  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611191554' }, vip: 8 },
   shuttle: { name: 'Galaksi Üssü', desc: 'Belediye binan bir uzay üssüne dönüşür; 3-2-1 geri sayımla mekik fırlatılır, yörüngede döner ve rampaya geri iner.', color: '#5ad8ff', model: 'th_shuttle' },
 };
 export const SKIN_ORDER = ['vip8', 'vip7', 'shuttle', 'dragon', 'aurora', 'xmas', 'crown', 'fireworks'];
@@ -62,6 +62,7 @@ function chromaMat(tex) {
       { vec3 c = diffuseColor.rgb; float mx = max(c.r, c.b), d = c.g - mx;
         float a = 1.0 - smoothstep(0.08, 0.26, d);
         a *= 1.0 - step(0.55, c.g) * step(c.r, 0.45) * step(c.b, 0.45);
+        vec2 eu = vMapUv; float ed = min(min(eu.x, 1.0 - eu.x), min(eu.y, 1.0 - eu.y)); a *= smoothstep(0.0, 0.07, ed); // kenara değen kanat/ateş keskin kesilmesin
         c.g = min(c.g, mx + max(d, 0.0) * 0.12);
         diffuseColor = vec4(c, diffuseColor.a * a);
         if (diffuseColor.a < 0.04) discard; }`);
@@ -71,9 +72,9 @@ function chromaMat(tex) {
 }
 function flipbook(g, F, base, R, H, world) {
   const { t, play } = costumeVideo(F.video); play();
-  const sp = new THREE.Sprite(chromaMat(t)); sp.center.set(0.5, world ? 0.27 : 0.1); sp.renderOrder = 3; // dünya haritasında kamera daha tepeden bakar: taban daha aşağı
+  const sp = new THREE.Sprite(chromaMat(t)); sp.center.set(0.5, (F.cy ?? 0.1) + (world ? 0.17 / (F.k || 1) : 0)); sp.renderOrder = 3; // dünya haritasında kamera daha tepeden bakar: taban daha aşağı
   let W = R * 3.2;
-  if (base) { const b = new THREE.Box3().setFromObject(base), s0 = b.getSize(new THREE.Vector3()); W = Math.max(s0.x, s0.z) * 2.0; base.visible = false; }
+  if (base) { const b = new THREE.Box3().setFromObject(base), s0 = b.getSize(new THREE.Vector3()); W = Math.max(s0.x, s0.z) * (world ? 2.0 : 1.5) * (F.k || 1); base.visible = false; } // şehirde komşu binalara taşmasın
   sp.scale.set(W, W, 1); sp.position.y = 0.05; g.add(sp);
   g.userData.restore = () => { if (base) base.visible = true; };
   let pop = 0;
