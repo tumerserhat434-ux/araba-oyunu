@@ -1803,3 +1803,14 @@ body[data-scene="world"] .chat-bar { bottom: calc(max(6px, env(safe-area-inset-b
 .wm-mc button.mc-spd { background: linear-gradient(180deg, #ffd860, #c88a10); color: #3a2000; text-shadow: none; }
 .wm-mc button.mc-re { background: linear-gradient(180deg, #ff6a4a, #b02010); }
 .wm-mc button:active { transform: scale(.95); }
+
+/* ===== Sıralama sekmeleri ===== */
+.rk-desc { margin: 0 0 8px; padding: 6px 10px; border-radius: 10px; background: rgba(8,6,24,.55); font-size: 11.5px; font-weight: 800; color: #d8d0f0; }
+.w-main .rk-av { width: 58px; height: 56px; }
+.w-main .rk-row { gap: 8px; padding: 5px 10px 5px 6px; }
+.w-main .rk-n b { font-size: 14px; }
+.w-main .rk-p { font-size: 14px; }
+.rk-al .al-em { margin: 0 auto; }
+.rk-mini { display: flex; gap: 2px; margin-top: 2px; }
+.rk-mini img { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 1px rgba(255,220,140,.6); background: #1a1040; }
+.rk-stage { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 16px; color: #fff3c8; background: linear-gradient(180deg, #8a4a1a, #4a2008); box-shadow: 0 0 0 1.5px #ffc860; }

@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191254';
+import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191307';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -919,6 +919,8 @@ export function showcaseIds() {
   if (S.showcase && picked.length) return picked;
   return Object.keys(S.heroes).filter(own).sort((a, b) => heroPower(b) - heroPower(a)).slice(0, SHOWCASE_N);
 }
+// sıralama: en güçlü 5 kahramanın toplam gücü
+export const heroPow5 = () => Object.keys(S.heroes).filter((id) => HERO_BY_ID[id]).map(heroPower).sort((a, b) => b - a).slice(0, 5).reduce((a, b) => a + b, 0);
 export function setShowcase(ids) { S.showcase = ids && ids.length ? ids.filter((id) => S.heroes[id]).slice(0, SHOWCASE_N) : null; save(); emit('profile'); }
 // Rozetler (profilde ve herkese açık profilde aynı liste)
 export const BADGES = [
@@ -934,7 +936,8 @@ export function publicProfile() {
   const lootable = {}; for (const r of ['food', 'wood', 'stone']) lootable[r] = Math.floor(S.res[r] * (1 - Math.min(0.8, protect)) * 0.5);
   return { name: String(S.name).slice(0, 24), power: cityPower(), th: thLevel(), troops: { ...S.troops }, towerPow: towerPower(), hero: h ? { bonus: Math.round(h.bonus), role: h.role, id: h.id } : null, lootable, shieldUntil: 0, cityHp: Math.round(myCityHp()), fire: !!S.city.fire, wins: S.stats.wins, server: S.server || 1, mapX: S.mapX, mapY: S.mapY, frame: S.frame || 'bronze', skin: S.skin || null, mapVer: MAP_VER, alliance: S.alliance ? { id: S.alliance.id, tag: S.alliance.tag, name: String(S.alliance.name || '').slice(0, 24) } : null,
     cmd: S.commander || null, showcase: showcaseIds().map((id) => ({ id, lv: S.heroes[id].level || 1, ups: S.heroes[id].ups || 0 })),
-    stats: { wins: S.stats.wins || 0, losses: S.stats.losses || 0, kills: S.stats.kills || 0, pulls: S.totalPulls || 0 }, badges: myBadges() };
+    stats: { wins: S.stats.wins || 0, losses: S.stats.losses || 0, kills: S.stats.kills || 0, pulls: S.totalPulls || 0 }, badges: myBadges(),
+    heroPow5: heroPow5(), camp: S.camp?.done || 0 };
 }
 // Gerçek oyuncuyu haritadaki düşman biçimine çevir
 export function rivalToEnemy(p) {

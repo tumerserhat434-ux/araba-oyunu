@@ -8,14 +8,14 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191254';
-import { createSkinFX, SKINS } from './skins.js?v=2611191254';
-import * as BLD from './buildings.js?v=2611191254';
-import * as G from './state.js?v=2611191254';
-import { SPEEDUPS } from './data.js?v=2611191254';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611191254';
-import { createFire } from './fire.js?v=2611191254';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191254';
+import * as A from './assets.js?v=2611191307';
+import { createSkinFX, SKINS } from './skins.js?v=2611191307';
+import * as BLD from './buildings.js?v=2611191307';
+import * as G from './state.js?v=2611191307';
+import { SPEEDUPS } from './data.js?v=2611191307';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611191307';
+import { createFire } from './fire.js?v=2611191307';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191307';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;

@@ -602,6 +602,10 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Tank üstü kontroller:** alt sefer şeridi kaldırıldı (gözetleme satırları kalır). Tank etiketine ya da tankın kendisine dokununca (`tap` ekran mesafesi < 34 px) altında küçük düğmeler (`.wm-mc`): ⚡ Hızlandır, ⚔ Tekrar saldır, ↩ Geri çağır. Boş yere dokununca kapanır.
 - **Küçük kart (style.css sonu "Harita kartı v2"):** kart, düğmeler (34 px), istatistikler ve can çubuğu küçültüldü; rapor + ışınlanma tek satırda.
 
+### 5.40 Sıralama sekmeleri
+- `rankingUI()` artık sekmeli (`rankTab`): **Krallık** (eski güç listesi, `powerRankHtml`), **İttifak** (`topAlliances` tüm sunucular, güç = `alPower` üye toplamı), **Kahraman** (`topBy('heroPow5')`, en güçlü 5 kahramanın toplam `heroPower`; satırda vitrindeki 5 kahramanın minik avatarları), **Görev** (`topBy('camp')`, `S.camp.done` tamamlanan aşama sayısı → `stageLabel`; sayı sıralaması 3-2'yi 2-15'in üstüne koyar).
+- Profil alanları: `publicProfile.heroPow5`, `publicProfile.camp` (oyuncu yeni sürümle kaydedince listeye girer; alanı olmayan eski profiller Firestore orderBy'da görünmez). Önbellek `RK[tab]` 60 sn. Oyuncu satırına dokununca profil açılır.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

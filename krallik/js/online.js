@@ -104,6 +104,16 @@ export async function topPlayers(n = 50) {
 // Belediye Sv.1'deki hesaplar (yeni açılıp bırakılmış misafirler, test hesapları) listelerde gösterilmez;
 // gerçek oyuncu belediyeyi Sv.2'ye çıkarınca görünür.
 const ghost = (p) => (p.th || 1) <= 1;
+// Sıralamalar: herhangi bir sayısal profil alanına göre (heroPow5, camp ...)
+export async function topBy(field, n = 50) {
+  if (!ready) return [];
+  try { const s = await FS.getDocs(FS.query(FS.collection(db, 'players'), FS.orderBy(field, 'desc'), FS.limit(n))); return s.docs.map((d) => ({ uid: d.id, ...d.data() })).filter((p) => !ghost(p)); } catch (e) { lastErr = errOf(e); return []; }
+}
+// tüm sunuculardaki ittifaklar (güç üyelerden hesaplanır)
+export async function topAlliances(n = 200) {
+  if (!ready) return [];
+  try { const s = await FS.getDocs(FS.query(FS.collection(db, 'alliances'), FS.limit(n))); return s.docs.map((d) => ({ id: d.id, ...d.data() })); } catch (e) { lastErr = errOf(e); return []; }
+}
 // Güce yakın rakipler (son 14 günde aktif olanlar)
 export async function rivals(power, n = 6) {
   if (!ready) return [];

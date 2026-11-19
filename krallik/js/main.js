@@ -2,28 +2,28 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611191254';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191254';
-import * as ASSETS from './assets.js?v=2611191254';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191254';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity } from './online.js?v=2611191254';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191254';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191254';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191254';
-import * as G from './state.js?v=2611191254';
-import { getAvatar } from './scenes.js?v=2611191254';
-import { initCampaign, openCampaign } from './campui.js?v=2611191254';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191254';
-import { campIdx, stageLabel } from './campaign.js?v=2611191254';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191254';
-import { createFire } from './fire.js?v=2611191254';
-import { createGrass } from './grass.js?v=2611191254';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191254';
-import { initTutorial, tutEvent } from './tut.js?v=2611191254';
-import { icon } from './icons.js?v=2611191254';
-import { paintCity } from './terrain.js?v=2611191254';
-import { createLife, createVillager, animVillager } from './life.js?v=2611191254';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191254';
+import * as BLD from './buildings.js?v=2611191307';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191307';
+import * as ASSETS from './assets.js?v=2611191307';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191307';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611191307';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191307';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191307';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191307';
+import * as G from './state.js?v=2611191307';
+import { getAvatar } from './scenes.js?v=2611191307';
+import { initCampaign, openCampaign } from './campui.js?v=2611191307';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191307';
+import { campIdx, stageLabel } from './campaign.js?v=2611191307';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191307';
+import { createFire } from './fire.js?v=2611191307';
+import { createGrass } from './grass.js?v=2611191307';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191307';
+import { initTutorial, tutEvent } from './tut.js?v=2611191307';
+import { icon } from './icons.js?v=2611191307';
+import { paintCity } from './terrain.js?v=2611191307';
+import { createLife, createVillager, animVillager } from './life.js?v=2611191307';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191307';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -1059,7 +1059,42 @@ setInterval(() => {
   const sp = document.createElement('span'); sp.innerHTML = html;
   const tr = $('newsTxt').parentElement; tr.innerHTML = ''; sp.id = 'newsTxt'; tr.appendChild(sp);
 }, 5200);
+// ---- Sıralamalar: Krallık (güç), İttifak, Kahraman (en güçlü 5), Görev (bölüm-aşama) ----
+let rankTab = 'power';
+const RK = { hero: { at: 0, list: null }, camp: { at: 0, list: null }, ally: { at: 0, list: null } };
+function rkLoad(k) {
+  const c = RK[k]; if (!online.ready || Date.now() - c.at < 60000) return; c.at = Date.now();
+  (k === 'ally' ? topAlliances(200) : topBy(k === 'hero' ? 'heroPow5' : 'camp', 50)).then((l) => { c.list = l; if (modalKind === 'ranking' && rankTab === k) renderModal(); });
+}
+const rkMedal = (i) => (i < 3 ? `<i class="rk-medal m${i + 1}">${i + 1}</i>` : `<i class="rk-num">${i + 1}</i>`);
 function rankingUI() {
+  const tabs = [{ id: 'power', label: 'Krallık', icon: 'ic_castle' }, { id: 'ally', label: 'İttifak', icon: 'ic_alliance' }, { id: 'hero', label: 'Kahraman', icon: 'nav_heroes' }, { id: 'camp', label: 'Görev', icon: 'ic_campaign' }];
+  const H = (b) => head('Sıralama', 'ic_trophy', tabs, rankTab) + b;
+  if (rankTab === 'power') return H(powerRankHtml());
+  if (!online.ready) return H('<div class="al-off">🌐 Bu sıralama için çevrimiçi olmalısın.</div>');
+  rkLoad(rankTab);
+  const list = RK[rankTab].list;
+  if (!list) return H('<div class="al-off">Yükleniyor…</div>');
+  if (rankTab === 'ally') {
+    const myA = G.S.alliance?.id, rows = list.map((a) => ({ a, pw: alPower(a), n: Object.keys(a.members || {}).length })).filter((x) => x.n).sort((x, y) => y.pw - x.pw).slice(0, 50);
+    return H(`<div class="rk-desc">⚔ İttifak gücü: tüm üyelerin toplam gücü</div><div class="rk-list">` + (rows.length ? rows.map(({ a, pw, n }, i) => `<div class="rk-row ${a.id === myA ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''}">
+      <div class="rk-av rk-al">${alEm(a.emblem, a.color, 50)}${rkMedal(i)}</div>
+      <div class="rk-n"><b><em class="rk-tag">[${esc(a.tag)}]</em> ${esc(a.name)}</b><small>👥 ${n}/${ALLIANCE_MAX} • Sunucu #${a.server || 1}</small></div>
+      <div class="rk-p">⚔ ${G.fmt(pw)}</div></div>`).join('') : '<div class="rk-empty">Henüz ittifak yok</div>') + '</div>');
+  }
+  // oyuncu sıralamaları (benim satırım da listede)
+  const meVal = rankTab === 'hero' ? G.heroPow5() : G.S.camp?.done || 0, field = rankTab === 'hero' ? 'heroPow5' : 'camp';
+  const rows = list.filter((p) => p.uid !== online.uid).map((p) => ({ uid: p.uid, pid: p.pid, name: p.name || 'Oyuncu', hero: p.cmd || p.hero?.id, frame: p.frame, tag: p.alliance?.tag, v: p[field] || 0, sc: p.showcase || [] }));
+  rows.push({ me: true, uid: online.uid, name: G.S.name, hero: G.S.commander, frame: G.S.frame, tag: G.S.alliance?.tag, v: meVal, sc: G.showcaseIds().map((id) => ({ id })) });
+  rows.sort((a, b) => b.v - a.v);
+  const mini = (sc) => sc.slice(0, 5).filter((x) => HERO_BY_ID[x.id]).map((x) => `<img src="assets/heroes/${x.id}_a.webp" alt="">`).join('');
+  const desc = rankTab === 'hero' ? '🦸 Kahraman gücü: en güçlü 5 kahramanın toplam gücü' : '⚔ Görev ilerlemesi: bölüm ve aşama (3-2, 2-15\'in üstündedir)';
+  return H(`<div class="rk-desc">${desc}</div><div class="rk-list">` + rows.map((r, i) => `<div class="rk-row pv ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''}" ${r.me ? `data-pview="${online.uid}"` : pvAttr(r.uid, r.name, r.hero, r.frame, r.pid)}>
+      <div class="rk-av">${frameHtml(r.hero, r.frame, 46)}${rkMedal(i)}</div>
+      <div class="rk-n"><b>${r.tag ? `<em class="rk-tag">[${esc(r.tag)}]</em> ` : ''}${esc(r.name)}${r.me ? ' <small>(sen)</small>' : ''}</b>${rankTab === 'hero' ? `<span class="rk-mini">${mini(r.sc)}</span>` : `<small>${r.v ? r.v + ' aşama tamamlandı' : 'Henüz başlamadı'}</small>`}</div>
+      <div class="rk-p">${rankTab === 'hero' ? '🦸 ' + G.fmt(r.v) : `<span class="rk-stage">${stageLabel(r.v)}</span>`}</div></div>`).join('') + '</div>');
+}
+function powerRankHtml() {
   const hsh = (t) => { let h = 0; for (const c of String(t)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
   const freeFr = FRAMES.filter((f) => f.free), heroIds = HEROES.map((h) => h.id);
   const me = { name: G.S.name, sub: 'Sen', power: G.cityPower(), me: true, hero: G.S.commander, frame: G.S.frame, tag: G.S.alliance?.tag };
@@ -1068,7 +1103,7 @@ function rankingUI() {
   const bots = G.S.enemies.map((e) => ({ name: e.name, sub: e.lord, power: Math.round(e.power * 1.6 + e.th * 2500), hero: heroIds[hsh(e.name) % heroIds.length], frame: freeFr[hsh(e.lord) % freeFr.length].id }));
   const list = real.concat(bots).concat([me]).sort((a, b) => b.power - a.power);
   const medal = (i) => (i < 3 ? `<i class="rk-medal m${i + 1}">${i + 1}</i>` : `<i class="rk-num">${i + 1}</i>`);
-  return head('Krallık Sıralaması', '🏆') + '<div class="rk-list">' + list.map((r, i) => `<div class="rk-row ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''} ${r.uid || r.me ? 'pv' : ''}" ${r.uid ? pvAttr(r.uid, r.name, r.hero, r.frame, r.pid) : r.me ? `data-pview="${online.uid || 'me'}"` : ''}>
+  return '<div class="rk-list">' + list.map((r, i) => `<div class="rk-row ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''} ${r.uid || r.me ? 'pv' : ''}" ${r.uid ? pvAttr(r.uid, r.name, r.hero, r.frame, r.pid) : r.me ? `data-pview="${online.uid || 'me'}"` : ''}>
       <div class="rk-av">${frameHtml(r.hero, r.frame, 46)}${medal(i)}</div>
       <div class="rk-n"><b>${r.tag ? `<em class="rk-tag">[${r.tag}]</em> ` : ''}${r.name}${r.real ? ' <span class="rk-real">🌐</span>' : ''}</b><small>${r.sub}</small></div>
       <div class="rk-p">⚔ ${G.fmt(r.power)}</div></div>`).join('') + '</div><p class="desc" style="text-align:center;margin-top:10px">🌐 Gerçek oyuncular ve bilgisayar krallıkları birlikte sıralanır.</p>';
@@ -1615,7 +1650,7 @@ $('modalBox').addEventListener('click', (e) => {
   if (e.target.closest('[data-pfsave]')) { G.setShowcase(PF.sel.slice()); PF.edit = false; sfx('reveal'); toast(PF.sel.length ? '✨ Vitrin kaydedildi' : 'Vitrinde en güçlü 5 kahramanın gösteriliyor'); syncSoon(); return renderModal(); }
   const wt = e.target.closest('[data-wtab]');
   if (wt && modalKind === 'chat') { CH.tab = wt.dataset.wtab; if (CH.tab === 'friends') refreshFriends(); if (CH.tab !== 'friends' && CH.dmUnsub) { CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; } chatMarkSeen(); renderModal(); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; chatUpdate('tab'); return; }
-  if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; else if (modalKind === 'alliance') { if (v !== 'chat' && v !== 'rally') alStopChat(); else if (AL.tab !== v) alStopChat(); AL.tab = v; AL.err = ''; if (v === 'find') alRefresh(); } return renderModal(); }
+  if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; else if (modalKind === 'ranking') rankTab = v; else if (modalKind === 'alliance') { if (v !== 'chat' && v !== 'rally') alStopChat(); else if (AL.tab !== v) alStopChat(); AL.tab = v; AL.err = ''; if (v === 'find') alRefresh(); } return renderModal(); }
   const gq = e.target.closest('[data-goq]');
   if (gq) { const v = gq.dataset.goq; const q = QUESTS.find((x) => x.id === v); closeModal();
     if (q && q.t[0] === 'bld') { const p = PLOTS.find((x) => x.key === q.t[1]); if (p) { openBuilding(p.id); focusOn(p.x, p.z); } return; }
