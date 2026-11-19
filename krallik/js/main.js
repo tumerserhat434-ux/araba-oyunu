@@ -9,7 +9,7 @@ import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids 
 import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611191938';
 import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191938';
 import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191938';
-import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191938';
+import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS, BAG_DENOM, BAG_NAMES } from './data.js?v=2611191938';
 import * as G from './state.js?v=2611191938';
 import { getAvatar } from './scenes.js?v=2611191938';
 import { initCampaign, openCampaign } from './campui.js?v=2611191938';
@@ -635,7 +635,7 @@ function updateEnergy() {
 }
 $('chipEnergy').onclick = () => { const e = G.energyNow(); sfx('click'); toast(e >= G.ENERGY_MAX ? `⚡ Enerji dolu (${e}/${G.ENERGY_MAX}). Saldırı ve ralli 10, zombi 5 enerji harcar` : `⚡ ${e}/${G.ENERGY_MAX} • +1 enerji ${G.fmtTime(G.energyNextIn())} sonra • dolmasına ${G.fmtTime(G.energyFullIn())}`); };
 function updateTop() {
-  updateVipBadge(); updateEnergy();
+  updateVipBadge(); updateEnergy(); updateBagDot();
   for (const r of ['food', 'wood', 'stone', 'gold']) $('r_' + r).textContent = G.fmt(G.S.res[r]);
   const pw = G.cityPower(); $('power').textContent = G.fmt(pw);
   { const steps = [0, 5e3, 1e4, 2.5e4, 5e4, 1e5, 2.5e5, 5e5, 1e6, 2.5e6, 5e6, 1e7, 2.5e7, 5e7, 1e8, 2.5e8, 5e8, 1e9, 2.5e9]; let i = steps.findIndex((v) => v > pw); if (i < 0) i = steps.length - 1; const lo = steps[i - 1] || 0; $('powBar').style.width = Math.min(100, (pw - lo) / Math.max(1, steps[i] - lo) * 100).toFixed(1) + '%'; }
@@ -930,7 +930,7 @@ function head(title, icon, tabs, active) {
 let lastModalKey = '';
 function renderModal() {
   queueMicrotask(renderRankPop);
-  const key = modalKind + ':' + questTab + ':' + heroTab + ':' + shopTab + ':' + profTab;
+  const key = modalKind + ':' + BAG.tab + ':' + questTab + ':' + heroTab + ':' + shopTab + ':' + profTab;
   const keep = key === lastModalKey && $('modal').classList.contains('open');
   const sc = $('modalBox').querySelector('.w-main'), y = keep && sc ? sc.scrollTop : 0;
   lastModalKey = key;
@@ -953,6 +953,7 @@ function renderModalInner() {
   if (k === 'attack') return openModal(attackUI());
   if (k === 'scout') return openModal(scoutUI(scoutRep));
   if (k === 'speed') return openModal(speedUI());
+  if (k === 'bag') { G.S.bagSeen = G.bagCount(); G.save(); updateBagDot(); return openModal(bagUI()); }
   if (k === 'offers') return openModal(offersUI());
   if (k === 'chat') return openModal(chatUI());
   if (k === 'alliance') return openModal(allianceUI());
@@ -1027,7 +1028,7 @@ let questTab = 'main';
 const rewardTxt = (r) => Object.entries(r).filter(([k]) => RES[k]).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ') + (r._items ? '  ' + r._items.map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join('  ') : '');
 // Ödül alındığında: kaynak bildirimi + büyük hızlandırma çıktıysa özel kutlama
 function rewardFx(r, icon = '🎉') {
-  toast(icon + ' ' + rewardTxt(r));
+  toast(icon + ' ' + rewardTxt(r) + '  → 🎒 Çantaya eklendi');
   const big = (r._items || []).filter((it) => SPEEDUPS[it.id].tier >= 3).sort((a, b) => SPEEDUPS[b.id].sec - SPEEDUPS[a.id].sec)[0];
   if (big) { sfx('reveal5'); showItemDrop(big); } else sfx('coin');
 }
@@ -1583,6 +1584,66 @@ function reportsUI() {
     ${r.kind === 'attack' && r.win ? `<div class="ln">Ganimet: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}${r.zombie ? '' : ' 🪙' + (r.loot.gold || 0)}${r.items ? ' ' + r.items.map((it) => `⏩${SPEEDUPS[it.id].short}${it.n > 1 ? '×' + it.n : ''}`).join(' ') : ''}</div>` : ''}
     ${r.kind === 'defense' && !r.win ? `<div class="ln">Yağmalanan: 🌾${G.fmt(r.loot.food || 0)} 🪵${G.fmt(r.loot.wood || 0)} 🪨${G.fmt(r.loot.stone || 0)}</div>` : ''}</div>`).join('');
 }
+// ---- Çanta: görev/etkinlik ödülleri, hızlandırmalar, enerji ----
+const BAG = { tab: 'all', sel: null, n: 1 };
+const BAG_ICON = { food: '🌾', wood: '🪵', stone: '🪨', gold: '🪙', energy: '⚡' };
+const BAG_ORDER = ['food', 'wood', 'stone', 'gold', 'energy'];
+const bagImg = (k) => UI(k === 'energy' ? 'ic_energy' : 'res_' + k);
+function bagList(tab) {
+  const out = [];
+  if (tab === 'all' || tab === 'res' || tab === 'energy') for (const k of BAG_ORDER) {
+    if ((tab === 'res' && k === 'energy') || (tab === 'energy' && k !== 'energy')) continue;
+    for (const d of BAG_DENOM[k]) { const id = `bg_${k}_${d}`; if (G.S.items[id] > 0) out.push(id); }
+  }
+  if (tab === 'all' || tab === 'speed') for (const k of SPEED_ORDER.slice().reverse()) if (G.S.items[k] > 0) out.push(k);
+  return out;
+}
+function bagCell(id) {
+  const n = G.S.items[id], on = BAG.sel === id ? ' on' : '';
+  if (SPEEDUPS[id]) return `<button class="bg-cell sp${on}" data-bgsel="${id}">${spIcon(id, 58)}<em>×${G.fmt(n)}</em></button>`;
+  const b = G.bagParse(id);
+  return `<button class="bg-cell ${b.k}${on}" data-bgsel="${id}"><img src="${bagImg(b.k)}" alt=""><b>${G.fmt(b.amt)}</b><em>×${G.fmt(n)}</em></button>`;
+}
+// aktif zamanlayıcılar (hızlandırma kullanılabilecek her şey)
+function activeTimers() {
+  const out = [];
+  for (const p of PLOTS) { const tg = 'b:' + p.id; if (G.timerLeft(tg) > 0) out.push([tg, `${BUILDINGS[p.key].name} Sv.${G.lvl(p.id) + 1}`]); }
+  for (const tg of ['train', 'tank', 'research', 'heal', 'tlv']) if (G.timerLeft(tg) > 0) out.push([tg, SP_NAMES[tg]]);
+  for (const m of G.S.marches) { const tg = 'm:' + m.id; if (G.timerLeft(tg) > 0) out.push([tg, `${m.phase === 'go' ? 'Sefer' : 'Dönüş'} • ${m.tname || ''}`]); }
+  return out;
+}
+function bagDetail() {
+  const id = BAG.sel, n = G.S.items[id] || 0;
+  if (!id || !n) return `<div class="bg-detail empty">Kullanmak istediğin eşyaya dokun.</div>`;
+  if (SPEEDUPS[id]) {
+    const d = SPEEDUPS[id], tm = activeTimers();
+    return `<div class="bg-detail"><div class="bg-dh">${spIcon(id, 56)}<div><b>${d.name}</b><small>Sende: ${G.fmt(n)} • ${SPEED_TIER[d.tier]}</small></div></div>
+      <p class="bg-desc">İnşaat, eğitim, araştırma, iyileştirme ve seferlerin süresini kısaltır. Hızlandırmak istediğin işi seç:</p>
+      ${tm.length ? `<div class="bg-timers">${tm.map(([tg, nm]) => `<button class="bg-tm" data-bgspd="${tg}"><span>${nm}</span><b>⏱ ${G.fmtTime(G.timerLeft(tg))}</b><i>Hızlandır ›</i></button>`).join('')}</div>` : '<p class="bg-desc dim">Şu an süren bir iş yok.</p>'}</div>`;
+  }
+  const b = G.bagParse(id), nm = b.k === 'energy' ? `${b.amt} Enerji` : `${G.fmt(b.amt)} ${BAG_NAMES[b.k]}`;
+  const desc = b.k === 'energy' ? 'Kullanınca enerji barına eklenir. Enerji 200 sınırını aşabilir.' : 'Kullanınca depona eklenir. Çantadaki kaynaklar yağmalanamaz.';
+  BAG.n = Math.max(1, Math.min(BAG.n, n));
+  return `<div class="bg-detail"><div class="bg-dh"><span class="bg-big ${b.k}"><img src="${bagImg(b.k)}" alt=""></span><div><b>${nm}</b><small>Sende: ${G.fmt(n)}</small></div></div>
+    <p class="bg-desc">${desc}</p>
+    <div class="bg-qty"><button class="w-btn" data-bgstep="-1">−</button><input id="bgRange" type="range" min="1" max="${n}" value="${BAG.n}" ${n < 2 ? 'disabled' : ''}><button class="w-btn" data-bgstep="1">＋</button><button class="w-btn gold" data-bgstep="max">Maks</button></div>
+    <div class="bg-sum"><span>Adet: <b id="bgN">${G.fmt(BAG.n)}</b></span><span>Toplam: <b id="bgTot">+${G.fmt(BAG.n * b.amt)}</b> <img src="${bagImg(b.k)}" alt=""></span></div>
+    <button class="w-btn green bg-use" data-bguse>Kullan</button></div>`;
+}
+function bagSyncQty(fromRange) {
+  const id = BAG.sel, b = G.bagParse(id); if (!b) return;
+  const r = $('bgRange'); if (r && !fromRange) r.value = BAG.n;
+  const n = $('bgN'), t = $('bgTot'); if (n) n.textContent = G.fmt(BAG.n); if (t) t.textContent = '+' + G.fmt(BAG.n * b.amt);
+}
+function bagUI() {
+  const list = bagList(BAG.tab); if (BAG.sel && !list.includes(BAG.sel)) BAG.sel = null;
+  if (!BAG.sel && list.length) BAG.sel = list[0];
+  const tabs = [{ id: 'all', label: 'Tümü', icon: 'em_bag' }, { id: 'res', label: 'Kaynak', icon: 'res_food' }, { id: 'speed', label: 'Hızlandırma', icon: 'sp_t2' }, { id: 'energy', label: 'Enerji', icon: 'ic_energy' }];
+  return head('Çanta', 'em_bag', tabs, BAG.tab) + (list.length
+    ? `<div class="bg-grid">${list.map(bagCell).join('')}</div>${bagDetail()}`
+    : `<div class="bg-empty"><img src="${UI('em_bag')}" alt=""><p>Burada eşya yok.<br><small>Görev, etkinlik, giriş ödülü ve VIP kutusundan kazandıkların çantaya düşer.</small></p></div>`);
+}
+function updateBagDot() { const d = $('bagDot'); if (d) d.classList.toggle('hidden', !(G.bagCount() > (G.S.bagSeen || 0))); }
 // ---- Hızlandırma penceresi ----
 let speedTarget = null;
 const spTotal = () => SPEED_ORDER.reduce((a, k) => a + (G.S.items[k] || 0), 0);
@@ -1734,6 +1795,7 @@ function profileUI() {
   return head('Profil', 'nav_heroes', [{ id: 'me', label: 'Profilim', icon: 'nav_heroes' }, { id: 'frame', label: 'Çerçeve', icon: 'crown' }, { id: 'set', label: 'Ayarlar', icon: 'nav_quest' }], profTab) + body;
 }
 $('modalBox').addEventListener('input', (e) => {
+  if (e.target.id === 'bgRange') { BAG.n = +e.target.value; return bagSyncQty(true); }
   const s = e.target.dataset.slider;
   if (s) { atk.troops[s] = +e.target.value; const box = $('modalBox'), y = box.scrollTop; clearTimeout(soon); soon = setTimeout(() => { renderModal(); $('modalBox').scrollTop = y; }, 60); }
 });
@@ -1745,11 +1807,11 @@ $('modalBox').addEventListener('click', (e) => {
   if (e.target.closest('[data-pvadd]')) { const p = PV.p || {}; addFriendLocal({ uid: PV.uid, name: p.name || 'Oyuncu', pid: p.pid || '', hero: p.cmd || null, frame: p.frame || null }); sfx('reveal'); toast(`🤝 ${p.name || 'Oyuncu'} arkadaş listene eklendi`); return renderModal(); }
   if (e.target.closest('[data-pvmsg]')) { const f = friendOf(PV.uid); PV.back = null; CH.tab = 'friends'; modalKind = 'chat'; if (f) openDm(f); else openChat('friends'); return; }
   const fd = e.target.closest('[data-fyday]'); if (fd) { fyView = +fd.dataset.fyday; return renderModal(); }
-  const fc = e.target.closest('[data-fyclaim]'); if (fc) { const r = G.claimFy(+fc.dataset.fyclaim); if (!r.ok) return toast(r.why, true); sfx('coin'); toast('🎁 Görev ödülü alındı!'); updateTop(); return renderModal(); }
-  const fb = e.target.closest('[data-fybonus]'); if (fb) { const r = G.claimFyBonus(+fb.dataset.fybonus); if (!r.ok) return toast(r.why, true); sfx('reveal'); const rr = r.reward, parts = [rr.energy ? `⚡${rr.energy} enerji` : '', rr.gold ? `${rr.gold} altın` : '', ...Object.entries(rr.items || {}).map(([k, n]) => `${n}× ${SPEEDUPS[k].short} hızlandırma`)].filter(Boolean); toast(`🏆 Gün sandığı açıldı: ${parts.join(', ')}!`); updateTop(); return renderModal(); }
+  const fc = e.target.closest('[data-fyclaim]'); if (fc) { const r = G.claimFy(+fc.dataset.fyclaim); if (!r.ok) return toast(r.why, true); sfx('coin'); toast('🎁 Görev ödülü çantana eklendi!'); updateTop(); return renderModal(); }
+  const fb = e.target.closest('[data-fybonus]'); if (fb) { const r = G.claimFyBonus(+fb.dataset.fybonus); if (!r.ok) return toast(r.why, true); sfx('reveal'); const rr = r.reward, parts = [rr.energy ? `⚡${rr.energy} enerji` : '', rr.gold ? `${rr.gold} altın` : '', ...Object.entries(rr.items || {}).map(([k, n]) => `${n}× ${SPEEDUPS[k].short} hızlandırma`)].filter(Boolean); toast(`🏆 Gün sandığı açıldı: ${parts.join(', ')} → 🎒 Çantada`); updateTop(); return renderModal(); }
   const vl = e.target.closest('[data-viplv]'); if (vl) { vipView = +vl.dataset.viplv; return renderModal(); }
   if (e.target.closest('[data-vipbuy]')) { const r = G.buyVip(); if (!r.ok) { toast(r.why, true); if (r.needGold) { closeModal(); navigate('shop'); } return; } sfx('reveal'); toast(`👑 VIP ${r.level} açıldı!${VIP[r.level].skin ? ' Özel kostümün belediye binasında!' : ''}`); vipView = 0; updateTop(); updateVipBadge(); syncSoon(); return renderModal(); }
-  if (e.target.closest('[data-vipclaim]')) { const r = G.claimVipBox(); if (!r.ok) return toast(r.why, true); sfx('coin'); toast('🎁 VIP kutusu toplandı!'); updateTop(); updateVipBadge(); return renderModal(); }
+  if (e.target.closest('[data-vipclaim]')) { const r = G.claimVipBox(); if (!r.ok) return toast(r.why, true); sfx('coin'); toast('🎁 VIP kutusu çantana eklendi!'); updateTop(); updateVipBadge(); return renderModal(); }
   // profil vitrini düzenleme
   if (e.target.closest('[data-pfedit]')) { PF.edit = true; PF.sel = G.S.showcase ? G.showcaseIds() : []; return renderModal(); }
   const pk = e.target.closest('[data-pfpick]');
@@ -1757,7 +1819,15 @@ $('modalBox').addEventListener('click', (e) => {
   if (e.target.closest('[data-pfauto]')) { G.setShowcase(null); PF.edit = false; toast('Vitrinde en güçlü 5 kahramanın gösteriliyor'); syncSoon(); return renderModal(); }
   if (e.target.closest('[data-pfcancel]')) { PF.edit = false; return renderModal(); }
   if (e.target.closest('[data-pfsave]')) { G.setShowcase(PF.sel.slice()); PF.edit = false; sfx('reveal'); toast(PF.sel.length ? '✨ Vitrin kaydedildi' : 'Vitrinde en güçlü 5 kahramanın gösteriliyor'); syncSoon(); return renderModal(); }
+  // çanta
+  const bs = e.target.closest('[data-bgsel]'); if (bs) { BAG.sel = bs.dataset.bgsel; BAG.n = 1; sfx('click'); return renderModal(); }
+  const bst = e.target.closest('[data-bgstep]'); if (bst) { const v = bst.dataset.bgstep, max = G.S.items[BAG.sel] || 0; BAG.n = v === 'max' ? max : Math.max(1, Math.min(max, BAG.n + +v)); return bagSyncQty(); }
+  if (e.target.closest('[data-bguse]')) { const r = G.bagUse(BAG.sel, BAG.n); if (!r.ok) return toast(r.why, true);
+    toast(r.k === 'energy' ? `⚡ +${G.fmt(r.tot)} enerji` : `${BAG_ICON[r.k]} +${G.fmt(r.tot)} ${BAG_NAMES[r.k].toLowerCase()} depoya eklendi`); sfx(r.k === 'energy' ? 'reveal' : 'coin');
+    if (!G.S.items[BAG.sel]) BAG.sel = null; BAG.n = 1; G.S.bagSeen = G.bagCount(); updateTop(); return renderModal(); }
+  const bsp = e.target.closest('[data-bgspd]'); if (bsp) { openSpeed(bsp.dataset.bgspd); return; }
   const wt = e.target.closest('[data-wtab]');
+  if (wt && modalKind === 'bag') { BAG.tab = wt.dataset.wtab; BAG.sel = null; return renderModal(); }
   if (wt && modalKind === 'chat') { CH.tab = wt.dataset.wtab; if (CH.tab === 'friends') refreshFriends(); if (CH.tab !== 'friends' && CH.dmUnsub) { CH.dmUnsub(); CH.dmUnsub = null; CH.dm = null; } chatMarkSeen(); renderModal(); const nb = $('chList'); if (nb) nb.scrollTop = nb.scrollHeight; chatUpdate('tab'); return; }
   if (wt) { const v = wt.dataset.wtab; if (modalKind === 'quests' || modalKind === 'login') { questTab = v; modalKind = 'quests'; } else if (modalKind === 'heroes') heroTab = v; else if (modalKind === 'shop') shopTab = v; else if (modalKind === 'profile') profTab = v; else if (modalKind === 'ranking') rankTab = v; else if (modalKind === 'alliance') { if (v !== 'chat' && v !== 'rally') alStopChat(); else if (AL.tab !== v) alStopChat(); AL.tab = v; AL.err = ''; if (v === 'find') alRefresh(); } return renderModal(); }
   const gq = e.target.closest('[data-goq]');
@@ -1853,7 +1923,7 @@ $('modalBox').addEventListener('click', (e) => {
   const m = e.target.closest('[data-m]'); if (!m) return;
   const a = m.dataset.m;
   if (a === 'close') closeModal();
-  if (a === 'login') { const r = G.claimLogin(); if (r) { toast(`📅 Gün ${r.day}: ` + rewardTxt(r.reward)); sfx('built'); updateTop(); } closeModal(); }
+  if (a === 'login') { const r = G.claimLogin(); if (r) { toast(`📅 Gün ${r.day}: ` + rewardTxt(r.reward) + '  → 🎒 Çantada'); sfx('built'); updateTop(); } closeModal(); }
   if (a === 'world') { if (atk.rally?.mode === 'join') { atk.rally = null; modalKind = 'alliance'; AL.tab = 'rally'; return renderModal(); } atk.rally = null;
   }
   if (a === 'world') { if (worldOpen()) { $('modal').classList.remove('open'); $('modalBox').innerHTML = ''; atk.init = false; return; } modalKind = 'world'; renderModal(); }

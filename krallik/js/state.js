@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191938';
+import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS, BAG_DENOM } from './data.js?v=2611191938';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -98,6 +98,27 @@ export const questDone = (q) => { const [x, y] = questProgress(q); return x >= y
 export function activeQuests() { return QUESTS.filter((q) => !S.qClaimed[q.id]).slice(0, 4); }
 // ---- Hızlandırma eşyaları ----
 export function addItem(id, n = 1) { S.items[id] = (S.items[id] || 0) + n; }
+// ---- Çanta: kaynak/altın/enerji kalıpları S.items içinde 'bg_<tür>_<miktar>' olarak durur ----
+export const bagParse = (id) => { const m = /^bg_(food|wood|stone|gold|energy)_(\d+)$/.exec(id); return m ? { k: m[1], amt: +m[2] } : null; };
+// ödül nesnesini çantaya koy: { food, wood, stone, gold, energy, items }
+export function bagAdd(r) {
+  if (!r) return;
+  for (const k in BAG_DENOM) {
+    const den = BAG_DENOM[k], min = den[den.length - 1]; let v = Math.round((r[k] || 0) / min) * min;
+    for (const d of den) { const n = Math.floor(v / d); if (n > 0) { addItem(`bg_${k}_${d}`, n); v -= n * d; } }
+  }
+  for (const [id, n] of Object.entries(r.items || {})) addItem(id, n);
+  emit('items');
+}
+export function bagUse(id, n = 1) {
+  const b = bagParse(id), have = S.items[id] || 0; n = Math.min(Math.max(1, Math.floor(n)), have);
+  if (!b || n <= 0) return { ok: false, why: 'Bu eşyadan yok' };
+  S.items[id] = have - n; if (!S.items[id]) delete S.items[id];
+  const tot = b.amt * n;
+  if (b.k === 'energy') addEnergy(tot); else S.res[b.k] = (S.res[b.k] || 0) + tot;
+  save(); emit('items'); emit('res'); return { ok: true, k: b.k, n, tot };
+}
+export const bagCount = () => Object.entries(S.items).reduce((a, [k, n]) => a + (n > 0 && (bagParse(k) || SPEEDUPS[k]) ? n : 0), 0);
 export function rollDrop(table) {
   const tot = table.reduce((a, r) => a + r[1], 0); let x = Math.random() * tot;
   for (const [id, w, [lo, hi]] of table) { x -= w; if (x <= 0) { const n = lo + Math.floor(Math.random() * (hi - lo + 1)); addItem(id, n); return { id, n }; } }
@@ -209,11 +230,11 @@ export function applyHelps(plot, level, n) {
 export function dropHelp(plot) { if (S.helpReq[plot]) { delete S.helpReq[plot]; save(); } }
 export function setAlliance(a) { S.alliance = a ? { id: a.id, tag: a.tag, name: a.name, emblem: a.emblem, color: a.color } : null; save(); emit('alliance'); }
 export function payAlliance() { if (S.res.gold < ALLIANCE_COST) return false; S.res.gold -= ALLIANCE_COST; save(); return true; }
-export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; gainRes(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }
+export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; bagAdd(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }
 export const dailyProg = (d) => Math.min(d.n, S.daily.c[d.stat] || 0);
-export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; gainRes(d.reward); const items = [rollDrop(DROP_EVENT)]; save(); emit('quests'); return { ...d.reward, _items: items }; }
+export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; bagAdd(d.reward); const items = [rollDrop(DROP_EVENT)]; save(); emit('quests'); return { ...d.reward, _items: items }; }
 export const dailyClaimedCount = () => Object.keys(S.daily.claimed).length;
-export function claimChest() { if (S.daily.chest || dailyClaimedCount() < DAILY_CHEST.need) return null; S.daily.chest = true; gainRes(DAILY_CHEST.reward); const items = [rollDrop(DROP_CHEST), rollDrop(DROP_CHEST)]; save(); emit('quests'); return { ...DAILY_CHEST.reward, _items: items }; }
+export function claimChest() { if (S.daily.chest || dailyClaimedCount() < DAILY_CHEST.need) return null; S.daily.chest = true; bagAdd(DAILY_CHEST.reward); const items = [rollDrop(DROP_CHEST), rollDrop(DROP_CHEST)]; save(); emit('quests'); return { ...DAILY_CHEST.reward, _items: items }; }
 export function claimableCount() {
   let n = activeQuests().filter(questDone).length;
   n += DAILY.filter((d) => !S.daily.claimed[d.id] && dailyProg(d) >= d.n).length;
@@ -228,7 +249,7 @@ export function claimLogin() {
   S.login.streak = S.login.last === yk ? S.login.streak + 1 : 1;
   S.login.last = todayKey();
   const r = LOGIN_REWARDS[(S.login.streak - 1) % 7];
-  gainRes(r); save(); emit('res');
+  bagAdd(r); save(); emit('res');
   return { reward: r, day: ((S.login.streak - 1) % 7) + 1 };
 }
 // araştırma
@@ -1163,12 +1184,7 @@ export const fyProg = (q) => { const b = S.fy?.bases?.[q.day]; return b ? Math.m
 export const fyDone = (q) => fyProg(q) >= q.n;
 export const fyDayTasks = (d) => FY_TASKS.filter((q) => q.day === d);
 export const fyDayClaimed = (d) => fyDayTasks(d).filter((q) => S.fy?.claimed[q.i]).length;
-export function giveReward(r) {
-  for (const k of ['food', 'wood', 'stone']) if (r[k]) S.res[k] += r[k];
-  if (r.gold) S.res.gold += r.gold;
-  if (r.energy) addEnergy(r.energy);
-  for (const [id, n] of Object.entries(r.items || {})) addItem(id, n);
-}
+export function giveReward(r) { bagAdd(r); }
 export function claimFy(i) {
   const { day } = fyState(), q = FY_TASKS[i];
   if (!q || q.day > day) return { ok: false, why: 'Bu gün henüz açılmadı' };
@@ -1200,9 +1216,7 @@ export function buyVip() {
 export function claimVipBox() {
   if (!vipBoxReady()) return { ok: false, why: 'Kutu henüz hazır değil' };
   const d = VIP[S.vip], b = d.box;
-  for (const [id, n] of Object.entries(b.items || {})) addItem(id, n);
-  addEnergy(b.energy || 0);
-  if (b.gold) S.res.gold += b.gold;
+  bagAdd(b);
   S.vipBoxAt = now() + d.every * 86400; save(); emit('vip', S.vip); return { ok: true, box: b };
 }
 export function gatherRate(type, L, troops, heroIds) {

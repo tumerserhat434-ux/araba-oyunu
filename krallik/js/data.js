@@ -365,3 +365,13 @@ export const DAILY_CHEST = { need: 4, reward: { gold: 100, food: 3000, wood: 300
 export const LOGIN_REWARDS = [
   { food: 2000, wood: 2000 }, { gold: 50 }, { stone: 2000, food: 2000 }, { gold: 100 }, { food: 5000, wood: 5000, stone: 2000 }, { gold: 150 }, { gold: 300 },
 ];
+// ---- Çanta: görev ve etkinlik ödülleri (kaynak, altın, enerji) kalıplara bölünüp çantaya düşer; oyuncu istediği kadarını kullanır ----
+// Dünya haritasından gelenler (savaş ganimeti, maden, zombi, dev) doğrudan depoya gider.
+export const BAG_DENOM = {
+  food: [1000000, 500000, 100000, 50000, 10000, 5000, 1000, 500, 100],
+  wood: [1000000, 500000, 100000, 50000, 10000, 5000, 1000, 500, 100],
+  stone: [1000000, 500000, 100000, 50000, 10000, 5000, 1000, 500, 100],
+  gold: [1000, 500, 100, 50, 10, 5, 1],
+  energy: [100, 50, 20, 10, 5, 1],
+};
+export const BAG_NAMES = { food: 'Buğday', wood: 'Kereste', stone: 'Taş', gold: 'Altın', energy: 'Enerji' };

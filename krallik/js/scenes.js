@@ -231,7 +231,7 @@ function campResultHtml(r, win, tot) {
       <div class="stat"><small>Kayıpların</small><b>0</b><br><small>Görev savaşında asker ölmez</small></div>
       <div class="stat"><small>Düşman kaybı</small><b>${tot(r.dLoss)}</b></div>
     </div>
-    ${win ? `<div class="cp-rw-h">Ödüller</div><div class="cp-rws">${rewardsHtml({ res: r.loot, items: r.items })}</div>` : '<p class="desc" style="text-align:center;margin:4px 0 10px">Ordun yeterince güçlü değil. Asker eğit, kahramanlarını ve binalarını yükselt, sonra tekrar dene.</p>'}
+    ${win ? `<div class="cp-rw-h">Ödüller <small>• 🎒 Çantaya eklendi</small></div><div class="cp-rws">${rewardsHtml({ res: r.loot, items: r.items })}</div>` : '<p class="desc" style="text-align:center;margin:4px 0 10px">Ordun yeterince güçlü değil. Asker eğit, kahramanlarını ve binalarını yükselt, sonra tekrar dene.</p>'}
     <button class="btn gold" style="width:100%" id="bBack">${win ? '🚩 Devam' : '↩ Görevlere dön'}</button></div>`;
 }
 export function openBattle(opts) {
