@@ -565,7 +565,7 @@ cd araba-oyunu && python3 -m http.server 8000
 
 ### 5.35 Sohbet profili, Buz Kraliçesi düzeltmesi, pencere başlığı v4
 - **Sohbet:** arkadaşın profili (ad, avatar, çerçeve, ID) sunucudan tazelenir; özel mesajlara gönderenin avatarı ve çerçevesi yazılır; kendi mesajlarımda güncel profilim gösterilir.
-- **Buz Kraliçesi (`skins.js`, aurora):** `fx_queen.glb` iskeleti modele kötü oturmuş (bacak/kol kemik boyları asimetrik, kanat ve elbise kollara bağlı); `Charged_Spell_Cast` klibi kalçayı ~40 cm öne itip çömeltince model parçalanıyordu. Klip artık oynatılmıyor: `skeleton.pose()` ile bağlama duruşu, hareket kodla (süzülme, salınım, büyüde öne eğilip büyüme). Boy `H*0.75` → `H*0.52`, konum `R*1.1` önde, `top*0.5` yükseklikte.
+- **Buz Kraliçesi (`skins.js`, aurora):** `fx_queen.glb` iskeleti modele kötü oturmuş (bacak/kol kemik boyları asimetrik, kanat ve elbise kollara bağlı); `Charged_Spell_Cast` klibi kalçayı ~40 cm öne itip çömeltince model parçalanıyordu. Klip artık oynatılmıyor; düğümlerin dinlenme duruşu zaten temiz bağlama duruşu (doğrulandı). **`skeleton.pose()` kullanma:** ölçekli hiyerarşide kemikleri bozup kraliçeyi görünmez yaptı. Hareket kodla (süzülme, salınım, büyüde öne eğilip büyüme). Boy `H*0.75` → `H*0.52`, konum `R*1.1` önde, `top*0.5` yükseklikte.
 - **Pencere başlığı (`style.css` sonu, "v4" bloğu):** `head()` madalyonu plakadaki yazının üstüne biniyordu; madalyon 62 → 50 px, binme 14 → 5 px. Yan sekmeler 84 → 64 px (simge 38 → 28); ittifak ana sayfa afişleri 76 → 58 px yükseklik.
 
 ## 6. Önemli tasarım kararları (neden böyle)

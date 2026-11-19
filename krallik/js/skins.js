@@ -343,7 +343,7 @@ export function createSkinFX(id, { R = 6, H = 10, base = null } = {}) {
     const qL = new THREE.PointLight(0xbfefff, 18, H * 1.5, 1.4); qL.position.set(0, H * 0.5, H * 0.35); queen.add(qL);
     // İskelet modele kötü oturduğu için (kanat/elbise kollara bağlı) iskelet animasyonu elbiseyi parçalıyordu:
     // klip oynatılmaz, düğümlerin dinlenme duruşu bağlama duruşuyla aynı (temiz);
-    // skeleton.pose() KULLANMA: ölçekli hiyerarşide kemikleri bozup modeli yok ediyor. Hareket hareket (süzülme, salınım, büyü nabzı) kodla verilir.
+    // skeleton.pose() KULLANMA: ölçekli hiyerarşide kemikleri bozup modeli yok ediyor. Hareket (süzülme, salınım, büyü nabzı) kodla verilir.
     let qBody = null;
     const addQueen = lateHero('fx_queen', () => { const h = A.hero3d('fx_queen', QS); if (!h) return; h.scene.rotation.y = Math.PI / 2; queen.add(h.scene); qBody = h.scene; });
     const qGlow = spr(0x7ae8ff, H * 0.5, 0.7); qGlow.position.y = 0.1; queen.add(qGlow);
