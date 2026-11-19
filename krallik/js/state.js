@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191554';
+import { TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191831';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -53,6 +53,7 @@ export function load() {
   S.daily ||= { day: '', c: {}, claimed: {}, chest: false };
   S.login ||= { last: '', streak: 0 };
   S.research ||= { levels: {}, cur: null };
+  S.tlv ||= { infantry: 1, spearman: 1, archer: 1, cavalry: 1 }; S.tlvUp ??= null; // Talimhane
   for (const t in TROOPS) { S.troops[t] ??= 0; S.wounded[t] ??= 0; }
   for (const e of S.enemies) e.troops.tank ??= 0;
   // dünya haritası: sunucu, koordinat, seferler ve harita krallıkları
@@ -107,6 +108,7 @@ function timerRef(target) {
   // sefer (gidiş/dönüş): süre kısalınca birlik yolda ileri atlar (başlangıç da kayar, yolculuk süresi aynı kalır)
   if (target.startsWith('m:')) { const m = S.marches.find((q) => q.id === target.slice(2)); return m && m.kind !== 'rally' && (m.phase === 'go' || m.phase === 'back') && m.arrive > now() ? { get: () => m.arrive, set: (v) => { const d = m.arrive - v; m.start -= d; m.arrive = v; } } : null; }
   if (target.startsWith('b:')) { const b = S.buildings[target.slice(2)]; return b && b.busyUntil > now() ? { get: () => b.busyUntil, set: (v) => { b.busyUntil = v; } } : null; }
+  if (target === 'tlv') { const u = S.tlvUp; return u && u.end > now() ? { get: () => u.end, set: (v) => { u.end = v; } } : null; }
   const o = target === 'train' ? S.training : target === 'tank' ? S.tankTraining : target === 'research' ? S.research.cur : target === 'heal' ? S.healing : null;
   return o && o.end > now() ? { get: () => o.end, set: (v) => { o.end = v; } } : null;
 }
@@ -499,8 +501,25 @@ export function armyPower(troops, heroId, heroLvl = 1, copies = 0) {
   if (h) p *= 1 + heroBonus(h, heroLvl, copies) / 100;
   return Math.round(p);
 }
+// ---- Talimhane ----
+export const troopLv = (t) => S.tlv?.[t] || 1;
+export const tMul = (t) => troopLvMul(troopLv(t));
+export const troopStat = (t, k) => Math.round(TROOPS[t][k] * (TROOPS[t].building ? 1 : tMul(t)));
+export function canTroopUp(t) {
+  const L = troopLv(t) + 1;
+  if (L > TROOP_LV_MAX) return { ok: false, why: 'En yüksek seviyede' };
+  if (S.tlvUp) return { ok: false, why: 'Talimhanede zaten bir eğitim var' };
+  if (maxLevelOf('drill') < troopLvReq(L)) return { ok: false, why: `Talimhane Sv.${troopLvReq(L)} gerekli` };
+  if (!canAfford(troopLvCost(L))) return { ok: false, why: 'Yetersiz kaynak' };
+  return { ok: true, L };
+}
+export function startTroopUp(t) {
+  const c = canTroopUp(t); if (!c.ok) return c;
+  pay(troopLvCost(c.L)); const st = now(); S.tlvUp = { t, to: c.L, start: st, end: st + troopLvTime(c.L) }; save(); emit('tlv'); return { ok: true };
+}
+function tickTroopUp() { const u = S.tlvUp; if (u && now() >= u.end) { S.tlv[u.t] = u.to; S.tlvUp = null; save(); emit('tlvDone', u); } }
 export function cityPower() {
-  let p = armyPower(S.troops);
+  let p = 0; for (const t in S.troops) { const d = TROOPS[t], m = d.building ? 1 : tMul(t); p += S.troops[t] * (d.atk + d.def + d.hp * 0.4) * m; }
   for (const pl of PLOTS) p += lvl(pl.id) * lvl(pl.id) * 120;
   for (const id in S.heroes) p += heroPower(id);
   return Math.round(p);
@@ -634,7 +653,7 @@ export function simulateBattle(att, def) {
       for (const yt in Y) {
         if (!Y[yt]) continue;
         const share = Y[yt] / ytot;
-        out[yt] += X[xt] * d.atk * bonusFor(side, xt) * COUNTER[xt][yt] * share * (side.atkMul || 1);
+        out[yt] += X[xt] * d.atk * (side.tl ? side.tl(xt) : 1) * bonusFor(side, xt) * COUNTER[xt][yt] * share * (side.atkMul || 1);
       }
     }
     return out;
@@ -648,7 +667,8 @@ export function simulateBattle(att, def) {
       for (const t in Y) {
         const d = TROOPS[t];
         const defMul = 1 + mainBonus(side) / 100 * 0.5;
-        const k = dmg[t] * 0.11 / ((d.hp * 0.08 + d.def * 0.1 * defMul) * (side.defMul || 1)) * rand(0.9, 1.1);
+        const lm = side.tl ? side.tl(t) : 1;
+        const k = dmg[t] * 0.11 / ((d.hp * 0.08 + d.def * 0.1 * defMul) * lm * (side.defMul || 1)) * rand(0.9, 1.1);
         Y[t] = Math.max(0, Y[t] - Math.round(Math.min(Y[t], k)));
       }
     };
@@ -670,8 +690,9 @@ export function combinedBonus(heroes, type) {
   return c.slice(0, MAX_COMMANDERS).reduce((s, v, i) => s + v * CMD_W[i], 0);
 }
 export function heroesOf(ids) { return (ids || []).map(heroOf).filter(Boolean); }
+const myTl = (t) => (TROOPS[t]?.building ? 1 : tMul(t));
 export function armyPowerMulti(troops, ids) {
-  let p = 0; for (const t in troops) { const d = TROOPS[t]; p += troops[t] * (d.atk + d.def + d.hp * 0.4); }
+  let p = 0; for (const t in troops) { const d = TROOPS[t]; p += troops[t] * (d.atk + d.def + d.hp * 0.4) * myTl(t); }
   return Math.round(p * (1 + combinedBonus(heroesOf(ids)) / 100));
 }
 function heroOf(id) { const h = id && HERO_BY_ID[id], o = id && S.heroes[id]; return h && o ? { bonus: heroBonus(h, o.level, o.copies, o.ups), role: h.role, id } : null; }
@@ -1001,7 +1022,7 @@ export function attackEnemy(enemyId, sent, heroIds) {
   for (const t in sent) { sent[t] = Math.min(sent[t], S.troops[t]); }
   if (!totalTroops(sent)) return null;
   for (const t in sent) S.troops[t] -= sent[t];
-  const res = simulateBattle({ troops: sent, heroes: heroesOf(heroIds), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: e.hero || null, tower: e.tower * 120 });
+  const res = simulateBattle({ tl: myTl, troops: sent, heroes: heroesOf(heroIds), atkMul: (1 + rb('blade')) * (1 + rallyAtkBonus()), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) }, { troops: e.troops, hero: e.hero || null, tower: e.tower * 120 });
   const split = applyLosses(res.aLoss);
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {}, items = null;
@@ -1287,7 +1308,7 @@ export function resolveRaid() {
   const name = KINGDOM_NAMES[randi(0, KINGDOM_NAMES.length - 1)];
   const attacker = makeEnemy(name, LORD_NAMES[randi(0, LORD_NAMES.length - 1)], strength, 0);
   const home = { ...S.troops };
-  const res = simulateBattle({ troops: attacker.troops, hero: null }, { troops: home, hero: heroOf(S.commander), tower: towerPower(), atkMul: 1 + rb('blade'), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) });
+  const res = simulateBattle({ troops: attacker.troops, hero: null }, { tl: myTl, troops: home, hero: heroOf(S.commander), tower: towerPower(), atkMul: 1 + rb('blade'), defMul: (1 + rb('armor')) * (1 + forgeDefBonus()) });
   const defWin = !res.win;
   const split = applyLosses(res.dLoss);
   for (const t in S.troops) S.troops[t] = res.D[t];
@@ -1310,7 +1331,7 @@ export function resolveRaid() {
 export function tick() {
   const t = now();
   if (S.marches?.length) tickMarches();
-  tickBotFires();
+  tickBotFires(); tickTroopUp();
   if (S.scouts?.length) tickScouts();
   if (S.mapX != null && (!S.zombies?.length || now() >= (S.zombieNext || 0))) tickZombies();
   if (S.mapX != null && (!S.mines?.length || now() >= (S.mineNext || 0))) tickMines();

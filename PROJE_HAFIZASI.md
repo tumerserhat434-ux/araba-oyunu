@@ -637,6 +637,12 @@ cd araba-oyunu && python3 -m http.server 8000
 - **🪙 iPhone'da gri:** `main.js → coinFix` + MutationObserver, sayfadaki her 🪙'yi `img.ic-gold` (res_gold) yapar (bildirimler dahil).
 - **VIP amblemi:** üst barda isim/güç panelinin altında yatay plaka (`.vip-badge`, VIP 0 gri). **Sıralama:** `vipTag(n)` → `.vipt.v1..v8` (seviyeye göre renk; 7–8 taçlı, 8 gökkuşağı akışlı; hepsinde parlama geçişi), VIP 0'da gösterilmez; isim kısalır, etiket görünür kalır.
 
+### 5.46 Talimhane (asker seviyeleri) ve bina penceresi teması
+- **Yeni bina `drill` "Talimhane"** (`data.js`, reqTH 4, max 20, arsa `{ id: 'drill', x: 29, z: 27 }`). Yer için **surlar 40 → 46** (`main.js → buildWalls R`, doğa `avoid < 50`). Model `assets/hf/drill.glb` (Higgsfield görsel + Tripo, ~9,25 kredi; `HF_LIST`, `KKMAP.drill` yedeği KayKit kışla, `FOOTPRINT.drill 8.5`).
+- **Asker seviyeleri:** `S.tlv { infantry, spearman, archer, cavalry }` 1–10, `S.tlvUp { t, to, start, end }` (tek seferde bir; hızlandırma hedefi `'tlv'`). `troopLvMul(L) = 1 + 0,12(L−1)` (Sv.10 ×2,08). Bedel `troopLvCost(L)`: yiyecek 60 bin × 1,85^(L−2) (odun ×0,85, taş ×0,5; Sv.10 ≈ 8,7M), süre `20·L²` sn (Sv.10 ≈ 33 dk), gereken Talimhane `2L−2`. `state.js`: `troopLv`, `tMul`, `troopStat`, `canTroopUp`, `startTroopUp`, `tickTroopUp` (olay `tlvDone`). **Savaş:** `simulateBattle` taraf seçeneği `tl(type)` hasarı ve dayanıklılığı çarpar; benim saldırım ve savunmam `myTl`. `cityPower` ve `armyPowerMulti` seviyeyi sayar (tank hariç).
+- **Arayüz:** `drillUI()` (asker kartları "Sv.x / 10", hasar/savunma/can → sonraki değer, bedel, "⬆ Yükselt", ilerleme + hızlandır). Kışla kartı seviyeli değerleri ve `Sv.n` etiketini gösterir.
+- **Bina penceresi (#sheet) teması** (style.css sonu "Bina pencereleri"): bordo zemin + alt kale silueti, köşe süsleri (`.rk-c` renderSheet içinde), kırmızı kadife başlık (banner_alliance arka planlı), 88 px altın halkalı portre, büyük harfli altın başlık, ❦ süslü mavi "Seviye x / y" plakası, koyu-altın kartlar, Cinzel kırmızı büyük düğme.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

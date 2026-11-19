@@ -22,6 +22,7 @@ export const BUILDINGS = {
   lumber: { name: 'Kereste Atölyesi', icon: '🪵', desc: 'Odun üretir.', base: { food: 90, wood: 40, stone: 0 }, time: 5, reqTH: 1, prod: 'wood', rate: 800, max: 30 },
   quarry: { name: 'Taş Ocağı', icon: '🪨', desc: 'Taş üretir.', base: { food: 90, wood: 90, stone: 0 }, time: 6, reqTH: 2, prod: 'stone', rate: 500, max: 30 },
   academy: { name: 'Akademi', icon: '📚', desc: 'Araştırma yapılır. Araştırmalar üretimi, eğitimi, savaş gücünü ve hastaneyi kalıcı olarak güçlendirir.', base: { food: 300, wood: 300, stone: 200 }, time: 12, reqTH: 3, max: 25 },
+  drill: { name: 'Talimhane', icon: '🎯', img: 'b_drill', desc: 'Askerler burada talim eder. Piyade, mızrakçı, okçu ve süvarinin seviyesini yükseltir; her seviye hasarı, savunmayı ve canı artırır. Talimhane seviyesi, askerlerin çıkabileceği en yüksek seviyeyi belirler.', base: { food: 500, wood: 450, stone: 350 }, time: 13, reqTH: 4, max: 20 },
   forge: { name: 'Demirhane', icon: '⚒️', img: 'b_forge', desc: 'Silah ve zırh döver. Her seviye tüm birliklerin savunmasını artırır ve tank üretimini hızlandırır.', base: { food: 160, wood: 220, stone: 260 }, time: 11, reqTH: 2, max: 25 },
   rally: { name: 'Toplanma Kampı', icon: '⛺', img: 'b_rally', desc: 'Ordular seferden önce burada toplanır. Her seviye saldırı gücünü ve ganimet taşıma kapasitesini artırır.', base: { food: 260, wood: 240, stone: 120 }, time: 11, reqTH: 2, max: 25 },
   tankyard: { name: 'Tank Atölyesi', icon: '⚙️', img: 'b_tankyard', desc: 'Demir tanklar burada üretilir. Seviye arttıkça bir seferde daha çok tank üretilir ve üretim hızlanır.', base: { food: 400, wood: 480, stone: 520 }, time: 16, reqTH: 3, reqB: { forge: 1 }, max: 25 },
@@ -65,6 +66,7 @@ export const PLOTS = [
   { id: 'tankyard', key: 'tankyard', x: -14, z: 28 },
   { id: 'rally', key: 'rally', x: -12, z: -30 },
   { id: 'forge', key: 'forge', x: 12, z: -30 },
+  { id: 'drill', key: 'drill', x: 29, z: 27 },
   // Ordu kampları: 4 arsa, Belediye seviyesiyle açılır
   { id: 'camp1', key: 'camp', x: -23, z: 21, reqTH: 1 },
   { id: 'camp2', key: 'camp', x: 22, z: 18.5, reqTH: 5 },
@@ -99,8 +101,15 @@ export const TROOPS = {
   spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 40, wood: 40, stone: 0 }, time: 1.6, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
   archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 33, wood: 46, stone: 0 }, time: 1.9, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
   cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 78, wood: 40, stone: 26 }, time: 3, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
-  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611191554" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
+  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611191831" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
+// ---- Talimhane: asker seviyeleri (1–10) ----
+// Her seviye hasar/savunma/can +%12 (Sv.10 ≈ ×2,08: 11 hasar → 23). Bedel yüksek, süre kısa.
+export const TROOP_LV_MAX = 10;
+export const troopLvMul = (L) => 1 + 0.12 * ((L || 1) - 1);
+export const troopLvCost = (L) => { const k = Math.round(60000 * Math.pow(1.85, L - 2) / 1000) * 1000; return { food: k, wood: Math.round(k * 0.85 / 1000) * 1000, stone: Math.round(k * 0.5 / 1000) * 1000 }; }; // L: hedef seviye (2..10)
+export const troopLvTime = (L) => Math.round(20 * L * L); // sn: Sv.2 80 sn … Sv.10 ≈ 33 dk
+export const troopLvReq = (L) => L * 2 - 2; // Sv.L için gereken Talimhane seviyesi (Sv.2 → 2, Sv.10 → 18)
 export const COUNTER = {
   infantry: { infantry: 1, spearman: 1.05, archer: 1, cavalry: 1.05, tank: 0.8 },
   spearman: { infantry: 0.95, spearman: 1, archer: 1, cavalry: 1.5, tank: 0.9 },

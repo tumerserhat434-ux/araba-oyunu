@@ -9,17 +9,17 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import * as A from './assets.js?v=2611191554';
-import { createSkinFX, SKINS } from './skins.js?v=2611191554';
-import * as BLD from './buildings.js?v=2611191554';
-import * as G from './state.js?v=2611191554';
-import { SPEEDUPS } from './data.js?v=2611191554';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611191554';
-import { createFire } from './fire.js?v=2611191554';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191554';
+import * as A from './assets.js?v=2611191831';
+import { createSkinFX, SKINS } from './skins.js?v=2611191831';
+import * as BLD from './buildings.js?v=2611191831';
+import * as G from './state.js?v=2611191831';
+import { SPEEDUPS } from './data.js?v=2611191831';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611191831';
+import { createFire } from './fire.js?v=2611191831';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191831';
 
 const $ = (id) => document.getElementById(id);
-const UI = (n) => `assets/ui/${n}.webp?v=2611191554`;
+const UI = (n) => `assets/ui/${n}.webp?v=2611191831`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
@@ -144,7 +144,7 @@ function paintGround(list, lakes, seed) {
 const GT = {};
 function groundTex(name) {
   if (GT[name]) return GT[name];
-  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611191554');
+  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611191831');
   t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
   return (GT[name] = t);
 }
@@ -346,7 +346,7 @@ export function openWorldMap(opts = {}) {
     const soilT = groundTex('dirt'), soilMat = new THREE.MeshLambertMaterial({ map: soilT, color: 0x8a6a48, polygonOffset: true, polygonOffsetFactor: -2 });
     const soilGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     const cropGeo = (() => { const a = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), b = a.clone().rotateY(Math.PI / 2); return BufferGeometryUtils.mergeGeometries([a, b]); })();
-    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611191554'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
+    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611191831'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
     const cropMats = [cropMat('crop_wheat'), cropMat('crop_barley')];
     const crops = [[], []], farms = [], q = new THREE.Quaternion(), e3 = new THREE.Euler(), cm = new THREE.Matrix4(), cv = new THREE.Vector3(), cs = new THREE.Vector3();
     for (let i = 0; i < 120 && farms.length < 26 * D; i++) {

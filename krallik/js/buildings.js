@@ -3,9 +3,9 @@
 // =====================================================================
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import * as A from './assets.js?v=2611191554';
+import * as A from './assets.js?v=2611191831';
 
-export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8, tankyard: 9, rally: 9, forge: 7, camp: 8.5 };
+export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8, tankyard: 9, rally: 9, forge: 7, camp: 8.5, drill: 8.5 };
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const TAU = Math.PI * 2;
@@ -852,6 +852,7 @@ const KKMAP = {
   tankyard: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15] },
   rally: { m: () => KB('barracks') },
   forge: { m: () => KB('blacksmith'), smoke: [0.18, 0.95, -0.15], glow: 0xff8a30 },
+  drill: { m: () => KB('barracks') },
   camp: { m: () => 'tent', fill: 0.5 },
 };
 const PROP_S = 4.2;
