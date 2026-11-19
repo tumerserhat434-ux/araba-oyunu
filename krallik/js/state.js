@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS, BAG_DENOM } from './data.js?v=2611200205';
+import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS, BAG_DENOM } from './data.js?v=2611200250';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -49,7 +49,7 @@ export function load() {
   // eksik alanları tamamla (eski kayıtlar için)
   for (const p of PLOTS) if (!S.buildings[p.id]) S.buildings[p.id] = { level: 0, busyUntil: 0, busyStart: 0, collectedAt: now() };
   S.counters ||= { trained: 0, collects: 0, upgrades: 0, wins: S.stats?.wins || 0, summons: S.totalPulls || 0, heals: 0, researched: 0 };
-  S.qClaimed ||= {};
+  S.qClaimed ||= {}; S.qBase ||= {};
   S.daily ||= { day: '', c: {}, claimed: {}, chest: false };
   S.login ||= { last: '', streak: 0 };
   S.research ||= { levels: {}, cur: null };
@@ -90,12 +90,24 @@ export function questProgress(q) {
   const [t, a, b] = q.t;
   if (t === 'bld') return [Math.min(b, maxLevelOf(a)), b];
   if (t === 'stat') return [Math.min(b, S.counters[a] || 0), b];
+  if (t === 'cnt') { const base = S.qBase?.[q.id]; return [base == null ? 0 : Math.min(b, Math.max(0, (S.counters[a] || 0) - base)), b]; }
   if (t === 'hero') return [Object.keys(S.heroes).some((id) => HERO_BY_ID[id].rarity >= a) ? 1 : 0, 1];
   if (t === 'res') return [Math.min(b, Math.max(0, ...Object.values(S.research.levels))), b];
   return [0, 1];
 }
 export const questDone = (q) => { const [x, y] = questProgress(q); return x >= y; };
-export function activeQuests() { return QUESTS.filter((q) => !S.qClaimed[q.id]).slice(0, 4); }
+export function activeQuests() {
+  // en fazla 2 bekleyen bina görevi (Belediye seviyesi yetmeyince ilerleme tıkanmasın), kalan yuvalar sırayla
+  const list = []; let wait = 0;
+  for (const q of QUESTS) {
+    if (S.qClaimed[q.id]) continue;
+    if (q.t[0] === 'bld' && !questDone(q)) { if (wait >= 2) continue; wait++; }
+    list.push(q); if (list.length >= 4) break;
+  }
+  // sayaç görevleri listede göründükleri andan itibaren sayılır
+  S.qBase ||= {}; for (const q of list) if (q.t[0] === 'cnt' && S.qBase[q.id] == null) S.qBase[q.id] = S.counters[q.t[1]] || 0;
+  return list;
+}
 // ---- Hızlandırma eşyaları ----
 export function addItem(id, n = 1) { S.items[id] = (S.items[id] || 0) + n; }
 // ---- Çanta: kaynak/altın/enerji kalıpları S.items içinde 'bg_<tür>_<miktar>' olarak durur ----
@@ -230,7 +242,22 @@ export function applyHelps(plot, level, n) {
 export function dropHelp(plot) { if (S.helpReq[plot]) { delete S.helpReq[plot]; save(); } }
 export function setAlliance(a) { S.alliance = a ? { id: a.id, tag: a.tag, name: a.name, emblem: a.emblem, color: a.color } : null; save(); emit('alliance'); }
 export function payAlliance() { if (S.res.gold < ALLIANCE_COST) return false; S.res.gold -= ALLIANCE_COST; save(); return true; }
-export function claimQuest(id) { const q = QUESTS.find((x) => x.id === id); if (!q || S.qClaimed[id] || !questDone(q)) return null; S.qClaimed[id] = true; bagAdd(q.reward); const items = [rollDrop(DROP_QUEST)]; save(); emit('quests'); return { ...q.reward, _items: items }; }
+const QUEST_BY_ID = Object.fromEntries(QUESTS.map((q) => [q.id, q]));
+// ana görev ödülü: her görevin kendi ödülü (artık her görevde rastgele hızlandırma yok)
+function questReward(q) { S.qClaimed[q.id] = true; if (S.qBase) delete S.qBase[q.id]; bagAdd(q.reward); }
+const rewardOut = (r) => { const o = { ...r }; delete o.items; o._items = Object.entries(r.items || {}).map(([id, n]) => ({ id, n })); return o; };
+export function claimQuest(id) { const q = QUEST_BY_ID[id]; if (!q || S.qClaimed[id] || !questDone(q)) return null; questReward(q); save(); emit('quests'); return rewardOut(q.reward); }
+// tamamlanmış tüm görevleri sırayla al (yeni görünenler de tamamlanmışsa onlar da)
+export function claimAllQuests() {
+  const sum = { items: {} }; let n = 0;
+  for (let guard = 0; guard < 1000; guard++) {
+    const q = activeQuests().find(questDone); if (!q) break;
+    questReward(q); n++;
+    for (const k in q.reward) if (k === 'items') for (const [i, c] of Object.entries(q.reward.items)) sum.items[i] = (sum.items[i] || 0) + c; else sum[k] = (sum[k] || 0) + q.reward[k];
+  }
+  if (n) { save(); emit('quests'); }
+  return { n, reward: rewardOut(sum) };
+}
 export const dailyProg = (d) => Math.min(d.n, S.daily.c[d.stat] || 0);
 export function claimDaily(id) { dailyReset(); const d = DAILY.find((x) => x.id === id); if (!d || S.daily.claimed[id] || dailyProg(d) < d.n) return null; S.daily.claimed[id] = true; bagAdd(d.reward); const items = [rollDrop(DROP_EVENT)]; save(); emit('quests'); return { ...d.reward, _items: items }; }
 export const dailyClaimedCount = () => Object.keys(S.daily.claimed).length;
@@ -1328,7 +1355,7 @@ export function startRallyMarch(r, troops, heroIds) {
   for (const t in tr) S.troops[t] -= tr[t];
   const power = armyPowerMulti(tr, heroIds);
   const m = { id: 'r' + Math.random().toString(36).slice(2, 8), kind: 'rally', rid: r.rid, aid: r.aid, leader: r.leader, tname: `Dev Sv.${r.giant.level}`, giant: r.giant, tx: r.giant.mapX, ty: r.giant.mapY, lx: r.lx, ly: r.ly, endsAt: r.endsAt, troops: tr, heroes: heroIds, power, phase: 'wait', start: now(), arrive: r.endsAt };
-  S.marches.push(m); save(); emit('march', m);
+  S.marches.push(m); count('rallies'); save(); emit('march', m);
   return { ok: true, march: m, power, troops: tr };
 }
 function tickRally(m, t) {
@@ -1357,7 +1384,7 @@ function tickRally(m, t) {
     const frac = win ? Math.max(0.04, Math.min(0.35, 0.3 * need / total)) : 0.35, loss = {};
     for (const k in m.troops) { loss[k] = Math.floor(m.troops[k] * frac); m.troops[k] -= loss[k]; }
     const split = applyLosses(loss); let rew = null;
-    if (win) { rew = giantRewards(m.giant.level); gainRes(rew.res); for (const it of rew.items) addItem(it.id, it.n); S.giantMax = Math.max(S.giantMax || 0, m.giant.level); S.stats.wins++; count('wins'); S.giants = S.giants.filter((g) => g.id !== m.giant.id); ensureNextGiant(); }
+    if (win) { count('giants'); rew = giantRewards(m.giant.level); gainRes(rew.res); for (const it of rew.items) addItem(it.id, it.n); S.giantMax = Math.max(S.giantMax || 0, m.giant.level); S.stats.wins++; count('wins'); S.giants = S.giants.filter((g) => g.id !== m.giant.id); ensureNextGiant(); }
     else { S.stats.losses++; unfreezeGiant(m); }
     m.result = { win, total, need, members: m.final.length, rew };
     const rep = { t, kind: 'rally', win, enemy: `Dev Sv.${m.giant.level}`, members: m.final.map((q) => q.name), total, need, aLoss: loss, wounded: split.wounded, dead: split.dead, loot: rew ? rew.res : {}, items: rew ? rew.items : null };

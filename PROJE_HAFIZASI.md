@@ -666,6 +666,12 @@ cd araba-oyunu && python3 -m http.server 8000
 ### 5.51 Dünya haritası kenarında bulutlar
 - Harita dışı eskiden koyu yeşil düz zemindi (siyah gibi görünüyordu) ve kenarda KayKit dağ sırası vardı. Dağ sırası kaldırıldı (rastgele dizisi bozulmasın diye `rnd()` çağrıları korundu); `worldmap.js → cloudLayer(map, y, seed, op)`: 7000×7000 düzlemde fbm gürültülü ShaderMaterial bulut, iki katman (y 6 ve 28), `uT` ile yavaşça kayar. Kutu mesafesine göre sınırın ~25 birim içinden itibaren tamamen kapalı, içeri doğru dalgalı kabarık saçak (~260 birim). Güneş yönünde ikinci örnekle kabarık gölge. Dış zemin açık gri-mavi (`0xd4e2ee`).
 
+### 5.52 1000 ana görev ve küçük görev kartları
+- `data.js → QUESTS` artık üretiliyor: eski 29 görev (`LEGACY_QUESTS`, kimlikler korunur) + 971 üretilen (`g1…g971`), `rank` (0–1000) ile harmanlanır; `q.no` sıra numarası (bar "Bölüm N"). Belediye görevi her 25 rankta bir seviye (eskilerde olanlar atlanır), her 4 görevden biri bina (seviye ≤ o rankın Belediye seviyesi, bina azami seviyesi), kalanlar sayaç görevi `['cnt', sayaç, n]` (`CNT` listesi: zombi, asker, savaş, dev `giants`, ralli `rallies`, toplama, maden, çağırma, yükseltme, iyileştirme, tank, hızlandırma, enerji, düşman askeri `kills`, gözetleme). Sayaç görevleri **listede göründüğü andan itibaren** sayılır (`S.qBase[id]`, `activeQuests` yazar).
+- Ödüller (üretilenler, sabit tohum): 3–5 görevde bir 1dk, 15–20'de bir 5dk ya da 15 altın, 90–110'da bir 1 saat, 150–200'de bir 24 saat hızlandırma; diğerleri 5 enerji ya da 5.000 yiyecek/odun/taş. 3 günlük yok. Ana görevlerde artık rastgele hızlandırma (`rollDrop`) yok; günlüklerde var.
+- `activeQuests`: 4 yuva, en fazla 2 bekleyen bina görevi. `claimAllQuests()` + "Tamamlananları al" düğmesi. Yeni sayaçlar: `count('giants')` (ralli zaferi), `count('rallies')` (`startRallyMarch`).
+- Görev kartları küçültüldü (`.qrow`, `.w-banner.sm`); ödül çipleri görevin yanında, `#no` etiketi.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

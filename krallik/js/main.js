@@ -2,28 +2,28 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611200205';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611200205';
-import * as ASSETS from './assets.js?v=2611200205';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611200205';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611200205';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611200205';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611200205';
-import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS, BAG_DENOM, BAG_NAMES } from './data.js?v=2611200205';
-import * as G from './state.js?v=2611200205';
-import { getAvatar } from './scenes.js?v=2611200205';
-import { initCampaign, openCampaign } from './campui.js?v=2611200205';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611200205';
-import { campIdx, stageLabel } from './campaign.js?v=2611200205';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611200205';
-import { createFire } from './fire.js?v=2611200205';
-import { createGrass } from './grass.js?v=2611200205';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611200205';
-import { initTutorial, tutEvent } from './tut.js?v=2611200205';
-import { icon } from './icons.js?v=2611200205';
-import { paintCity } from './terrain.js?v=2611200205';
-import { createLife, createVillager, animVillager } from './life.js?v=2611200205';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611200205';
+import * as BLD from './buildings.js?v=2611200250';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611200250';
+import * as ASSETS from './assets.js?v=2611200250';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611200250';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611200250';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611200250';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611200250';
+import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS, BAG_DENOM, BAG_NAMES } from './data.js?v=2611200250';
+import * as G from './state.js?v=2611200250';
+import { getAvatar } from './scenes.js?v=2611200250';
+import { initCampaign, openCampaign } from './campui.js?v=2611200250';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611200250';
+import { campIdx, stageLabel } from './campaign.js?v=2611200250';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611200250';
+import { createFire } from './fire.js?v=2611200250';
+import { createGrass } from './grass.js?v=2611200250';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611200250';
+import { initTutorial, tutEvent } from './tut.js?v=2611200250';
+import { icon } from './icons.js?v=2611200250';
+import { paintCity } from './terrain.js?v=2611200250';
+import { createLife, createVillager, animVillager } from './life.js?v=2611200250';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611200250';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -597,7 +597,7 @@ function coinFix(root) {
   const list = []; while (w.nextNode()) list.push(w.currentNode);
   for (const n of list) {
     const f = document.createDocumentFragment(); let last = 0; const v = n.nodeValue;
-    for (const m of v.matchAll(EMO_RE)) { if (m.index > last) f.appendChild(document.createTextNode(v.slice(last, m.index))); const im = document.createElement('img'); im.className = 'ic-emo ic-gold'; im.src = `assets/ui/${EMOJI_IMG[m[1]]}.webp?v=2611200205`; im.alt = ''; f.appendChild(im); last = m.index + m[0].length; }
+    for (const m of v.matchAll(EMO_RE)) { if (m.index > last) f.appendChild(document.createTextNode(v.slice(last, m.index))); const im = document.createElement('img'); im.className = 'ic-emo ic-gold'; im.src = `assets/ui/${EMOJI_IMG[m[1]]}.webp?v=2611200250`; im.alt = ''; f.appendChild(im); last = m.index + m[0].length; }
     if (last < v.length) f.appendChild(document.createTextNode(v.slice(last)));
     n.replaceWith(f);
   }
@@ -611,10 +611,10 @@ export function toast(msg, bad = false) {
   const m = String(msg).match(/^(\p{Extended_Pictographic}\uFE0F?|[✓✗⚡⚔⬆])\s*/u);
   const ic = document.createElement('i'), tx = document.createElement('span');
   const em = m ? m[1].replace('\uFE0F', '') : (bad ? '⚠' : '✨'), img = TOAST_IC[em];
-  if (img) { const im = document.createElement('img'); im.src = `assets/ui/${img}.webp?v=2611200205`; im.alt = ''; ic.appendChild(im); ic.classList.add('img'); } else ic.textContent = em;
+  if (img) { const im = document.createElement('img'); im.src = `assets/ui/${img}.webp?v=2611200250`; im.alt = ''; ic.appendChild(im); ic.classList.add('img'); } else ic.textContent = em;
   // metindeki ⏩ (hızlandırma) işaretlerini kum saati simgesine çevir
   const body = m ? String(msg).slice(m[0].length) : String(msg);
-  body.split('⏩').forEach((part, i) => { if (i) { const h = document.createElement('img'); h.className = 'tq-sp'; h.src = 'assets/ui/sp_t1.webp?v=2611200205'; h.alt = ''; tx.appendChild(h); } tx.appendChild(document.createTextNode(part)); });
+  body.split('⏩').forEach((part, i) => { if (i) { const h = document.createElement('img'); h.className = 'tq-sp'; h.src = 'assets/ui/sp_t1.webp?v=2611200250'; h.alt = ''; tx.appendChild(h); } tx.appendChild(document.createTextNode(part)); });
   const l = document.createElement('b'); l.className = 'laurel tq-laurel';
   d.append(l, ic, tx);
   const box = $('toasts'); while (box.children.length >= 3) box.firstChild.remove();
@@ -796,7 +796,7 @@ function tankyardUI() {
   }
   const room = G.campRoom(), max = Math.max(1, Math.min(G.tankBatchMax(), room)); tankQty = clamp(tankQty, 1, max); s += campBar();
   const cost = G.trainCost('tank', tankQty), time = d.time * tankQty / G.tankSpeed();
-  return s + `<div class="tankcard"><img src="assets/ui/b_tank.webp?v=2611200205" alt=""><div><b>${d.name}</b><br>${d.desc}<br><small>⚔ ${d.atk} &nbsp; 🛡 ${d.def} &nbsp; ❤ ${d.hp} &nbsp; 🎒 ${d.load}</small></div></div>
+  return s + `<div class="tankcard"><img src="assets/ui/b_tank.webp?v=2611200250" alt=""><div><b>${d.name}</b><br>${d.desc}<br><small>⚔ ${d.atk} &nbsp; 🛡 ${d.def} &nbsp; ❤ ${d.hp} &nbsp; 🎒 ${d.load}</small></div></div>
     <div class="qty"><span>Miktar</span><span>${tankQty} / ${max}</span></div>
     <input id="tankSlider" class="slider" type="range" min="1" max="${max}" value="${tankQty}">
     <div class="cost">${costHtml(cost)}<span>⏱ ${G.fmtTime(time)}</span></div>
@@ -888,7 +888,7 @@ export function openModal(html) {
   box.innerHTML = html; $('modal').classList.add('open');
 }
 let PENDING_SIDE = '';
-const UI = (n) => `assets/ui/${n}.webp?v=2611200205`;
+const UI = (n) => `assets/ui/${n}.webp?v=2611200250`;
 const ICON_MAP = { '🗺️': 'nav_world', '⚔️': 'nav_heroes', '🛡️': 'nav_heroes', '🪙': 'res_gold', '📜': 'nav_reports', '⚜': 'nav_city', '📋': 'nav_quest', '🏆': 'ic_trophy', '📅': 'ic_calendar' };
 const resImg = (r, sz = 18) => `<img src="${UI('res_' + r)}" width="${sz}" height="${sz}" alt="">`;
 const pill = (r, v) => `<span class="w-pill">${resImg(r)}+${G.fmt(v)}</span>`;
@@ -1005,9 +1005,9 @@ function attackUI() {
     const id = atk.heroes[i];
     if (!id) return `<div class="cmd-slot empty"><span>＋</span></div>`;
     const h = HERO_BY_ID[id];
-    return `<div class="cmd-slot" style="--rc:${RARITY[h.rarity].color}" data-cmdpick="${id}"><img src="assets/heroes/${id}_a.webp?v=2611200205" alt="">${i === 0 ? '<em class="crown">👑</em>' : ''}<b>Sv.${G.S.heroes[id].level}</b><i>✕</i></div>`;
+    return `<div class="cmd-slot" style="--rc:${RARITY[h.rarity].color}" data-cmdpick="${id}"><img src="assets/heroes/${id}_a.webp?v=2611200250" alt="">${i === 0 ? '<em class="crown">👑</em>' : ''}<b>Sv.${G.S.heroes[id].level}</b><i>✕</i></div>`;
   }).join('');
-  const pool = owned.map((h) => `<button class="cmd-pick ${atk.heroes.includes(h.id) ? 'on' : ''}" style="--rc:${RARITY[h.rarity].color}" data-cmdpick="${h.id}"><img src="assets/heroes/${h.id}_a.webp?v=2611200205" alt=""><span>${h.name.split(' ').pop()}</span><small>${'★'.repeat(h.rarity)}</small></button>`).join('');
+  const pool = owned.map((h) => `<button class="cmd-pick ${atk.heroes.includes(h.id) ? 'on' : ''}" style="--rc:${RARITY[h.rarity].color}" data-cmdpick="${h.id}"><img src="assets/heroes/${h.id}_a.webp?v=2611200250" alt=""><span>${h.name.split(' ').pop()}</span><small>${'★'.repeat(h.rarity)}</small></button>`).join('');
   let rows = '';
   for (const t in TROOPS) {
     const max = G.S.troops[t], v = Math.min(atk.troops[t] || 0, max);
@@ -1034,7 +1034,8 @@ function attackUI() {
     <div class="row"><button class="btn gray" data-m="world">Geri</button><button class="btn red" data-m="march" ${tot ? '' : 'disabled'}>${RL ? (RL.mode === 'join' ? '🤝 Ralliye katıl' : '📯 Ralli aç') : e.mine ? '⛏ Kazmaya gönder' : '🚩 Yürüyüşe çık'}</button></div>`;
 }
 let questTab = 'main';
-const rewardTxt = (r) => Object.entries(r).filter(([k]) => RES[k]).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ') + (r._items ? '  ' + r._items.map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join('  ') : '');
+const QICON = { wins: 'ic_trophy', summons: 'ic_summon', trained: 'nav_heroes', zombies: 'ic_zombie', giants: 'ic_giant', rallies: 'ic_rally', collects: 'res_food', gathers: 'em_pickaxe', upgrades: 'ic_builder', heals: 'em_bandage', tanks: 'b_tank', speedups: 'sp_t2', energy: 'ic_energy', kills: 'rk_i_swords', scouts: 'em_heli' };
+const rewardTxt = (r) => Object.entries(r).filter(([k]) => RES[k]).map(([k, v]) => `${RES[k].icon} ${G.fmt(v)}`).join('  ') + (r.energy ? `  ⚡ ${r.energy}` : '') + (r._items ? '  ' + r._items.map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join('  ') : '');
 // Ödül alındığında: kaynak bildirimi + büyük hızlandırma çıktıysa özel kutlama
 function rewardFx(r, icon = '🎉') {
   toast(icon + ' ' + rewardTxt(r) + '  → 🎒 Çantaya eklendi');
@@ -1049,27 +1050,30 @@ function showItemDrop(it) {
 }
 // Çerçeveli avatar (özel çerçeveler animasyonlu)
 const isPremFrame = (fr) => !!FRAME_BY_ID[fr] && !FRAME_BY_ID[fr].free;
-export const frameHtml = (hero, fr, sz = 48) => { fr = FRAME_BY_ID[fr] ? fr : 'bronze'; const f = UI('fr_' + fr); return `<span class="fav ${isPremFrame(fr) ? 'anim fa-' + fr : ''}" style="--s:${sz}px;--m:url(${f})"><img class="fav-a" src="assets/heroes/${hero || 'emre'}_a.webp?v=2611200205" alt=""><span class="fav-fw"><img class="fav-f" src="${f}" alt=""><i class="fav-sh"></i></span></span>`; };
+export const frameHtml = (hero, fr, sz = 48) => { fr = FRAME_BY_ID[fr] ? fr : 'bronze'; const f = UI('fr_' + fr); return `<span class="fav ${isPremFrame(fr) ? 'anim fa-' + fr : ''}" style="--s:${sz}px;--m:url(${f})"><img class="fav-a" src="assets/heroes/${hero || 'emre'}_a.webp?v=2611200250" alt=""><span class="fav-fw"><img class="fav-f" src="${f}" alt=""><i class="fav-sh"></i></span></span>`; };
 // Hızlandırma simgesi: kum saati (nadirlik rengi) + süre rozeti
 export const spIcon = (id, sz = 56, n) => { const d = SPEEDUPS[id]; return `<span class="sp-ic t${d.tier}" style="--sz:${sz}px"><img src="${UI('sp_t' + d.tier)}" alt=""><b>${d.short}</b>${n != null ? `<em>×${G.fmt(n)}</em>` : ''}</span>`; };
 const rewardPills = (r) => Object.entries(r).map(([k, v]) => pill(k, v)).join('');
 function questsUI() {
   G.dailyReset();
   let body = '';
-  const qRow = (icon, text, x, y, reward, btn) => `<div class="w-row"><img src="${UI(icon)}" alt=""><div class="rt">${text}<div class="pb"><i><b style="width:${Math.min(100, x / y * 100)}%"></b></i><small>${G.fmt(x)}/${G.fmt(y)}</small></div></div><div class="w-rw">${rewardPills(reward)}<span class="w-pill sp-q ${questTab === 'daily' ? 'ev' : ''}" title="Rastgele hızlandırma"><img src="${UI(questTab === 'daily' ? 'sp_t3' : 'sp_t1')}" alt="">?</span>${btn}</div></div>`;
+  const qChips = (r) => [...['food', 'wood', 'stone', 'gold'].filter((k) => r[k]).map((k) => pill(k, r[k])), r.energy ? `<span class="w-pill"><img src="${UI('ic_energy')}" alt="">+${r.energy}</span>` : '', ...Object.entries(r.items || {}).map(([k, n]) => spIcon(k, 26, n > 1 ? n : null))].join('');
+  const qRow = (icon, text, x, y, reward, btn, no) => `<div class="w-row qrow"><img src="${UI(icon)}" alt=""><div class="rt">${no ? `<em class="q-no">#${no}</em>` : ''}${text}<div class="pb"><i><b style="width:${Math.min(100, x / y * 100)}%"></b></i><small>${G.fmt(x)}/${G.fmt(y)}</small></div></div><div class="qr-side"><div class="qr-rw">${qChips(reward)}${questTab === 'daily' ? `<span class="w-pill sp-q ev" title="Rastgele hızlandırma"><img src="${UI('sp_t3')}" alt="">?</span>` : ''}</div>${btn}</div></div>`;
   if (questTab === 'main') {
     const list = G.activeQuests();
-    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Krallık Görevleri</div><div class="bs">Her görev rastgele ⏩ hızlandırma verir!</div></div><span class="bt2">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length}</span></div>`;
+    const doneN = list.filter(G.questDone).length;
+    body += `<div class="w-banner sm" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Krallık Görevleri</div><div class="bs">${QUESTS.length} görev • her görevin ödülü farklı</div></div><span class="bt2">${Object.keys(G.S.qClaimed).length} / ${QUESTS.length}</span></div>`;
+    if (doneN > 1) body += `<button class="w-btn gold q-all" data-claimall>✓ Tamamlananları al</button>`;
     if (!list.length) body += '<p class="desc">🏆 Tüm ana görevleri tamamladın!</p>';
     for (const q of list) {
-      const [x, y] = G.questProgress(q), ok = x >= y;
-      const icon = q.t[0] === 'bld' ? 'nav_city' : q.t[1] === 'wins' ? 'nav_heroes' : q.t[1] === 'summons' ? 'ic_summon' : q.t[1] === 'trained' ? 'nav_heroes' : 'nav_quest';
-      body += qRow(icon, q.text, x, y, q.reward, ok ? `<button class="w-btn gold" data-claimq="${q.id}">Al</button>` : `<button class="w-btn" data-goq="${q.id}">Git</button>`);
+      const [x, y] = G.questProgress(q), ok = x >= y, k = q.t[1];
+      const icon = q.t[0] === 'bld' ? 'nav_city' : QICON[k] || 'nav_quest';
+      body += qRow(icon, q.text, x, y, q.reward, ok ? `<button class="w-btn gold" data-claimq="${q.id}">Al</button>` : `<button class="w-btn" data-goq="${q.id}">Git</button>`, q.no);
     }
   } else if (questTab === 'daily') {
     const n = G.dailyClaimedCount();
     const steps = [1, 2, 3, DAILY_CHEST.need];
-    body += `<div class="w-banner" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Günlük Görevler</div><div class="bs">${DAILY_CHEST.need} görev bitir, sandığı aç! ⏩ 24 saate kadar hızlandırma şansı</div></div><span class="bt2">⏱ ${G.fmtTime((new Date().setHours(24, 0, 0, 0) - Date.now()) / 1000)}</span></div>`;
+    body += `<div class="w-banner sm" style="background-image:url(${UI('banner_quest')})"><div><div class="bt">Günlük Görevler</div><div class="bs">${DAILY_CHEST.need} görev bitir, sandığı aç! ⏩ 24 saate kadar hızlandırma şansı</div></div><span class="bt2">⏱ ${G.fmtTime((new Date().setHours(24, 0, 0, 0) - Date.now()) / 1000)}</span></div>`;
     body += `<div class="w-card"><div class="w-track">${steps.map((st, i) => `<div class="ms ${n >= st ? 'ok' : ''}"><div class="box"><img src="${UI(i === 3 ? 'nav_shop' : i === 1 ? 'res_gold' : 'res_food')}" alt="">${i === 3 ? '' : `<small>${i === 1 ? '+30' : '+500'}</small>`}</div><div class="node">${st}</div></div>`).join('')}</div>
       <div style="text-align:center;margin-top:8px"><button class="w-btn gold" data-chest ${!G.S.daily.chest && n >= DAILY_CHEST.need ? '' : 'disabled'}>${G.S.daily.chest ? 'Sandık alındı' : `Sandığı aç (${Math.min(n, DAILY_CHEST.need)}/${DAILY_CHEST.need})`}</button></div></div>`;
     for (const d of DAILY) {
@@ -1182,7 +1186,7 @@ function rankingUI() {
   const rows = list.filter((p) => p.uid !== online.uid).map((p) => ({ uid: p.uid, pid: p.pid, name: p.name || 'Oyuncu', hero: p.cmd || p.hero?.id, frame: p.frame, tag: p.alliance?.tag, v: p[field] || 0, sc: p.showcase || [], vip: p.vip || 0 }));
   rows.push({ me: true, vip: G.S.vip || 0, uid: online.uid, name: G.S.name, hero: G.S.commander, frame: G.S.frame, tag: G.S.alliance?.tag, v: meVal, sc: G.showcaseIds().map((id) => ({ id })) });
   rows.sort((a, b) => b.v - a.v);
-  const mini = (sc) => sc.slice(0, 5).filter((x) => HERO_BY_ID[x.id]).map((x) => `<img src="assets/heroes/${x.id}_a.webp?v=2611200205" alt="">`).join('');
+  const mini = (sc) => sc.slice(0, 5).filter((x) => HERO_BY_ID[x.id]).map((x) => `<img src="assets/heroes/${x.id}_a.webp?v=2611200250" alt="">`).join('');
   const desc = rankTab === 'hero' ? '🦸 Kahraman gücü: en güçlü 5 kahramanın toplam gücü' : '⚔ Görev ilerlemesi: bölüm ve aşama (3-2, 2-15\'in üstündedir)';
   return H(`<div class="rk-desc">${desc}</div><div class="rk-list">` + rows.map((r, i) => `<div class="rk-row pv ${r.me ? 'me' : ''} ${i < 3 ? 'top' + (i + 1) : ''}" ${r.me ? `data-pview="${online.uid}"` : pvAttr(r.uid, r.name, r.hero, r.frame, r.pid)}>
       <div class="rk-av">${frameHtml(r.hero, r.frame, 46)}${rkMedal(i)}</div>
@@ -1214,7 +1218,7 @@ function heroesUI() {
   const cards = list.map((h) => {
     const o = G.S.heroes[h.id];
     return `<div class="hcard ${o ? '' : 'locked'} ${G.S.commander === h.id ? 'cmd' : ''}" style="--rc:${RARITY[h.rarity].color}" data-hero="${h.id}">
-      <img src="assets/heroes/${h.id}.webp?v=2611200205" alt="" loading="lazy"><span class="st">${starsHtml(h, o?.ups, 13)}</span>${o ? `<span class="lv">Sv.${o.level}</span>` : ''}${o && h.rarity + (o.ups || 0) < 10 && o.copies >= (STAR_PATH[h.rarity][o.ups || 0] ?? 1e9) ? '<em class="hc-up">⬆</em>' : ''}<div class="hn">${h.name}</div></div>`;
+      <img src="assets/heroes/${h.id}.webp?v=2611200250" alt="" loading="lazy"><span class="st">${starsHtml(h, o?.ups, 13)}</span>${o ? `<span class="lv">Sv.${o.level}</span>` : ''}${o && h.rarity + (o.ups || 0) < 10 && o.copies >= (STAR_PATH[h.rarity][o.ups || 0] ?? 1e9) ? '<em class="hc-up">⬆</em>' : ''}<div class="hn">${h.name}</div></div>`;
   }).join('');
   const own = Object.keys(G.S.heroes).length;
   return head('Kahramanlar', 'nav_heroes', [{ id: 'mine', label: `Benimkiler (${own})`, icon: 'nav_heroes' }, { id: 'all', label: `Koleksiyon (${HEROES.length})`, icon: 'ic_trophy' }], heroTab) +
@@ -1701,7 +1705,7 @@ function scoutUI(r) {
     <h4 class="sc-h">🛡️ Savunmadaki askerler <span>${G.fmt(tot)}</span></h4>
     <div class="sc-troops">${order.map((k) => `<div class="${(r.troops[k] || 0) ? '' : 'zero'}"><i>${TROOPS[k].icon}</i><span>${TROOPS[k].short}</span><b>${G.fmt(r.troops[k] || 0)}</b></div>`).join('')}</div>
     <h4 class="sc-h">👑 Komutan</h4>
-    ${h ? `<div class="sc-hero"><img src="assets/heroes/${h.id}_a.webp?v=2611200205" alt=""><div><b>${h.name}</b><span>${'★'.repeat(h.rarity)} • Bonus +%${r.hero.bonus}</span></div></div>` : r.hero ? `<div class="sc-hero"><div><b>Bilinmeyen komutan</b><span>Bonus +%${r.hero.bonus}</span></div></div>` : '<div class="sc-hero none">Şehirde komutan yok</div>'}
+    ${h ? `<div class="sc-hero"><img src="assets/heroes/${h.id}_a.webp?v=2611200250" alt=""><div><b>${h.name}</b><span>${'★'.repeat(h.rarity)} • Bonus +%${r.hero.bonus}</span></div></div>` : r.hero ? `<div class="sc-hero"><div><b>Bilinmeyen komutan</b><span>Bonus +%${r.hero.bonus}</span></div></div>` : '<div class="sc-hero none">Şehirde komutan yok</div>'}
     <h4 class="sc-h">🏹 Okçu kuleleri</h4>
     <div class="sc-hero none">${r.tower ? `Kule hasarı: <b>${G.fmt(r.tower)}</b>` : 'Kule savunması yok'}</div>
     <div class="sc-btns"><button class="w-btn" data-m="close">Kapat</button>${target && worldOpen() ? `<button class="w-btn red" data-scoutatk="${r.target}">⚔ Saldır</button>` : ''}</div>`;
@@ -1715,7 +1719,7 @@ function showcaseHtml(list, me) {
   const cells = [];
   for (let i = 0; i < G.SHOWCASE_N; i++) {
     const s = list[i], h = s && HERO_BY_ID[s.id];
-    cells.push(h ? `<div class="pf-h" style="--rc:${RARITY[h.rarity].color}"><img src="assets/heroes/${h.id}.webp?v=2611200205" alt="" loading="lazy"><span class="pf-st">${starsHtml(h, s.ups || 0, 10)}</span><span class="pf-lv">Sv.${s.lv || 1}</span><b class="pf-hn">${esc(h.name)}</b></div>`
+    cells.push(h ? `<div class="pf-h" style="--rc:${RARITY[h.rarity].color}"><img src="assets/heroes/${h.id}.webp?v=2611200250" alt="" loading="lazy"><span class="pf-st">${starsHtml(h, s.ups || 0, 10)}</span><span class="pf-lv">Sv.${s.lv || 1}</span><b class="pf-hn">${esc(h.name)}</b></div>`
       : `<div class="pf-h pf-empty" ${me ? 'data-pfedit' : ''}>${me ? '＋' : ''}</div>`);
   }
   return `<div class="w-card pf-card"><h4><img src="${UI('nav_heroes')}">${me ? 'Kahramanlarım' : 'Kahramanları'}${me ? '<button class="pf-edit" data-pfedit>✎ Düzenle</button>' : ''}</h4><div class="pf-heroes">${cells.join('')}</div></div>`;
@@ -1740,7 +1744,7 @@ function showcaseEditor() {
   return `<div class="w-card pf-card"><h4><img src="${UI('nav_heroes')}">Vitrin kahramanları <span class="pf-cnt">${PF.sel.length}/${G.SHOWCASE_N}</span></h4>
       <p class="pf-tip">Profilinde görünecek en fazla ${G.SHOWCASE_N} kahramanı sırayla seç.</p>
       <div class="pf-pick">${ids.map((id) => { const h = HERO_BY_ID[id], o = G.S.heroes[id], n = PF.sel.indexOf(id);
-        return `<button class="pf-h ${n >= 0 ? 'on' : ''}" style="--rc:${RARITY[h.rarity].color}" data-pfpick="${id}"><img src="assets/heroes/${id}.webp?v=2611200205" alt="" loading="lazy"><span class="pf-st">${starsHtml(h, o.ups || 0, 9)}</span><span class="pf-lv">Sv.${o.level || 1}</span>${n >= 0 ? `<em class="pf-n">${n + 1}</em>` : ''}<b class="pf-hn">${esc(h.name)}</b></button>`; }).join('')}</div>
+        return `<button class="pf-h ${n >= 0 ? 'on' : ''}" style="--rc:${RARITY[h.rarity].color}" data-pfpick="${id}"><img src="assets/heroes/${id}.webp?v=2611200250" alt="" loading="lazy"><span class="pf-st">${starsHtml(h, o.ups || 0, 9)}</span><span class="pf-lv">Sv.${o.level || 1}</span>${n >= 0 ? `<em class="pf-n">${n + 1}</em>` : ''}<b class="pf-hn">${esc(h.name)}</b></button>`; }).join('')}</div>
       <div class="pf-btns"><button class="w-btn" data-pfauto>En güçlü 5</button><button class="w-btn" data-pfcancel>Vazgeç</button><button class="w-btn gold" data-pfsave>Kaydet</button></div></div>`;
 }
 // Başka bir oyuncunun profili (sohbet, arkadaşlar, sıralama, ittifak, harita)
@@ -1851,8 +1855,15 @@ $('modalBox').addEventListener('click', (e) => {
     if (v.includes('wins') || (q && q.t[1] === 'wins')) return navigate('world');
     if (v.includes('summons') || (q && q.t[1] === 'summons')) return navigate('summon');
     if (v.includes('heals')) { openBuilding('hospital'); return; }
+    if (q && q.t[0] === 'cnt') { const k = q.t[1];
+      if (['zombies', 'giants', 'rallies', 'gathers', 'scouts', 'kills', 'energy'].includes(k)) return navigate('world');
+      if (k === 'heals') { openBuilding('hospital'); return; }
+      if (k === 'speedups') return navigate('bag');
+      if (k === 'upgrades') { const p = PLOTS.filter((x) => G.lvl(x.id) > 0).sort((a, b) => G.lvl(a.id) - G.lvl(b.id))[0]; if (p) { openBuilding(p.id); focusOn(p.x, p.z); } return; }
+    }
     return; }
   const qt = e.target.closest('[data-qtab]'); if (qt) { questTab = qt.dataset.qtab; return renderModal(); }
+  if (e.target.closest('[data-claimall]')) { const r = G.claimAllQuests(); if (r.n) { rewardFx(r.reward, `✅ ${r.n} görev:`); updateTop(); updateQuestUI(); } return renderModal(); }
   const cq = e.target.closest('[data-claimq]'); if (cq) { const r = G.claimQuest(cq.dataset.claimq); if (r) { rewardFx(r); updateTop(); } return renderModal(); }
   const cd = e.target.closest('[data-claimd]'); if (cd) { const r = G.claimDaily(cd.dataset.claimd); if (r) { rewardFx(r); updateTop(); } return renderModal(); }
   if (e.target.closest('[data-chest]')) { const r = G.claimChest(); if (r) { rewardFx(r, '🎁'); updateTop(); } return renderModal(); }

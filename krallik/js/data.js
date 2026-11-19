@@ -101,7 +101,7 @@ export const TROOPS = {
   spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 40, wood: 40, stone: 0 }, time: 1.6, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
   archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 33, wood: 46, stone: 0 }, time: 1.9, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
   cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 78, wood: 40, stone: 26 }, time: 3, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
-  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611200205" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
+  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611200250" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
 // ---- Talimhane: asker seviyeleri (1–10) ----
 // Her seviye hasar/savunma/can +%12 (Sv.10 ≈ ×2,08: 11 hasar → 23). Bedel yüksek, süre kısa.
@@ -236,7 +236,7 @@ export function researchTime(key, toLevel) { return Math.round(RESEARCH[key].tim
 //  Görevler
 // ---------------------------------------------------------------------
 // t: koşul türü — th(level), bld(plotKey, level), stat(name, n), hero(rarity), res(key, level)
-export const QUESTS = [
+const LEGACY_QUESTS = [
   { id: 'q1', text: 'Belediye Binası\'nı Sv.2 yap', t: ['bld', 'townhall', 2], reward: { food: 1000, wood: 1000 } },
   { id: 'q2', text: '100 asker eğit', t: ['stat', 'trained', 100], reward: { food: 1500, gold: 30 } },
   { id: 'q3', text: 'Hastane inşa et', t: ['bld', 'hospital', 1], reward: { wood: 1500, stone: 500 } },
@@ -267,6 +267,57 @@ export const QUESTS = [
   { id: 'q24', text: 'Belediye Binası\'nı Sv.30 yap', t: ['bld', 'townhall', 30], reward: { gold: 3500 } },
   { id: 'q25', text: 'Belediye Binası\'nı Sv.40 yap (Efsanevi Kale)', t: ['bld', 'townhall', 40], reward: { gold: 10000 } },
 ];
+// Eski 29 görev (kimlikleri korunur, kayıtlar bozulmasın) + üretilen görevler = 1000 ana görev.
+// Üretilen görevler zorluk sırasına göre (rank 0–1000) eski görevlerle harmanlanır.
+// t: ['cnt', sayaç, n] → görev listede göründüğü andan itibaren sayılır (S.qBase).
+const LEGACY_RANK = { q1: 0, q2: 1, q3: 2, q4: 3, q5: 5, q6: 6, q7: 8, q8: 10, qf1: 12, qr1: 14, q9: 16, q10: 18, qt1: 20, qt2: 22, q11: 24, q12: 75, q13: 90, q14: 110, q15: 120, q16: 125, q17: 160, q18: 190, q19: 200, q20: 340, q21: 325, q22: 450, q23: 590, q24: 700, q25: 950 };
+const LEGACY_TH = [2, 3, 5, 7, 10, 15, 20, 30, 40];
+export const QUEST_TOTAL = 1000;
+const nice = (v) => { if (v < 10) return Math.max(1, Math.round(v)); const p = Math.pow(10, Math.floor(Math.log10(v)) - 1); const st = [10, 15, 20, 25, 30, 40, 50, 60, 75, 80, 100]; const m = v / p; return st.reduce((a, b) => (Math.abs(b - m) < Math.abs(a - m) ? b : a)) * p; };
+const CNT = [ // [sayaç, metin, başlangıç, bitiş (rank 1000'de)]
+  ['zombies', '{n} zombi öldür', 2, 60], ['trained', '{n} asker eğit', 100, 30000], ['wins', '{n} savaş kazan', 1, 40], ['giants', '{n} dev kes', 1, 10],
+  ['rallies', '{n} kez deve ralli yap', 1, 8], ['collects', 'Kaynakları {n} kez topla', 5, 60], ['gathers', 'Madenlerden {n} kez kaynak topla', 1, 15], ['summons', '{n} kahraman çağır', 1, 40],
+  ['upgrades', '{n} bina yükselt', 1, 15], ['heals', '{n} kez yaralı asker iyileştir', 1, 15], ['tanks', '{n} Demir Tank üret', 3, 400], ['speedups', '{n} hızlandırma kullan', 3, 150],
+  ['energy', '{n} enerji harca', 20, 600], ['kills', '{n} düşman askeri yen', 200, 60000], ['scouts', '{n} kez gözetleme yap', 1, 10],
+];
+const QB = ['barracks', 'archery', 'hospital', 'potion', 'farm', 'lumber', 'quarry', 'academy', 'drill', 'forge', 'rally', 'tankyard', 'camp', 'warehouse', 'heroes', 'summon'];
+const BNAME = { barracks: 'Kışla\'yı', archery: 'Okçu Kulesi\'ni', hospital: 'Hastane\'yi', potion: 'İksir Deposu\'nu', farm: 'Çiftliği', lumber: 'Kereste Atölyesi\'ni', quarry: 'Taş Ocağı\'nı', academy: 'Akademi\'yi', drill: 'Talimhane\'yi', forge: 'Demirhane\'yi', rally: 'Toplanma Kampı\'nı', tankyard: 'Tank Atölyesi\'ni', camp: 'Ordu Kampı\'nı', warehouse: 'Ambar\'ı', heroes: 'Karakter Deposu\'nu', summon: 'Çağırma Atölyesi\'ni', townhall: 'Belediye Binası\'nı' };
+export const QUESTS = (() => {
+  let sd = 20261120; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647); const ri = (a, b) => a + Math.floor(rnd() * (b - a + 1));
+  const legacy = LEGACY_QUESTS.map((q) => ({ ...q, rank: LEGACY_RANK[q.id] ?? 0 }));
+  const nGen = QUEST_TOTAL - legacy.length, gen = [];
+  const thAt = (r) => Math.min(40, 2 + Math.floor(r / 25));
+  const thDone = new Set(LEGACY_TH); let lastCnt = -1, bi = 0;
+  for (let i = 0; i < nGen; i++) {
+    const r = (i + 0.5) * QUEST_TOTAL / nGen, th = thAt(r);
+    let q;
+    if (!thDone.has(th)) { thDone.add(th); q = { t: ['bld', 'townhall', th], text: `Belediye Binası'nı Sv.${th} yap` }; }
+    else if (i % 4 === 2) { // bina
+      let key, lv, tries = 0;
+      do { key = QB[(bi++ * 7 + ri(0, 3)) % QB.length]; lv = Math.min(maxLevel(key), th - ri(0, 2)); } while (lv < 2 && tries++ < 10);
+      lv = Math.max(2, lv); q = { t: ['bld', key, lv], text: `${BNAME[key]} Sv.${lv} yap` };
+    } else {
+      let c; do c = ri(0, CNT.length - 1); while (c === lastCnt); lastCnt = c;
+      const [k, txt, a, b] = CNT[c], f = r / QUEST_TOTAL, n = nice(a * Math.pow(b / a, f) * (0.85 + rnd() * 0.3));
+      q = { t: ['cnt', k, n], text: txt.replace('{n}', n.toLocaleString('tr-TR')) };
+    }
+    q.rank = r; gen.push(q);
+  }
+  const all = legacy.concat(gen).sort((a, b) => a.rank - b.rank);
+  // ödüller (yalnızca üretilen görevler): her görevde bir ödül; 3–5 görevde 1dk, 15–20'de 5dk ya da 15 altın, ~100'de 1 saat, 150–200'de 1 gün hızlandırma. 3 günlük yok.
+  let nx1 = ri(3, 5), nx5 = ri(15, 20), nxH = ri(90, 110), nxD = ri(150, 200), gi = 0;
+  all.forEach((q, idx) => {
+    q.no = idx + 1;
+    if (q.id) return; gi++; q.id = 'g' + gi;
+    const no = q.no;
+    if (no >= nxD) { q.reward = { items: { s24h: 1 } }; nxD = no + ri(150, 200); }
+    else if (no >= nxH) { q.reward = { items: { s1h: 1 } }; nxH = no + ri(90, 110); }
+    else if (no >= nx5) { q.reward = rnd() < 0.5 ? { items: { s5m: 1 } } : { gold: 15 }; nx5 = no + ri(15, 20); }
+    else if (no >= nx1) { q.reward = { items: { s1m: 1 } }; nx1 = no + ri(3, 5); }
+    else { const x = rnd(); q.reward = x < 0.3 ? { energy: 5 } : { [['food', 'wood', 'stone'][Math.floor(rnd() * 3)]]: 5000 }; }
+  });
+  return all;
+})();
 export const DAILY = [
   { id: 'd1', text: 'Kaynakları 5 kez topla', stat: 'collects', n: 5, reward: { gold: 15 } },
   { id: 'd2', text: '100 asker eğit', stat: 'trained', n: 100, reward: { gold: 20 } },
