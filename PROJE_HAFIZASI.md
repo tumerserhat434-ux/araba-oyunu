@@ -606,6 +606,9 @@ cd araba-oyunu && python3 -m http.server 8000
 - `rankingUI()` artık sekmeli (`rankTab`): **Krallık** (eski güç listesi, `powerRankHtml`), **İttifak** (`topAlliances` tüm sunucular, güç = `alPower` üye toplamı), **Kahraman** (`topBy('heroPow5')`, en güçlü 5 kahramanın toplam `heroPower`; satırda vitrindeki 5 kahramanın minik avatarları), **Görev** (`topBy('camp')`, `S.camp.done` tamamlanan aşama sayısı → `stageLabel`; sayı sıralaması 3-2'yi 2-15'in üstüne koyar).
 - Profil alanları: `publicProfile.heroPow5`, `publicProfile.camp` (oyuncu yeni sürümle kaydedince listeye girer; alanı olmayan eski profiller Firestore orderBy'da görünmez). Önbellek `RK[tab]` 60 sn. Oyuncu satırına dokununca profil açılır.
 
+### 5.41 Sıralama teması (kırmızı-altın)
+- Sadece sıralama penceresi: `openModal` → `box.classList.toggle('rk-theme', modalKind === 'ranking')`. Higgsfield (~1,25 kredi) ile `assets/ui/rk_crest.webp` (taç + miğfer arması, `.w-medal` arka planı), `rk_ribbon.webp` (kırmızı kurdele, `.w-plaque` arka planı, önde z-index 3), `rk_corner.webp` (4 köşe `.rk-c tl/tr/bl/br`, aynalanarak), `rk_i_crown/swords/laurel/scroll.webp` (sekme simgeleri), `rk_castle.webp` (`.w-body` alt arka planı). Beyaz zeminler kenardan taşma dolgusuyla saydam yapıldı. Stil: style.css sonundaki "Sıralama teması" bloğu (koyu bordo panel, altın çift çerçeve, kırmızı seçili sekme, altın kenarlı satırlar, ilk 3 altın/gümüş/bronz, ben altın parıltı).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

@@ -2,28 +2,28 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611191307';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191307';
-import * as ASSETS from './assets.js?v=2611191307';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191307';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611191307';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191307';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191307';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191307';
-import * as G from './state.js?v=2611191307';
-import { getAvatar } from './scenes.js?v=2611191307';
-import { initCampaign, openCampaign } from './campui.js?v=2611191307';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191307';
-import { campIdx, stageLabel } from './campaign.js?v=2611191307';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191307';
-import { createFire } from './fire.js?v=2611191307';
-import { createGrass } from './grass.js?v=2611191307';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191307';
-import { initTutorial, tutEvent } from './tut.js?v=2611191307';
-import { icon } from './icons.js?v=2611191307';
-import { paintCity } from './terrain.js?v=2611191307';
-import { createLife, createVillager, animVillager } from './life.js?v=2611191307';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191307';
+import * as BLD from './buildings.js?v=2611191317';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191317';
+import * as ASSETS from './assets.js?v=2611191317';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191317';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity, topBy, topAlliances } from './online.js?v=2611191317';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191317';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191317';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191317';
+import * as G from './state.js?v=2611191317';
+import { getAvatar } from './scenes.js?v=2611191317';
+import { initCampaign, openCampaign } from './campui.js?v=2611191317';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191317';
+import { campIdx, stageLabel } from './campaign.js?v=2611191317';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191317';
+import { createFire } from './fire.js?v=2611191317';
+import { createGrass } from './grass.js?v=2611191317';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191317';
+import { initTutorial, tutEvent } from './tut.js?v=2611191317';
+import { icon } from './icons.js?v=2611191317';
+import { paintCity } from './terrain.js?v=2611191317';
+import { createLife, createVillager, animVillager } from './life.js?v=2611191317';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191317';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -825,6 +825,7 @@ export function openModal(html) {
   const box = $('modalBox');
   if (html.includes('<!--/head-->')) { const [h, b] = html.split('<!--/head-->'); html = h + `<div class="w-body">${PENDING_SIDE}<div class="w-main">${b}</div></div>`; box.classList.add('win'); }
   else box.classList.remove('win');
+  box.classList.toggle('rk-theme', modalKind === 'ranking'); // sıralama: kırmızı-altın ortaçağ teması
   PENDING_SIDE = '';
   box.innerHTML = html; $('modal').classList.add('open');
 }
@@ -1068,8 +1069,9 @@ function rkLoad(k) {
 }
 const rkMedal = (i) => (i < 3 ? `<i class="rk-medal m${i + 1}">${i + 1}</i>` : `<i class="rk-num">${i + 1}</i>`);
 function rankingUI() {
-  const tabs = [{ id: 'power', label: 'Krallık', icon: 'ic_castle' }, { id: 'ally', label: 'İttifak', icon: 'ic_alliance' }, { id: 'hero', label: 'Kahraman', icon: 'nav_heroes' }, { id: 'camp', label: 'Görev', icon: 'ic_campaign' }];
-  const H = (b) => head('Sıralama', 'ic_trophy', tabs, rankTab) + b;
+  const tabs = [{ id: 'power', label: 'Krallık', icon: 'rk_i_crown' }, { id: 'ally', label: 'İttifak', icon: 'rk_i_swords' }, { id: 'hero', label: 'Kahraman', icon: 'rk_i_laurel' }, { id: 'camp', label: 'Görev', icon: 'rk_i_scroll' }];
+  const corners = '<i class="rk-c tl"></i><i class="rk-c tr"></i><i class="rk-c bl"></i><i class="rk-c br"></i>';
+  const H = (b) => head('Sıralama', 'ic_trophy', tabs, rankTab).replace('<!--/head-->', corners + '<!--/head-->') + b;
   if (rankTab === 'power') return H(powerRankHtml());
   if (!online.ready) return H('<div class="al-off">🌐 Bu sıralama için çevrimiçi olmalısın.</div>');
   rkLoad(rankTab);
