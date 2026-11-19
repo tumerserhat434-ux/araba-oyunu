@@ -568,6 +568,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Buz Kraliçesi (`skins.js`, aurora + yeni `js/queenrig.js`):** `fx_queen.glb`'nin otomatik iskeleti tamamen yanlış bağlı (bir kol bacak kemiklerine, diğer kol ve eteğin bir kısmı el kemiklerine bağlı); hazır `Charged_Spell_Cast` klibi modeli parçalıyordu. `rigQueen(holder)` kodla yeni iskelet kurar: kalça, omurga, baş ve iki kolda omuz/dirsek/bilek. Eklem konumları modelin bağlama uzayında elle ölçüldü (+y yukarı, +x ön, kollar ±z). Her nokta mesafeye göre yeniden ağırlıklandırılır: kol parçalarına yumuşak düşüş, kolun dış ucu (az>0,36, y>0,64, x>0,06) tamamen el; etek ve pelerin gövdeye sabit. Kemikler eski iskeletin dinlenme dönüşümü `C` uzayında kurulur, `mesh.bind(sk, C)` (iskelet kökü 0,01 ölçekli olduğu için şart). `poseQueen(r, t, cast)`: dinlenmede hafif kol salınımı, büyüde kollar yukarı ve öne, baş döner. **`skeleton.pose()` kullanma** (modeli yok etti). Boy `H*0.52`. Test: scratchpad'de istek yakalamalı Playwright (sunucu açmadan dosyaları diskten verir).
 - **Pencere başlığı (`style.css` sonu, "v4" bloğu):** `head()` madalyonu plakadaki yazının üstüne biniyordu; madalyon 62 → 50 px, binme 14 → 5 px. Yan sekmeler 84 → 64 px (simge 38 → 28); ittifak ana sayfa afişleri 76 → 58 px yükseklik.
 
+### 5.36 Dünya haritası zemini v2 (uyumlu palet)
+- Eski `gt_*.webp` dokuları çok doygundu (çim ort. 72,133,8 limon yeşili; toprak/kum turuncu → yollar kırmızı, çöller pembe). Higgsfield ile 5 yeni dikişsiz doku (`assets/ui/gt2_grass|meadow|dirt|sand|stone.webp`, 1024, ~1,25 kredi), kenarlar yarım kaydırma + pencere karışımıyla dikişsiz yapıldı.
+- `groundMaterial` (shader `groundSplat2`): çim + çayır, `macro.g` lekeleriyle (%75'e kadar) karışır; çift ölçek/döndürülmüş UV ile tekrar kırılır. Yol/şehir/göl kıyısı = toprak (R), piramit = kum (G), taht meydanı = taş (B). Geçişler toprak dokusundan türetilen gürültüyle keskin ve doğal. Renk: %90 doygunluk, hafif sıcak; `macro.r` açık/koyu etkisi sınırlı (clamp).
+- `macro` artık iki kanallı (ImageData ile): r açık/koyu + kenar karartma, g çayır lekeleri. Splat 2048 (LOW_MEM'de 1024).
+- Bölge halkalarının (`terrTex`) iç dolgusu .10–.22 → .03–.16 (düz renkli diskler zemini boyamasın). Göl rengi soluk derin su. Haritadaki KayKit ağaçları `tinted()` ile orman yeşiline (şehir ağaçları etkilenmez).
+- Dünya haritası piksel oranı 2 (`openScene({ dpr: 2 })`, LOW_MEM hariç); `scenes.js → open` artık `obj.dpr` destekler.
+- Test kancası: `window.__wm = { cam, flyTo }`. Çekim betiği scratchpad'de `wshot.js` (VIEWS ortam değişkeni).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

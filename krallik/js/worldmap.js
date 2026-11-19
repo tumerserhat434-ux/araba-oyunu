@@ -8,13 +8,13 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191003';
-import { createSkinFX, SKINS } from './skins.js?v=2611191003';
-import * as BLD from './buildings.js?v=2611191003';
-import * as G from './state.js?v=2611191003';
-import { SPEEDUPS } from './data.js?v=2611191003';
-import { createSoldier, animateUnit } from './units.js?v=2611191003';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191003';
+import * as A from './assets.js?v=2611191026';
+import { createSkinFX, SKINS } from './skins.js?v=2611191026';
+import * as BLD from './buildings.js?v=2611191026';
+import * as G from './state.js?v=2611191026';
+import { SPEEDUPS } from './data.js?v=2611191026';
+import { createSoldier, animateUnit } from './units.js?v=2611191026';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191026';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -58,6 +58,9 @@ function instancify(proto, matrices, scene) {
     im.computeBoundingSphere(); scene.add(im);
   });
 }
+// dünya haritası ağaçları: KayKit'in turkuaz yaprakları zeminle uyuşmuyordu; malzemeyi kopyalayıp orman yeşiline çevir
+const FOREST = new THREE.Color(0.78, 0.88, 0.5);
+const tinted = (proto, col = FOREST) => { proto.traverse((m) => { if (m.isMesh && m.material) { m.material = m.material.clone(); m.material.color.multiply(col); } }); return proto; };
 const mat4 = (x, y, z, ry, s, sy = s) => new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, ry, 0)), new THREE.Vector3(s, sy, s));
 
 const thKey = (L) => (L >= 30 ? 'townhall4' : L >= 20 ? 'townhall3' : L >= 10 ? 'townhall2' : 'townhall');
@@ -121,12 +124,12 @@ function paintGround(list, lakes, seed) {
 const GT = {};
 function groundTex(name) {
   if (GT[name]) return GT[name];
-  const t = new THREE.TextureLoader().load('assets/ui/gt_' + name + '.webp');
+  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp');
   t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
   return (GT[name] = t);
 }
 function paintSplat(list, lakes, seed) {
-  const N = 1024, k = N / MAP;
+  const N = A.LOW_MEM ? 1024 : 2048, k = N / MAP;
   let sd = seed; const rnd = () => ((sd = (sd * 16807) % 2147483647) / 2147483647);
   const splat = canvasTex(N, N, (x) => {
     x.fillStyle = '#000'; x.fillRect(0, 0, N, N);
@@ -154,11 +157,18 @@ function paintSplat(list, lakes, seed) {
     x.globalCompositeOperation = 'source-over';
   }, false);
   // büyük ölçekli açık/koyu lekeler
+  // r: açık/koyu lekeler + kenarlara doğru koyulaşma, g: çayır (koyu çim) lekeleri
   const macro = canvasTex(256, 256, (x) => {
-    x.fillStyle = '#808080'; x.fillRect(0, 0, 256, 256);
-    for (let i = 0; i < 260; i++) { const cx = rnd() * 256, cy = rnd() * 256, r = 6 + rnd() * 30, v = rnd() < 0.5 ? 255 : 0, g = x.createRadialGradient(cx, cy, 0, cx, cy, r); g.addColorStop(0, `rgba(${v},${v},${v},.22)`); g.addColorStop(1, `rgba(${v},${v},${v},0)`); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); }
-    // kenarlara doğru koyulaşma
-    const v = x.createRadialGradient(128, 128, 60, 128, 128, 182); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.35)'); x.fillStyle = v; x.fillRect(0, 0, 256, 256);
+    const M = 256, R = new Float32Array(M * M).fill(0.5), Gc = new Float32Array(M * M).fill(0.3);
+    const blob = (arr, n, r0, r1, amp) => { for (let b = 0; b < n; b++) { const cx = rnd() * M, cy = rnd() * M, r = r0 + rnd() * (r1 - r0), a = amp * (rnd() < 0.5 ? -1 : 1);
+      for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let xx = Math.floor(cx - r); xx <= cx + r; xx++) { const d = Math.hypot(xx - cx, y - cy) / r; if (d >= 1) continue; const k = (1 - d * d) ** 2; arr[((y + M) % M) * M + ((xx + M) % M)] += a * k; } } };
+    blob(R, 220, 5, 26, 0.16); blob(Gc, 70, 12, 40, 0.45); blob(Gc, 160, 4, 12, 0.25);
+    const im = x.createImageData(M, M);
+    for (let y = 0; y < M; y++) for (let xx = 0; xx < M; xx++) {
+      const i = y * M + xx, e = Math.min(1, Math.max(0, (Math.hypot(xx - 128, y - 128) - 70) / 112));
+      im.data[i * 4] = Math.max(0, Math.min(255, (R[i] - e * 0.3) * 255)); im.data[i * 4 + 1] = Math.max(0, Math.min(255, Gc[i] * 255)); im.data[i * 4 + 2] = 0; im.data[i * 4 + 3] = 255;
+    }
+    x.putImageData(im, 0, 0);
   }, false);
   splat.colorSpace = THREE.NoColorSpace; macro.colorSpace = THREE.NoColorSpace;
   return { splat, macro };
@@ -166,31 +176,38 @@ function paintSplat(list, lakes, seed) {
 function groundMaterial(list, lakes, seed) {
   const { splat, macro } = paintSplat(list, lakes, seed);
   const mat = new THREE.MeshLambertMaterial({ map: splat });
-  const U = { tGrass: { value: groundTex('grass') }, tDirt: { value: groundTex('dirt') }, tSand: { value: groundTex('sand') }, tMacro: { value: macro }, rep: { value: MAP / 22 } };
+  const U = { tGrass: { value: groundTex('grass') }, tMeadow: { value: groundTex('meadow') }, tDirt: { value: groundTex('dirt') }, tSand: { value: groundTex('sand') }, tStone: { value: groundTex('stone') }, tMacro: { value: macro }, rep: { value: MAP / 26 } };
   mat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);
-    sh.fragmentShader = 'uniform sampler2D tGrass, tDirt, tSand, tMacro; uniform float rep;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+    sh.fragmentShader = 'uniform sampler2D tGrass, tMeadow, tDirt, tSand, tStone, tMacro; uniform float rep;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
       vec4 sp = texture2D(map, vMapUv);
       vec2 tu = vMapUv * rep;
-      // dokunun tekrarı göze batmasın: iki ölçeği karıştır
-      vec3 gC = mix(texture2D(tGrass, tu).rgb, texture2D(tGrass, tu * 0.37 + 0.23).rgb, 0.35);
-      vec3 dC = texture2D(tDirt, tu * 1.4).rgb, sC = texture2D(tSand, tu * 0.9).rgb;
-      vec3 c = mix(gC, dC, smoothstep(0.15, 0.85, sp.r));
-      c = mix(c, sC, smoothstep(0.1, 0.9, sp.g));
-      c = mix(c, dC * vec3(0.55, 0.56, 0.62), smoothstep(0.1, 0.9, sp.b));
-      float m = texture2D(tMacro, vMapUv).r;
-      c = mix(c, vec3(dot(c, vec3(0.3, 0.59, 0.11))), 0.2) * 0.8; // gece haritasıyla uyum: biraz soluk ve koyu
-      diffuseColor.rgb *= c * (0.45 + m * 1.1);
+      vec4 mc = texture2D(tMacro, vMapUv);            // r: açık/koyu, g: çayır lekeleri
+      // çim: iki doku büyük lekelerle karışır, ayrıca farklı ölçek/açıyla tekrar kırılır
+      vec2 tu2 = mat2(0.8, -0.6, 0.6, 0.8) * tu * 0.61 + 0.37;
+      vec3 g1 = mix(texture2D(tGrass, tu).rgb, texture2D(tGrass, tu2).rgb, 0.3);
+      vec3 g2 = mix(texture2D(tMeadow, tu * 1.13 + 0.5).rgb, texture2D(tMeadow, tu2 * 0.9).rgb, 0.3) * 1.62; // koyu dokuyu çim parlaklığına getir
+      vec3 c = mix(g1, g2, smoothstep(0.35, 0.8, mc.g) * 0.75);
+      vec3 dC = texture2D(tDirt, tu * 1.6).rgb, sC = texture2D(tSand, tu * 1.1).rgb * vec3(0.84, 0.8, 0.74), stC = texture2D(tStone, tu * 2.2).rgb * vec3(1.12, 1.04, 0.86);
+      // geçişler dokunun kendi desenine göre (bulanık halka yerine doğal, keskin kenar)
+      float n = dot(texture2D(tDirt, tu * 3.7).rgb, vec3(0.33)) - 0.4;
+      c = mix(c, dC, smoothstep(0.42, 0.58, sp.r + n * 0.5));
+      c = mix(c, sC, smoothstep(0.38, 0.56, sp.g + n * 0.45));
+      c = mix(c, stC, smoothstep(0.4, 0.6, sp.b + n * 0.3));
+      // renk düzenleme: tüm zemin aynı soluk, hafif sıcak paletle (binalar ve taht öne çıksın)
+      float l = dot(c, vec3(0.3, 0.59, 0.11));
+      c = mix(vec3(l), c, 0.9) * vec3(1.02, 1.0, 0.9);
+      diffuseColor.rgb *= c * (1.07 + clamp(mc.r - 0.5, -0.25, 0.2) * 0.6);
     `);
   };
-  mat.customProgramCacheKey = () => 'groundSplat';
+  mat.customProgramCacheKey = () => 'groundSplat2';
   return mat;
 }
 
 // bölge dokusu: kenarı belirgin, içi hafif dolu daire
 let terrT = null;
 const terrTex = () => terrT || (terrT = canvasTex(256, 256, (x) => {
-  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, 'rgba(255,255,255,.10)'); g.addColorStop(0.86, 'rgba(255,255,255,.22)'); g.addColorStop(0.9, 'rgba(255,255,255,.95)'); g.addColorStop(0.94, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  const g = x.createRadialGradient(128, 128, 0, 128, 128, 128); g.addColorStop(0, 'rgba(255,255,255,.03)'); g.addColorStop(0.7, 'rgba(255,255,255,.05)'); g.addColorStop(0.86, 'rgba(255,255,255,.16)'); g.addColorStop(0.9, 'rgba(255,255,255,.95)'); g.addColorStop(0.94, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = g; x.fillRect(0, 0, 256, 256);
 }, false));
 // taht rün halkası
@@ -276,7 +293,7 @@ export function openWorldMap(opts = {}) {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(MAP, MAP).rotateX(-Math.PI / 2), groundMaterial(list, lakes, server * 977 + 3));
   ground.material.map.anisotropy = 4; ground.position.set(MAP / 2, 0, MAP / 2); scene.add(ground);
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(5000, 5000).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x1c3024 })); outer.position.set(MAP / 2, -0.3, MAP / 2); scene.add(outer);
-  const waterMat = new THREE.MeshStandardMaterial({ color: 0x2a5a9a, roughness: 0.1, metalness: 0.4, emissive: 0x0e2a6a, emissiveIntensity: 0.9 });
+  const waterMat = new THREE.MeshStandardMaterial({ color: 0x2f5f6a, roughness: 0.15, metalness: 0.35, emissive: 0x0c2a34, emissiveIntensity: 0.8 }); // zeminle uyumlu, soluk derin su
   for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
 
   // ormanlar: kümeler halinde, şehir ve tahttan uzak; harita kenarında daha sık
@@ -287,10 +304,10 @@ export function openWorldMap(opts = {}) {
       const [ax, az] = rnd() < 0.5 ? [cx, cz] : [cz, cx];
       for (let j = 0; j < 9 && ms.length < 820; j++) { const x = ax + (rnd() - 0.5) * 48, z = az + (rnd() - 0.5) * 48; if (!free(x, z, 20) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 4)) continue; const s = 1.1 + rnd() * 0.8; ms.push(mat4(x, 0, z, rnd() * 6.28, s, s * 1.15)); }
     }
-    instancify(BLD.createTree(v === 2 ? 3 : v), ms, scene);
+    instancify(tinted(BLD.createTree(v === 2 ? 3 : v)), ms, scene);
   }
   // küçük çalılar: zemine derinlik (tek seferde çizilir)
-  { const ms = []; for (let i = 0; i < 1400; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!free(x, z, 12) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 3)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(BLD.createTree(1), ms, scene); }
+  { const ms = []; for (let i = 0; i < 1400; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!free(x, z, 12) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 3)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(tinted(BLD.createTree(1), new THREE.Color(0.72, 0.84, 0.46)), ms, scene); }
   // dağlar: haritayı çevreleyen sıra + içeride birkaç tane
   const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees'];
   for (let i = 0; i < 80; i++) {
@@ -633,6 +650,7 @@ export function openWorldMap(opts = {}) {
   const wh = (e) => { cam.dT = clamp(cam.dT * (1 + Math.sign(e.deltaY) * 0.16), MIN_D, MAX_D); cam.anchor = { x: e.clientX, y: e.clientY }; cam.fly = null; };
   cv.addEventListener('pointerdown', pd); addEventListener('pointermove', pm); addEventListener('pointerup', pu); addEventListener('pointercancel', pu); cv.addEventListener('wheel', wh, { passive: true });
   const flyTo = (x, z, d) => { cam.fly = { x0: cam.tx, z0: cam.tz, d0: cam.d, x, z, d: d ?? cam.d, t: 0 }; cam.vx = cam.vz = 0; cam.anchor = null; };
+  window.__wm = { cam, flyTo }; // hata ayıklama/test
   const tap = (sx, sy) => {
     placeCam(); v2.set(sx / innerWidth * 2 - 1, -(sy / innerHeight) * 2 + 1); ray.setFromCamera(v2, camera);
     const hit = ray.intersectObjects(hits)[0];
@@ -895,7 +913,7 @@ export function openWorldMap(opts = {}) {
     cv.removeEventListener('pointerdown', pd); removeEventListener('pointermove', pm); removeEventListener('pointerup', pu); removeEventListener('pointercancel', pu); cv.removeEventListener('wheel', wh);
     labels.innerHTML = ''; labels.classList.add('hidden'); labels.classList.remove('far'); W = null;
   };
-  openScene({ scene, camera, update, dispose, freeOnClose: true, world: true }, 'city');
+  openScene({ scene, camera, update, dispose, freeOnClose: true, world: true, dpr: A.LOW_MEM ? 0 : 2 }, 'city'); // net görüntü: telefonda 1,6 yerine 2
 }
 function closeWorld() { if (!W) return; closeScene(); }
 export function closeWorldMap() { closeWorld(); }

@@ -2,12 +2,12 @@
 //  DEMİR SANCAK — 3D katman sahneleri: savaş, çağırma, kahraman görüntüleyici
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611191003';
-import * as A from './assets.js?v=2611191003';
-import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js?v=2611191003';
-import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js?v=2611191003';
-import * as G from './state.js?v=2611191003';
-import { setTheme, playVoice } from './audio.js?v=2611191003';
+import * as BLD from './buildings.js?v=2611191026';
+import * as A from './assets.js?v=2611191026';
+import { createSoldier, createHero, animateUnit, playHeroMove } from './units.js?v=2611191026';
+import { SPEEDUPS, TROOPS, HEROES, HERO_BY_ID, RARITY, SUMMON, heroBonus, heroLevelCost, heroAtk, heroDef, HERO_MAX_LEVEL, heroStars, nextStarCost, STAR_PATH } from './data.js?v=2611191026';
+import * as G from './state.js?v=2611191026';
+import { setTheme, playVoice } from './audio.js?v=2611191026';
 
 let C = null; // main.js bağlamı
 let active = null; // { scene, camera, update(dt,t), close() }
@@ -33,7 +33,7 @@ export function renderActive(dt, t) {
 const HI_DPR = Math.min(devicePixelRatio || 1, 3);
 function open(obj, theme = 'city') {
   setTheme(theme);
-  if (obj.hiDpr) { C.renderer.setPixelRatio(HI_DPR); } else if (C.baseDpr) C.renderer.setPixelRatio(C.baseDpr);
+  if (obj.hiDpr) { C.renderer.setPixelRatio(HI_DPR); } else if (obj.dpr) { C.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, obj.dpr)); } else if (C.baseDpr) C.renderer.setPixelRatio(C.baseDpr);
   if (active) { active.dispose?.(); if (active.scene !== obj.scene) freeLater(active); }
   active = obj;
   document.body.dataset.scene = obj.world ? 'world' : theme;
