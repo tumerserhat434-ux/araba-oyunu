@@ -101,7 +101,7 @@ export const TROOPS = {
   spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 40, wood: 40, stone: 0 }, time: 1.6, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
   archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 33, wood: 46, stone: 0 }, time: 1.9, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
   cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 78, wood: 40, stone: 26 }, time: 3, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
-  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611191836" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
+  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611191911" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 9, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
 // ---- Talimhane: asker seviyeleri (1–10) ----
 // Her seviye hasar/savunma/can +%12 (Sv.10 ≈ ×2,08: 11 hasar → 23). Bedel yüksek, süre kısa.
@@ -110,6 +110,28 @@ export const troopLvMul = (L) => 1 + 0.12 * ((L || 1) - 1);
 export const troopLvCost = (L) => { const k = Math.round(60000 * Math.pow(1.85, L - 2) / 1000) * 1000; return { food: k, wood: Math.round(k * 0.85 / 1000) * 1000, stone: Math.round(k * 0.5 / 1000) * 1000 }; }; // L: hedef seviye (2..10)
 export const troopLvTime = (L) => Math.round(20 * L * L); // sn: Sv.2 80 sn … Sv.10 ≈ 33 dk
 export const troopLvReq = (L) => L * 2 - 2; // Sv.L için gereken Talimhane seviyesi (Sv.2 → 2, Sv.10 → 18)
+// ---- Etkinlik: Fetih Yolu — 7 gün, 100 görev (günde 14–15), her görevin ödülü, her günün tamamlama sandığı ----
+const FY_T = [
+  ['collects', 'Kaynakları {n} kez topla', 'res_food', [3, 5, 8, 10, 12, 15, 20]],
+  ['trained', '{n} asker eğit', 'ic_troops', [100, 200, 400, 600, 800, 1000, 1500]],
+  ['upgrades', '{n} bina yükselt', 'nav_city', [1, 1, 2, 2, 3, 3, 4]],
+  ['wins', '{n} savaş kazan', 'ic_trophy', [1, 2, 3, 4, 5, 6, 8]],
+  ['zombies', '{n} zombi öldür', 'nav_world', [1, 2, 3, 4, 5, 6, 8]],
+  ['energy', '{n} enerji harca', 'ic_energy', [10, 20, 30, 40, 50, 60, 80]],
+  ['speedups', '{n} hızlandırma kullan', 'sp_t1', [2, 3, 5, 8, 10, 12, 15]],
+  ['gathers', '{n} kez madenden kaynak getir', 'res_stone', [1, 1, 2, 2, 3, 3, 4]],
+  ['scouts', '{n} kez helikopterle gözetle', 'nav_world', [1, 1, 2, 2, 3, 3, 4]],
+  ['kills', '{n} düşman askeri öldür', 'nav_heroes', [200, 500, 1000, 2000, 3000, 5000, 8000]],
+  ['summons', '{n} kahraman çağır', 'ic_summon', [1, 2, 3, 4, 5, 6, 8]],
+  ['heals', '{n} kez yaralı iyileştir', 'ic_gift', [1, 1, 2, 2, 3, 3, 4]],
+  ['researched', '{n} araştırma tamamla', 'nav_quest', [1, 1, 1, 2, 2, 2, 3]],
+  ['tanks', '{n} tank üret', 'b_tank', [5, 10, 20, 30, 40, 50, 80]],
+  ['collects', 'Kaynakları {n} kez daha topla', 'res_wood', [0, 0, 0, 0, 0, 25, 30]],
+];
+const FY_R = [{ energy: 5 }, { items: { s1m: 1 } }, { food: 20000 }, { items: { s1m: 2 } }, { wood: 20000 }, { energy: 5 }, { stone: 20000 }, { items: { s5m: 1 } }, { gold: 10 }, { energy: 8 }, { food: 30000 }, { items: { s1m: 3 } }, { wood: 30000 }, { gold: 15 }];
+export const FY_DAYS = [14, 14, 14, 14, 14, 15, 15];
+export const FY_TASKS = (() => { const out = []; FY_DAYS.forEach((cnt, d) => { for (let i = 0; i < cnt; i++) { const [stat, txt, icon, ns] = FY_T[i]; const n = ns[d]; out.push({ i: out.length, day: d, stat, n, icon, text: txt.replace('{n}', n.toLocaleString('tr-TR')), reward: FY_R[out.length % FY_R.length] }); } }); return out; })();
+export const FY_BONUS = [{ energy: 20 }, { items: { s5m: 4 } }, { gold: 50 }, { energy: 30, items: { s15m: 2 } }, { gold: 50, items: { s1h: 1 } }, { energy: 40, items: { s5m: 6 } }, { gold: 100, energy: 50, items: { s1h: 2 } }];
 export const COUNTER = {
   infantry: { infantry: 1, spearman: 1.05, archer: 1, cavalry: 1.05, tank: 0.8 },
   spearman: { infantry: 0.95, spearman: 1, archer: 1, cavalry: 1.5, tank: 0.9 },

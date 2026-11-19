@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191836';
+import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191911';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -65,7 +65,7 @@ export function load() {
   S.scouts ||= []; S.scoutReports ||= [];
   S.items ||= {};
   if (S.pity5 >= 30) S.pity5 = 29;
-  S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {}; S.vip ||= 0; S.vipBoxAt ??= 0; S.energy ||= 0; for (let L = 1; L <= (S.vip || 0); L++) { if (VIP[L].skin) S.skins[VIP[L].skin] = true; if (VIP[L].frame) S.frames[VIP[L].frame] = true; }
+  S.frames ||= {}; S.frame ||= 'bronze'; S.offers ||= {}; S.vip ||= 0; S.vipBoxAt ??= 0; if (S.energy == null || (S.energyAt == null && !S.energy)) S.energy = 200; S.energyAt ??= now(); for (let L = 1; L <= (S.vip || 0); L++) { if (VIP[L].skin) S.skins[VIP[L].skin] = true; if (VIP[L].frame) S.frames[VIP[L].frame] = true; }
   S.alliance ??= null;
   S.zombies ||= []; S.zombieMax ||= 0; S.zombieKills ||= 0; S.zombieNext ||= 0;
   S.mines ||= []; S.mineMax ||= { food: 0, wood: 0, stone: 0, gold: 0 }; S.mineNext ||= 0;
@@ -769,6 +769,7 @@ export function startMarch(enemyId, sent, heroIds) {
   const troops = {}; let n = 0;
   for (const t in TROOPS) { troops[t] = Math.max(0, Math.min(sent[t] || 0, S.troops[t] || 0)); n += troops[t]; }
   if (!n) return { ok: false, why: 'Asker seç' };
+  { const ec = energyCostOf(e); if (ec) { const r = spendEnergy(ec); if (!r.ok) return r; } }
   heroIds = (heroIds || []).filter((id) => S.heroes[id] && !S.marches.some((m) => m.heroes.includes(id))).slice(0, MAX_COMMANDERS);
   for (const t in troops) S.troops[t] -= troops[t];
   const dur = marchTime(e, troops), t0 = now();
@@ -817,6 +818,7 @@ export function canReattack(m) {
 }
 export function reattack(id) {
   const m = S.marches.find((q) => q.id === id); if (!canReattack(m)) return { ok: false, why: 'Bu birlik tekrar saldıramaz' };
+  { const r = spendEnergy(energyCostOf(findEnemy(m.target)) || ENERGY_COST.attack); if (!r.ok) return r; }
   const t = now();
   if (m.phase === 'stay') { const r = marchFight(m, t); return r ? { ok: true, r } : { ok: false, why: 'Saldırı yapılamadı' }; }
   const k = Math.max(0, Math.min(1, (t - m.start) / Math.max(1, m.arrive - m.start)));
@@ -870,7 +872,7 @@ export function startScout(enemyId) {
   pay(SCOUT_COST);
   const dur = scoutTime(e), t0 = now();
   const sc = { id: 's' + Math.random().toString(36).slice(2, 8), target: enemyId, tname: e.name, tx: e.mapX, ty: e.mapY, foreign: e.foreign || (e.server && e.server !== S.server ? e.server : 0), snap: e.real || e.foreign ? JSON.parse(JSON.stringify(e)) : null, start: t0, arrive: t0 + dur, dur, phase: 'go' };
-  S.scouts.push(sc); save(); emit('scout', sc);
+  count('scouts'); S.scouts.push(sc); save(); emit('scout', sc);
   return { ok: true, scout: sc };
 }
 // Hedefin o anki durumunun fotoğrafı (rapor)
@@ -1027,9 +1029,9 @@ export function attackEnemy(enemyId, sent, heroIds) {
   for (const t in res.A) S.troops[t] += res.A[t];
   let loot = {}, items = null;
   if (e.zombie) {
-    if (res.win) { loot = zombieLoot(e.level); items = zombieItems(e.level); gainRes(loot); for (const it of items) addItem(it.id, it.n); S.zombieMax = Math.max(S.zombieMax, e.level); S.zombieKills++; S.stats.wins++; count('wins'); S.zombies = S.zombies.filter((z) => z !== e); ensureNextZombie(); }
+    if (res.win) { loot = zombieLoot(e.level); items = zombieItems(e.level); gainRes(loot); for (const it of items) addItem(it.id, it.n); S.zombieMax = Math.max(S.zombieMax, e.level); S.zombieKills++; count('zombies'); S.stats.wins++; count('wins'); S.zombies = S.zombies.filter((z) => z !== e); ensureNextZombie(); }
     else { S.stats.losses++; for (const t in e.troops) e.troops[t] = res.D[t]; e.power = armyPower(e.troops); }
-    S.stats.kills += totalTroops(res.dLoss);
+    S.stats.kills += totalTroops(res.dLoss); count('kills', totalTroops(res.dLoss));
     if (res.win) for (const id of heroIds) if (S.heroes[id].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[id].level++;
     const rep = { t: now(), kind: 'attack', zombie: e.level, win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, items, hero: heroId, heroes: heroIds };
     S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
@@ -1053,7 +1055,7 @@ export function attackEnemy(enemyId, sent, heroIds) {
   } else S.stats.losses++;
   for (const t in e.troops) e.troops[t] = res.D[t];
   e.power = armyPower(e.troops) + e.tower * 260;
-  S.stats.kills += totalTroops(res.dLoss);
+  S.stats.kills += totalTroops(res.dLoss); count('kills', totalTroops(res.dLoss));
   // kahraman deneyimi
   if (res.win) for (const id of heroIds) if (S.heroes[id].level < heroMaxLevel() && Math.random() < 0.5) S.heroes[id].level++;
   const rep = { t: now(), kind: 'attack', win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, hero: heroId, heroes: heroIds, pvp: !!e.real, uid: e.uid, dmg, cityHp: Math.round(enemyHp(e)), razed };
@@ -1130,6 +1132,57 @@ export const mineHours = (L) => 3 + (L - 1) * 0.5;
 export const mineRefPower = (L) => Math.round(6000 * Math.pow(1.75, L - 1));
 export const mineUnlocked = (type, L) => L <= (S.mineMax?.[type] || 0) + 1;
 // gönderilen gücün tam verim gücüne oranı (en az %25) × komutan bonusu (en fazla +%50)
+// ---- Enerji: en fazla 200, 5 dk'da 1 dolar (200'de durur). Saldırı/ralli 10, zombi 5. Ödüller 200'ü aşabilir. ----
+export const ENERGY_MAX = 200, ENERGY_REGEN = 300, ENERGY_COST = { attack: 10, rally: 10, zombie: 5 };
+export function energyNow() {
+  const t = now();
+  if (S.energy >= ENERGY_MAX) { S.energyAt = t; return S.energy; }
+  const g = Math.floor((t - (S.energyAt || t)) / ENERGY_REGEN);
+  if (g > 0) { S.energy = Math.min(ENERGY_MAX, S.energy + g); S.energyAt = S.energy >= ENERGY_MAX ? t : S.energyAt + g * ENERGY_REGEN; }
+  return S.energy;
+}
+export const energyNextIn = () => (energyNow() >= ENERGY_MAX ? 0 : Math.max(0, ENERGY_REGEN - (now() - S.energyAt)));
+export const energyFullIn = () => { const e = energyNow(); return e >= ENERGY_MAX ? 0 : energyNextIn() + (ENERGY_MAX - e - 1) * ENERGY_REGEN; };
+export function spendEnergy(n) {
+  if (energyNow() < n) return { ok: false, why: `⚡ ${n} enerji gerekli (sende ${S.energy}). Enerji 5 dakikada 1 dolar` };
+  const full = S.energy >= ENERGY_MAX; S.energy -= n; if (full) S.energyAt = now(); count('energy', n); emit('energy'); return { ok: true };
+}
+export const addEnergy = (n) => { energyNow(); S.energy += n; emit('energy'); };
+export function energyCostOf(e) { if (!e || e.mine || e.giant) return 0; return e.zombie ? ENERGY_COST.zombie : ENERGY_COST.attack; }
+// ---- Fetih Yolu etkinliği ----
+// S.fy = { start, bases: { gün: sayaç kopyası }, claimed: { görevNo: 1 }, bonus: { gün: 1 } }. Gün açıldığında sayaçlar kopyalanır,
+// o günün görev ilerlemesi = sayaç − kopya. 7 gün sonra yeni sezon başlar.
+export function fyState() {
+  const t = now();
+  if (!S.fy || t - S.fy.start >= 7 * 86400) { const d0 = new Date(); d0.setHours(0, 0, 0, 0); S.fy = { start: d0.getTime() / 1000, bases: {}, claimed: {}, bonus: {} }; }
+  const day = Math.min(6, Math.floor((t - S.fy.start) / 86400));
+  for (let d = 0; d <= day; d++) if (!S.fy.bases[d]) S.fy.bases[d] = { ...S.counters };
+  return { day, endsIn: S.fy.start + 7 * 86400 - t, nextIn: S.fy.start + (day + 1) * 86400 - t };
+}
+export const fyProg = (q) => { const b = S.fy?.bases?.[q.day]; return b ? Math.max(0, (S.counters[q.stat] || 0) - (b[q.stat] || 0)) : 0; };
+export const fyDone = (q) => fyProg(q) >= q.n;
+export const fyDayTasks = (d) => FY_TASKS.filter((q) => q.day === d);
+export const fyDayClaimed = (d) => fyDayTasks(d).filter((q) => S.fy?.claimed[q.i]).length;
+export function giveReward(r) {
+  for (const k of ['food', 'wood', 'stone']) if (r[k]) S.res[k] += r[k];
+  if (r.gold) S.res.gold += r.gold;
+  if (r.energy) addEnergy(r.energy);
+  for (const [id, n] of Object.entries(r.items || {})) addItem(id, n);
+}
+export function claimFy(i) {
+  const { day } = fyState(), q = FY_TASKS[i];
+  if (!q || q.day > day) return { ok: false, why: 'Bu gün henüz açılmadı' };
+  if (S.fy.claimed[i]) return { ok: false, why: 'Zaten alındı' };
+  if (!fyDone(q)) return { ok: false, why: 'Görev henüz tamamlanmadı' };
+  S.fy.claimed[i] = 1; giveReward(q.reward); save(); emit('fy'); return { ok: true, reward: q.reward };
+}
+export function claimFyBonus(d) {
+  const { day } = fyState();
+  if (d > day || S.fy.bonus[d]) return { ok: false, why: 'Alınamaz' };
+  if (fyDayClaimed(d) < FY_DAYS[d]) return { ok: false, why: 'Önce günün tüm görevlerini tamamla' };
+  S.fy.bonus[d] = 1; giveReward(FY_BONUS[d]); save(); emit('fy'); return { ok: true, reward: FY_BONUS[d] };
+}
+export function fyClaimable() { if (!S.fy) return 0; const { day } = fyState(); let n = 0; for (const q of FY_TASKS) if (q.day <= day && !S.fy.claimed[q.i] && fyDone(q)) n++; for (let d = 0; d <= day; d++) if (!S.fy.bonus[d] && fyDayClaimed(d) >= FY_DAYS[d]) n++; return n; }
 // ---- VIP ----
 export const vipMine = () => (S.vip ? VIP[S.vip].mine : 0);
 export const vipBoxReady = () => S.vip > 0 && now() >= (S.vipBoxAt || 0);
@@ -1148,7 +1201,7 @@ export function claimVipBox() {
   if (!vipBoxReady()) return { ok: false, why: 'Kutu henüz hazır değil' };
   const d = VIP[S.vip], b = d.box;
   for (const [id, n] of Object.entries(b.items || {})) addItem(id, n);
-  S.energy = (S.energy || 0) + (b.energy || 0);
+  addEnergy(b.energy || 0);
   if (b.gold) S.res.gold += b.gold;
   S.vipBoxAt = now() + d.every * 86400; save(); emit('vip', S.vip); return { ok: true, box: b };
 }
@@ -1157,7 +1210,7 @@ export function gatherRate(type, L, troops, heroIds) {
   const hb = 1 + Math.min(0.5, combinedBonus(heroesOf(heroIds)) / 200);
   return Math.max(1, Math.round(mineRate(type, L) * f * hb * (1 + vipMine() / 100)));
 }
-function finishGather(m, at) {
+function finishGather(m, at) { count('gathers');
   const hrs = Math.max(0, Math.min(m.hours, (at - m.gStart) / 3600)), amount = Math.floor(m.rate * hrs);
   m.loot = { [m.mtype]: amount };
   if (hrs > 0) S.mineMax[m.mtype] = Math.max(S.mineMax[m.mtype] || 0, m.mlevel);

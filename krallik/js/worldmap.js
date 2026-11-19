@@ -9,17 +9,17 @@
 // =====================================================================
 import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
-import * as A from './assets.js?v=2611191836';
-import { createSkinFX, SKINS } from './skins.js?v=2611191836';
-import * as BLD from './buildings.js?v=2611191836';
-import * as G from './state.js?v=2611191836';
-import { SPEEDUPS } from './data.js?v=2611191836';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611191836';
-import { createFire } from './fire.js?v=2611191836';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191836';
+import * as A from './assets.js?v=2611191911';
+import { createSkinFX, SKINS } from './skins.js?v=2611191911';
+import * as BLD from './buildings.js?v=2611191911';
+import * as G from './state.js?v=2611191911';
+import { SPEEDUPS } from './data.js?v=2611191911';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611191911';
+import { createFire } from './fire.js?v=2611191911';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191911';
 
 const $ = (id) => document.getElementById(id);
-const UI = (n) => `assets/ui/${n}.webp?v=2611191836`;
+const UI = (n) => `assets/ui/${n}.webp?v=2611191911`;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 const agoS = (t) => { const s = Date.now() / 1000 - t; return s < 60 ? 'az önce' : s < 3600 ? Math.floor(s / 60) + ' dk önce' : Math.floor(s / 3600) + ' sa önce'; };
@@ -144,7 +144,7 @@ function paintGround(list, lakes, seed) {
 const GT = {};
 function groundTex(name) {
   if (GT[name]) return GT[name];
-  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611191836');
+  const t = new THREE.TextureLoader().load('assets/ui/gt2_' + name + '.webp?v=2611191911');
   t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
   return (GT[name] = t);
 }
@@ -346,7 +346,7 @@ export function openWorldMap(opts = {}) {
     const soilT = groundTex('dirt'), soilMat = new THREE.MeshLambertMaterial({ map: soilT, color: 0x8a6a48, polygonOffset: true, polygonOffsetFactor: -2 });
     const soilGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
     const cropGeo = (() => { const a = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), b = a.clone().rotateY(Math.PI / 2); return BufferGeometryUtils.mergeGeometries([a, b]); })();
-    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611191836'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
+    const cropMat = (tex) => { const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp?v=2611191911'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return windify(new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide }), 0.28, 0, 1); };
     const cropMats = [cropMat('crop_wheat'), cropMat('crop_barley')];
     const crops = [[], []], farms = [], q = new THREE.Quaternion(), e3 = new THREE.Euler(), cm = new THREE.Matrix4(), cv = new THREE.Vector3(), cs = new THREE.Vector3();
     for (let i = 0; i < 120 && farms.length < 26 * D; i++) {
@@ -773,14 +773,14 @@ export function openWorldMap(opts = {}) {
         ${top.length ? `<div class="pyr-dmg"><small>Savaştaki ittifaklar (hasar)</small>${top.map(([aid, d], i) => { const n = st.names[aid] || {}; return `<div><em>${i + 1}.</em><b style="color:${ALLY_COLORS[n.color] || '#fff'}">[${n.tag || '?'}]</b><span>${G.fmt(d)}</span></div>`; }).join('')}</div>` : ''}
         <div class="wm-cs">${stat(c.throne ? '👑' : '🔺', c.throne ? 'Taht gücü' : 'Piramit gücü', G.fmt(c.power))}${stat('⚔️', 'Ordu gücün', G.fmt(G.armyPower(G.S.troops)))}</div>
         ${acc.ok ? `<div class="wm-shield ok">⚔️ İttifakın ${c.throne ? 'Demir Taht\'a' : 'bu piramide'} savaş açabilir. Saldır ya da ralli aç!</div>` : `<div class="wm-shield zl">🔒 ${acc.why}</div>`}
-        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('gold', 'wmAtk', '⚔', 'Saldır', '', !acc.ok || full)}${B('crimson', 'wmRally', '📯', 'Ralli aç', '', !acc.ok || full)}</div>`, 'pyr');
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('gold', 'wmAtk', '⚔', 'Saldır', cost('⚡', 10), !acc.ok || full)}${B('crimson', 'wmRally', '📯', 'Ralli aç', cost('⚡', 10), !acc.ok || full)}</div>`, 'pyr');
     } else if (c && c.giant) {
       const L = c.level, lock = !G.giantUnlocked(L), rw = G.giantRewards(L), full = G.S.marches.length >= G.MAX_MARCHES, ally = !!G.S.alliance;
       card = win(`🗿 Dev Sv.${L}`, '👥 Ralli • en fazla 5', `
         <div class="wm-cs">${stat('💀', 'Dev gücü', G.fmt(c.power))}${stat('⚔️', 'Ordu gücün', G.fmt(G.armyPower(G.S.troops)))}</div>
         <div class="wm-zrw"><small>Ödüller (her katılana eşit)</small><div><span>🌾🪵 ${G.fmt(rw.res.food)}</span><span>🪨 ${G.fmt(rw.res.stone)}</span>${rw.items.map((it) => `<span>⏩ ${SPEEDUPS[it.id].short} ×${it.n}</span>`).join('')}</div></div>
         ${lock ? `<div class="wm-shield zl">🔒 Önce <b>Sv.${L - 1}</b> devi kesmelisiniz. En yüksek: Sv.${G.S.giantMax || 0}</div>` : c.frozen ? '<div class="wm-shield">📯 Bu deve ralli açıldı</div>' : !ally ? '<div class="wm-shield zl">🛡️ Devler yalnızca ittifak rallisiyle kesilir. Önce bir ittifaka katıl.</div>' : full ? '<div class="wm-shield zl">🚩 3 birliğin de dışarıda.</div>' : ''}
-        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('crimson', 'wmRally', '📯', 'Ralli aç', '', lock || c.frozen || !ally || full)}</div>`, 'giant');
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('crimson', 'wmRally', '📯', 'Ralli aç', cost('⚡', 10), lock || c.frozen || !ally || full)}</div>`, 'giant');
     } else if (c && c.mine) {
       const MT = G.MINE_TYPES[c.type], L = c.level, lock = !G.mineUnlocked(c.type, L), busy = c.busy && G.S.marches.find((m) => m.id === c.busy), t = G.marchTime(c, G.S.troops), full = G.marchesFull?.() ?? G.S.marches.length >= G.MAX_MARCHES;
       card = win(`${MT.icon} ${MT.name} Sv.${L}`, `⏱ ${fmtT(t)}`, `
@@ -795,7 +795,7 @@ export function openWorldMap(opts = {}) {
         <div class="wm-cs">${stat('💀', 'Gereken güç', G.fmt(need))}${stat('⚔️', 'Ordu gücün', G.fmt(mine), `<em class="wm-diff ${ok[1]}">${ok[0]}</em>`)}</div>
         <div class="wm-zrw"><small>Ödüller</small><div><span>🌾🪵🪨 ${G.fmt(lo)}–${G.fmt(hi)}</span><span>⏩ 1dk${L >= 20 ? ' ×' + (1 + Math.floor(L / 20)) : ''}</span><span>⏩ 5dk <i>şans</i></span></div></div>
         ${lock ? `<div class="wm-shield zl">🔒 Önce <b>Sv.${L - 1}</b> zombiyi öldürmelisin. En yüksek: Sv.${G.S.zombieMax || 0}</div>` : ''}
-        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('crimson', 'wmAtk', going ? '🚩' : '⚔', going ? 'Yolda…' : 'Saldır', '', lock || going)}</div>`, 'zombie');
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('crimson', 'wmAtk', going ? '🚩' : '⚔', going ? 'Yolda…' : 'Saldır', going ? '' : cost('⚡', 5), lock || going)}</div>`, 'zombie');
     } else if (c && !c.me && !c.ground) {
       const scouting = G.S.scouts.some((q) => q.target === c.id), last = G.lastScout(c.id), st = G.scoutTime(c);
       const t = G.marchTime(c, G.S.troops), sh = c.shieldUntil > Date.now() / 1000, ratio = c.power / Math.max(1, G.cityPower()), cs = G.enemyCity(c), chp = Math.round(G.cityHpOf(cs)), razedC = chp <= 0;
@@ -806,7 +806,7 @@ export function openWorldMap(opts = {}) {
         ${razedC ? '<div class="wm-shield zl">🔥 Bu şehir yıkıldı. Sahibi onu haritada başka bir yere taşıyacak.</div>' : ''}
         ${c.real && c.uid ? '<button id="wmProf" class="wm-prof">👤 Profili gör</button>' : ''}
         ${sh ? `<div class="wm-shield">🛡️ Kalkan aktif: ${G.fmtTime(c.shieldUntil - Date.now() / 1000)}</div>` : ''}
-        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('violet', 'wmScout', scouting ? '🚁' : '👁', scouting ? 'Yolda…' : 'Gözetle', scouting ? '' : cost('🌾', G.SCOUT_COST.food), sh || scouting)}${isAlly(c) ? B('steel', 'wmAlly', '🤝', 'Müttefik', '', true) : B('crimson', 'wmAtk', '⚔', 'Saldır', '', sh || razedC)}</div>
+        <div class="wm-cb">${B('steel', 'wmClose', '✖', 'Kapat')}${B('violet', 'wmScout', scouting ? '🚁' : '👁', scouting ? 'Yolda…' : 'Gözetle', scouting ? '' : cost('🌾', G.SCOUT_COST.food), sh || scouting)}${isAlly(c) ? B('steel', 'wmAlly', '🤝', 'Müttefik', '', true) : B('crimson', 'wmAtk', '⚔', 'Saldır', cost('⚡', 10), sh || razedC)}</div>
         ${last || home ? `<div class="wm-cb">${last ? B('gold', 'wmLastRep', '📜', `Rapor <small>(${agoS(last.t)})</small>`) : ''}${home ? B('sapphire', 'wmTpNear', '📍', 'Yanına ışınlan', cost('🪙', G.TELEPORT_COST)) : ''}</div>` : ''}`, 'enemy');
     } else if (c && c.ground) {
       const okSpot = G.spotFree(c.mapX, c.mapY);

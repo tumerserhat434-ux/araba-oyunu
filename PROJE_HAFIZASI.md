@@ -643,6 +643,13 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Arayüz:** `drillUI()` (asker kartları "Sv.x / 10", hasar/savunma/can → sonraki değer, bedel, "⬆ Yükselt", ilerleme + hızlandır). Kışla kartı seviyeli değerleri ve `Sv.n` etiketini gösterir.
 - **Bina penceresi (#sheet) teması** (style.css sonu "Bina pencereleri"): bordo zemin + alt kale silueti, köşe süsleri (`.rk-c` renderSheet içinde), kırmızı kadife başlık (banner_alliance arka planlı), 88 px altın halkalı portre, büyük harfli altın başlık, ❦ süslü mavi "Seviye x / y" plakası, koyu-altın kartlar, Cinzel kırmızı büyük düğme.
 
+### 5.47 Enerji ve Fetih Yolu etkinliği
+- **Enerji (`state.js`):** `ENERGY_MAX 200`, `ENERGY_REGEN 300` sn (5 dk'da 1, 200'de durur), `S.energy` + `S.energyAt`; `energyNow()` (geçen süreyi işler), `energyNextIn`, `energyFullIn`, `spendEnergy(n)` (sayaç `energy`), `addEnergy` (ödüller/VIP 200'ü aşabilir). Bedeller `ENERGY_COST { attack: 10, rally: 10, zombie: 5 }`; `energyCostOf(e)`: maden/dev 0, zombi 5, şehir/piramit/taht 10. `startMarch` asker kontrolünden sonra düşer, `reattack` 10, ralli açma (`main.js`) önce kontrol, Firestore'da ralli oluşunca düşer. Eski kayıtlarda enerji 200 ile başlar. Haritada düğmelerde "⚡10 / ⚡5".
+- **Şehir HUD:** `#chipEnergy` (Ordu ve İnşaatçı'nın altında, ic_energy, x/200 ve mavi çubuk; dokununca sonraki enerji ve dolma süresi). `updateEnergy()` 0,5 sn döngüde.
+- **Fetih Yolu (`data.js → FY_TASKS` 100, `FY_DAYS [14×5, 15, 15]`, `FY_BONUS`):** 15 şablon (toplama, eğitim, yükseltme, zafer, zombi, enerji harcama, hızlandırma, kazım, gözetleme, öldürme, çağırma, iyileştirme, araştırma, tank, toplama-2), hedefler güne göre artar; ödüller dönüşümlü (5–8 enerji, 1–3×1dk, 1×5dk, 20–30 bin kaynak, 10–15 altın). Gün sandığı: 20 enerji / 4×5dk / 50 altın / 30 enerji + 2×15dk / 50 altın + 1sa / 40 enerji + 6×5dk / 100 altın + 50 enerji + 2×1sa.
+- `S.fy { start (gece yarısı), bases {gün: sayaç kopyası}, claimed, bonus }`; gün açılınca sayaçlar kopyalanır, ilerleme = sayaç − kopya; açılmış günler sonradan da tamamlanabilir; 7 gün sonra yeni sezon. `fyState`, `fyProg`, `claimFy`, `claimFyBonus`, `fyClaimable` (#evDot), `giveReward`. Yeni sayaçlar: `zombies`, `kills`, `gathers`, `scouts`, `energy`.
+- **Arayüz:** Görevler penceresinde ilk sekme "Fetih Yolu" (`fyBody`), "Etkinlikler" düğmesi bunu açar: afiş + kalan süre, 7 gün düğmesi (kilit/✓/nokta), gün ilerleme çizgisi (bölmeli) + gün sandığı, görev satırları (ilerleme, ödül çipleri, Al).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
