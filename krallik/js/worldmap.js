@@ -8,14 +8,14 @@
 //  - Seferler: ordu haritada yürür, varınca savaşır, geri döner.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611191317';
-import { createSkinFX, SKINS } from './skins.js?v=2611191317';
-import * as BLD from './buildings.js?v=2611191317';
-import * as G from './state.js?v=2611191317';
-import { SPEEDUPS } from './data.js?v=2611191317';
-import { createSoldier, createTank, animateUnit } from './units.js?v=2611191317';
-import { createFire } from './fire.js?v=2611191317';
-import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191317';
+import * as A from './assets.js?v=2611191347';
+import { createSkinFX, SKINS } from './skins.js?v=2611191347';
+import * as BLD from './buildings.js?v=2611191347';
+import * as G from './state.js?v=2611191347';
+import { SPEEDUPS } from './data.js?v=2611191347';
+import { createSoldier, createTank, animateUnit } from './units.js?v=2611191347';
+import { createFire } from './fire.js?v=2611191347';
+import { openScene, closeScene, sceneOverlay as ov, freeSkeletons, freeScene } from './scenes.js?v=2611191347';
 
 const $ = (id) => document.getElementById(id);
 const UI = (n) => `assets/ui/${n}.webp`;
@@ -26,7 +26,7 @@ const fmtT = (s) => { s = Math.max(0, Math.ceil(s)); const h = Math.floor(s / 36
 let C = null; // { renderer, toast, sfx, onAttack(id), online, serverPlayers, onTeleport }
 let W = null; // açık harita durumu
 
-export function initWorldMap(ctx) { C = ctx; }
+export function initWorldMap(ctx) { C = ctx; A.ensureHF('w_rock'); } // gerçekçi ağaç/kaya modelleri önceden yüklenir
 export const worldOpen = () => !!W;
 
 const MAP = G.MAP_SIZE, MIN_D = 80, MAX_D = 950;
@@ -189,7 +189,7 @@ function groundMaterial(list, lakes, seed) {
       vec3 g1 = mix(texture2D(tGrass, tu).rgb, texture2D(tGrass, tu2).rgb, 0.3);
       vec3 g2 = mix(texture2D(tMeadow, tu * 1.13 + 0.5).rgb, texture2D(tMeadow, tu2 * 0.9).rgb, 0.3) * 1.62; // koyu dokuyu çim parlaklığına getir
       vec3 c = mix(g1, g2, smoothstep(0.35, 0.8, mc.g) * 0.75);
-      vec3 dC = texture2D(tDirt, tu * 1.6).rgb, sC = texture2D(tSand, tu * 1.1).rgb * vec3(0.84, 0.8, 0.74), stC = texture2D(tStone, tu * 2.2).rgb * vec3(1.12, 1.04, 0.86);
+      vec3 dC = texture2D(tDirt, tu * 1.6).rgb, sC = texture2D(tSand, tu * 1.1).rgb * vec3(0.8, 0.72, 0.6), stC = texture2D(tStone, tu * 2.2).rgb * vec3(1.12, 1.04, 0.86);
       // geçişler dokunun kendi desenine göre (bulanık halka yerine doğal, keskin kenar)
       float n = dot(texture2D(tDirt, tu * 3.7).rgb, vec3(0.33)) - 0.4;
       c = mix(c, dC, smoothstep(0.42, 0.58, sp.r + n * 0.5));
@@ -197,8 +197,8 @@ function groundMaterial(list, lakes, seed) {
       c = mix(c, stC, smoothstep(0.4, 0.6, sp.b + n * 0.3));
       // renk düzenleme: tüm zemin aynı soluk, hafif sıcak paletle (binalar ve taht öne çıksın)
       float l = dot(c, vec3(0.3, 0.59, 0.11));
-      c = mix(vec3(l), c, 0.9) * vec3(1.02, 1.0, 0.9);
-      diffuseColor.rgb *= c * (1.07 + clamp(mc.r - 0.5, -0.25, 0.2) * 0.6);
+      c = mix(vec3(l), c, 1.05) * vec3(0.84, 0.95, 0.74); // gündüz: derin, doğal yeşil
+      diffuseColor.rgb *= c * (0.98 + clamp(mc.r - 0.5, -0.25, 0.2) * 0.7);
     `);
   };
   mat.customProgramCacheKey = () => 'groundSplat2';
@@ -265,15 +265,17 @@ function makeHeli() {
 }
 
 export function openWorldMap(opts = {}) {
+  A.ensureHF('w_rock');
   const scene = new THREE.Scene();
-  const SKY = 0x0b1430;
+  const SKY = 0xa9c9e2; // gündüz pusu
   scene.background = new THREE.Color(SKY);
   scene.fog = new THREE.Fog(SKY, 300, 900);
   const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 1, 2200);
-  scene.add(new THREE.HemisphereLight(0xa8bcf8, 0x22342a, 2.15));
-  const moon = new THREE.DirectionalLight(0xc8d6ff, 2.2); moon.position.set(-200, 340, 160); scene.add(moon);
-  const rim = new THREE.DirectionalLight(0xffc890, 0.45); rim.position.set(220, 160, -200); scene.add(rim);
-  scene.add(new THREE.AmbientLight(0x3a4a80, 0.55));
+  // gündüz: sıcak güneş + açık mavi gök ışığı (eskiden gece/ay ışığıydı)
+  scene.add(new THREE.HemisphereLight(0xe0ecff, 0x5a6a38, 1.3));
+  const sun = new THREE.DirectionalLight(0xfff0d2, 2.2); sun.position.set(-220, 360, 180); scene.add(sun);
+  const rim = new THREE.DirectionalLight(0xffd8a0, 0.5); rim.position.set(240, 160, -200); scene.add(rim);
+  scene.add(new THREE.AmbientLight(0xfff4e6, 0.35));
 
   const S = G.S, myServer = S.server || 1, server = opts.server || myServer, home = server === myServer;
   // şehirler
@@ -297,18 +299,49 @@ export function openWorldMap(opts = {}) {
   const waterMat = new THREE.MeshStandardMaterial({ color: 0x2f5f6a, roughness: 0.15, metalness: 0.35, emissive: 0x0c2a34, emissiveIntensity: 0.8 }); // zeminle uyumlu, soluk derin su
   for (const l of lakes) { const w = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), waterMat); w.scale.set(l.r, 1, l.r * 0.7); w.rotation.y = -l.a; w.position.set(l.x, 0.12, l.z); scene.add(w); }
 
-  // ormanlar: kümeler halinde, şehir ve tahttan uzak; harita kenarında daha sık
-  for (let v = 0; v < 3; v++) {
-    const ms = []; let tries = 0;
-    while (ms.length < 820 && tries++ < 9000) {
-      const edge = rnd() < 0.45, cx = edge ? (rnd() < 0.5 ? rnd() * 90 : MAP - rnd() * 90) : rnd() * MAP, cz = rnd() * MAP;
-      const [ax, az] = rnd() < 0.5 ? [cx, cz] : [cz, cx];
-      for (let j = 0; j < 9 && ms.length < 820; j++) { const x = ax + (rnd() - 0.5) * 48, z = az + (rnd() - 0.5) * 48; if (!free(x, z, 20) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 4)) continue; const s = 1.1 + rnd() * 0.8; ms.push(mat4(x, 0, z, rnd() * 6.28, s, s * 1.15)); }
+  // doğa: gerçekçi çam ve meşe kümeleri (Higgsfield modelleri), kaya grupları, tarlalar — fazla kalabalık değil
+  const hfProto = (k, h) => { if (!A.hasHF(k)) return null; const m = A.hfModel(k), sz = A.hfSize(k); if (!m) return null; m.scale.setScalar(h / sz.y);
+    m.traverse((o) => { if (o.isMesh && o.material) { o.material = o.material.clone(); o.material.emissive?.setRGB(0, 0, 0); o.material.emissiveMap = null; o.material.roughness = 0.9; } }); /* gündüz: kendi ışığı yok */ const g = new THREE.Group(); g.add(m); return g; };
+  const okSpot = (x, z, r) => free(x, z, r) && !lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 5);
+  const natureG = new THREE.Group(); scene.add(natureG);
+  const buildNature = () => {
+    let sd2 = server * 911 + 5; const rnd = () => ((sd2 = (sd2 * 16807) % 2147483647) / 2147483647); // her açılışta aynı yerleşim
+    const scene = natureG;
+    const pine = [], oak = [], rocks = [];
+    const D = A.LOW_MEM ? 0.5 : 1; // düşük bellekli telefonlarda yarı yoğunluk
+    for (let c = 0; c < 230 * D; c++) {
+      const edge = rnd() < 0.35, cx = edge ? (rnd() < 0.5 ? 30 + rnd() * 80 : MAP - 30 - rnd() * 80) : 40 + rnd() * (MAP - 80), cz = 40 + rnd() * (MAP - 80);
+      const [ax, az] = rnd() < 0.5 ? [cx, cz] : [cz, cx], n = 5 + Math.floor(rnd() * 9), kind = rnd();
+      for (let j = 0; j < n; j++) { const x = ax + (rnd() - 0.5) * 46, z = az + (rnd() - 0.5) * 46; if (!okSpot(x, z, 20)) continue; const s = 0.8 + rnd() * 0.45; (kind < 0.62 ? pine : kind < 0.84 ? oak : (rnd() < 0.65 ? pine : oak)).push(mat4(x, 0, z, rnd() * 6.28, s, s)); }
     }
-    instancify(tinted(BLD.createTree(v === 2 ? 3 : v)), ms, scene);
-  }
-  // küçük çalılar: zemine derinlik (tek seferde çizilir)
-  { const ms = []; for (let i = 0; i < 1400; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!free(x, z, 12) || lakes.some((l) => Math.hypot(l.x - x, l.z - z) < l.r + 3)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(tinted(BLD.createTree(1), new THREE.Color(0.72, 0.84, 0.46)), ms, scene); }
+    for (let i = 0; i < 420 * D; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 16)) continue; (rnd() < 0.7 ? pine : oak).push(mat4(x, 0, z, rnd() * 6.28, 0.75 + rnd() * 0.4)); } // tek tük ağaçlar
+    for (let i = 0; i < 200 * D; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 14)) continue; rocks.push(mat4(x, 0, z, rnd() * 6.28, 0.6 + rnd() * 0.9, 0.5 + rnd() * 0.7)); }
+    const pR = hfProto('w_rock', 3.2);
+    // ağaçlar: Higgsfield ağaç resimlerinden kameraya dönük kartlar (kamera hep aynı yönden bakar; binlerce ağaç tek çizimde)
+    const bbGeo = new THREE.PlaneGeometry(1, 1).translate(0, 0.5, 0), tilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.3, 0, 0));
+    const shadowMat = new THREE.MeshBasicMaterial({ map: discTex(), color: 0x0a1406, transparent: true, opacity: 0.38, depthWrite: false });
+    const m4 = new THREE.Matrix4(), v3 = new THREE.Vector3(), sc3 = new THREE.Vector3(), col = new THREE.Color(), qId = new THREE.Quaternion();
+    const billboards = (list, tex, H, W) => {
+      if (!list.length) return;
+      const t = new THREE.TextureLoader().load('assets/ui/' + tex + '.webp'); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+      const im = new THREE.InstancedMesh(bbGeo, new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.42, side: THREE.DoubleSide }), list.length);
+      const sh = new THREE.InstancedMesh(discGeo, shadowMat, list.length);
+      list.forEach((M, i) => { v3.setFromMatrixPosition(M); sc3.setFromMatrixScale(M); const k = sc3.x;
+        im.setMatrixAt(i, m4.compose(v3, tilt, sc3.set(W * k * (rnd() < 0.5 ? 1 : -1), H * k, 1))); im.setColorAt(i, col.setScalar(0.82 + rnd() * 0.26));
+        sh.setMatrixAt(i, m4.compose(v3.setY(0.2), qId, sc3.set(W * k * 0.75, 1, W * k * 0.45))); });
+      im.frustumCulled = false; sh.frustumCulled = false; scene.add(sh, im);
+    };
+    billboards(pine, 'tr_pine', 15, 15); billboards(oak, 'tr_oak', 13.5, 13.5);
+    if (pR) instancify(pR, rocks, scene);
+    // tarlalar: şehirlerin çevresinde ve kırsalda düz tarla dokusu
+    const farmMat = new THREE.MeshLambertMaterial({ map: new THREE.TextureLoader().load('assets/ui/w_farm.webp', (t) => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; }), polygonOffset: true, polygonOffsetFactor: -2 });
+    const farmGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), farms = [];
+    for (let i = 0; i < 140 && farms.length < 50; i++) { const c = list[Math.floor(rnd() * list.length)], base = c && rnd() < 0.7 ? [c.mapX, c.mapY] : [rnd() * MAP, rnd() * MAP], a = rnd() * 6.28, d = c ? 34 + rnd() * 18 : 0; const x = base[0] + Math.cos(a) * d, z = base[1] + Math.sin(a) * d; if (!okSpot(x, z, 18) || farms.some(([fx, fz]) => Math.hypot(fx - x, fz - z) < 30)) continue; farms.push([x, z]); const f = new THREE.Mesh(farmGeo, farmMat), sz = 16 + rnd() * 8; f.scale.set(sz, 1, sz * (0.8 + rnd() * 0.4)); f.rotation.y = rnd() * 6.28; f.position.set(x, 0.14, z); scene.add(f); }
+  };
+  // modeller inene kadar bekle (en fazla 8 sn), sonra doğayı kur
+  { let tries = 0; const go = () => { if (!W && tries) return; if (A.hasHF('w_rock') || tries++ > 26) buildNature(); else setTimeout(go, 300); }; go(); }
+  // küçük çalılar: zemine derinlik (az)
+  { const ms = []; for (let i = 0; i < 500; i++) { const x = rnd() * MAP, z = rnd() * MAP; if (!okSpot(x, z, 12)) continue; const sc = 0.32 + rnd() * 0.28; ms.push(mat4(x, 0, z, rnd() * 6.28, sc, sc * 0.75)); } instancify(tinted(BLD.createTree(1), new THREE.Color(0.72, 0.84, 0.46)), ms, scene); }
   // dağlar: haritayı çevreleyen sıra + içeride birkaç tane
   const mts = ['mountain_A_grass_trees', 'mountain_B_grass_trees', 'mountain_C_grass_trees', 'hills_A_trees'];
   for (let i = 0; i < 80; i++) {
@@ -385,7 +418,7 @@ export function openWorldMap(opts = {}) {
     const terr = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: terrTex(), color: col, transparent: true, opacity: 0.8, depthWrite: false })); terr.scale.set(c.me ? 44 : 38, 1, c.me ? 44 : 38); terr.position.y = 0.18 + (c.me ? 0.02 : 0); g.add(terr);
     const base = new THREE.Mesh(baseGeo, baseMat); base.position.y = 0.4; g.add(base);
     const cm = cityModel(c.th || 1); cm.position.y = 0.8; if (c.me) cm.scale.multiplyScalar(1.2); g.add(cm);
-    const gg = groundGlow(0xffa040, 32, 0.6); gg.position.y = 0.3; g.add(gg);
+    const gg = groundGlow(0xffa040, 32, 0.18); // gündüzde hafif gg.position.y = 0.3; g.add(gg);
     // belediye efekti (benim ya da efekti olan gerçek oyuncular)
     const sk = c.me ? G.S.skin : c.skin; let fx = null;
     if (sk && SKINS[sk]) { fx = createSkinFX(sk, { R: c.me ? 8.5 : 7.5, H: c.me ? 13 : 11, base: cm }); fx.position.y = 0.8; g.add(fx); skinFxs.push(fx); }
@@ -679,7 +712,7 @@ export function openWorldMap(opts = {}) {
   const wh = (e) => { cam.dT = clamp(cam.dT * (1 + Math.sign(e.deltaY) * 0.16), MIN_D, MAX_D); cam.anchor = { x: e.clientX, y: e.clientY }; cam.fly = null; };
   cv.addEventListener('pointerdown', pd); addEventListener('pointermove', pm); addEventListener('pointerup', pu); addEventListener('pointercancel', pu); cv.addEventListener('wheel', wh, { passive: true });
   const flyTo = (x, z, d) => { cam.fly = { x0: cam.tx, z0: cam.tz, d0: cam.d, x, z, d: d ?? cam.d, t: 0 }; cam.vx = cam.vz = 0; cam.anchor = null; };
-  window.__wm = { cam, flyTo, marchObjs }; // hata ayıklama/test
+  window.__wm = { cam, flyTo, marchObjs, scene }; // hata ayıklama/test
   const tap = (sx, sy) => {
     placeCam();
     for (const [id, o] of marchObjs) { if (!o.army.visible) continue; _v.set(o.army.position.x, 3, o.army.position.z).project(camera); if (Math.hypot((_v.x + 1) / 2 * innerWidth - sx, (1 - _v.y) / 2 * innerHeight - sy) < 34) { toggleMc(id); return; } }

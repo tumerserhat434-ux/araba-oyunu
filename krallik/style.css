@@ -660,7 +660,7 @@ nav#nav .dot::after { content: '!'; position: absolute; inset: 0; display: grid;
 .wm-l.sel span { color: #fff; }
 .wm-l i { font-style: normal; font-size: 12px; position: absolute; right: -14px; top: 2px; }
 #wmLabels.far .wm-l:not(.me):not(.throne) span { display: none; }
-.wm-vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 55%, rgba(4,8,20,.55) 100%); }
+.wm-vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 62%, rgba(30,24,10,.28) 100%); }
 .wm-m { position: absolute; left: 0; top: 0; padding: 2px 8px; border-radius: 10px; background: #1a4ab0; color: #fff; font-family: 'Lilita One', sans-serif; font-size: 12px; box-shadow: 0 0 0 1.5px #9fd0ff; white-space: nowrap; }
 .wm-top { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; pointer-events: auto; }
 .wm-srv { border: 0; padding: 7px 12px; border-radius: 14px; font-family: 'Lilita One', sans-serif; font-size: 14px; color: #fff; background: linear-gradient(180deg, #2a4ab8, #142a78); box-shadow: 0 0 0 1.5px #0a0f22, 0 0 0 3px #b27a1c, 0 4px 8px rgba(0,0,0,.4); }
@@ -1849,3 +1849,25 @@ body[data-scene="world"] .chat-bar { bottom: calc(max(6px, env(safe-area-inset-b
 @media (max-width: 400px) { .rk-theme .w-plaque { min-width: 220px; padding: 13px 56px 18px; } .rk-theme .w-plaque span { font-size: 20px; } .rk-theme .w-medal { width: 150px; height: 102px; margin-bottom: -36px; } .rk-theme .w-head { top: -68px; } }
 .rk-theme .w-plaque { position: relative; z-index: 3; }
 .rk-theme .w-medal { margin-bottom: -30px; z-index: 1; }
+
+/* ===== Tüm pencereler: kırmızı-altın tema (aslanlı arma) ve koyu bileşenler ===== */
+.rk-theme.win-lion .w-medal { width: 128px; height: 108px; margin-bottom: -28px; background-image: url('assets/ui/win_crest.webp'); }
+.rk-theme.win-lion .w-head { top: -70px; }
+.rk-theme.win-lion .w-body { padding-top: 66px; }
+.rk-theme .w-card { background: linear-gradient(180deg, rgba(52, 30, 26, .9), rgba(18, 11, 16, .92)); border: 1px solid rgba(200, 150, 60, .42); box-shadow: inset 0 1px 0 rgba(255, 220, 150, .08), 0 3px 8px rgba(0,0,0,.4); }
+.rk-theme .w-card h4 { color: #ffe8b0; }
+.rk-theme .w-stat { background: linear-gradient(180deg, rgba(56, 32, 28, .92), rgba(20, 12, 16, .94)); border: 1px solid rgba(200, 150, 60, .42); }
+.rk-theme .w-stat small { color: #d8b878; }
+.rk-theme .w-banner { box-shadow: 0 0 0 1.5px rgba(220, 170, 70, .7), 0 4px 10px rgba(0,0,0,.5); }
+.rk-theme .w-badge.off img { filter: grayscale(1) brightness(.45); }
+.rk-theme .pf-edit { background: linear-gradient(180deg, #d0342a, #7a0e08); color: #fff3d0; box-shadow: 0 0 0 1px #ffd070; }
+.rk-theme .pf-h { background: radial-gradient(circle at 50% 30%, #3a2420, #120a0c); }
+.rk-theme .w-btn:not(.gold):not(.green):not(.red) { background: linear-gradient(180deg, #4a3028, #24140f); box-shadow: 0 0 0 1px rgba(220, 170, 70, .55), 0 3px 0 #0e0604; }
+.rk-theme input, .rk-theme textarea, .rk-theme select { background: rgba(10, 6, 8, .8) !important; border: 1px solid rgba(200, 150, 60, .5) !important; color: #fff3dc !important; }
+.rk-theme .al-off, .rk-theme .ch-h, .rk-theme .ch-me, .rk-theme .hp-head, .rk-theme .rl-head { background: rgba(14, 8, 12, .78); box-shadow: inset 0 0 0 1px rgba(200, 150, 60, .32); }
+.rk-theme .al2-top::before { background: linear-gradient(90deg, rgba(20, 8, 8, .3), rgba(20, 10, 12, .85) 55%); }
+.rk-theme .al-msg .al-bub { background: rgba(40, 22, 20, .85); box-shadow: inset 0 0 0 1px rgba(200, 150, 60, .3); }
+.rk-theme .al-msg.me .al-bub { background: rgba(110, 30, 22, .75); }
+.rk-theme .w-row, .rk-theme .pack, .rk-theme .sp-row, .rk-theme .sp-head, .rk-theme .al-card, .rk-theme .al-head, .rk-theme .al-mrow, .rk-theme .rl-card, .rk-theme .w-main .rep, .rk-theme .w-main .stat, .rk-theme .w-main .rankrow {
+  background: linear-gradient(180deg, rgba(56, 32, 28, .92), rgba(18, 11, 16, .94)); border: 1px solid rgba(200, 150, 60, .42); box-shadow: inset 0 1px 0 rgba(255, 220, 150, .07), 0 2px 6px rgba(0,0,0,.35); }
+.rk-theme .pack { border-width: 1.5px; border-color: rgba(230, 180, 80, .6); }

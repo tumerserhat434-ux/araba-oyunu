@@ -609,6 +609,14 @@ cd araba-oyunu && python3 -m http.server 8000
 ### 5.41 Sıralama teması (kırmızı-altın)
 - Sadece sıralama penceresi: `openModal` → `box.classList.toggle('rk-theme', modalKind === 'ranking')`. Higgsfield (~1,25 kredi) ile `assets/ui/rk_crest.webp` (taç + miğfer arması, `.w-medal` arka planı), `rk_ribbon.webp` (kırmızı kurdele, `.w-plaque` arka planı, önde z-index 3), `rk_corner.webp` (4 köşe `.rk-c tl/tr/bl/br`, aynalanarak), `rk_i_crown/swords/laurel/scroll.webp` (sekme simgeleri), `rk_castle.webp` (`.w-body` alt arka planı). Beyaz zeminler kenardan taşma dolgusuyla saydam yapıldı. Stil: style.css sonundaki "Sıralama teması" bloğu (koyu bordo panel, altın çift çerçeve, kırmızı seçili sekme, altın kenarlı satırlar, ilk 3 altın/gümüş/bronz, ben altın parıltı).
 
+### 5.42 Gündüz dünya haritası, resim kartı ağaçlar, tüm pencerelerde kırmızı-altın tema
+- **Gündüz:** `worldmap.js` ışıkları gece/ay yerine sıcak güneş (`HemisphereLight 0xe0ecff/0x5a6a38 1.3`, `sun 0xfff0d2 2.2`, `SKY 0xa9c9e2`), `.wm-vig` hafif sıcak, şehir zemin parıltısı 0,18. Zemin shader rengi `vec3(0.84, 0.95, 0.74)` (derin yeşil), kum `vec3(0.8, 0.72, 0.6)`.
+- **Ağaçlar:** Higgsfield ağaç resimleri (`assets/ui/tr_pine.webp`, `tr_oak.webp`, beyaz zemin kesilmiş, alttaki çim tabanı kırpılmış) **kameraya dönük kart** (InstancedMesh, `alphaTest`, hafif geriye eğik, rastgele yansıma ve ton) + her ağacın altında gölge diski. Kamera yönü hiç dönmediği için kartlar her açıdan doğru görünür. ~230 küme (5–13 ağaç) + ~420 tek ağaç, `LOW_MEM` yarısı. 3D ağaç modelleri denendi (Tripo ~18 kredi) ama binlerce kopya telefon için ağırdı; silindi.
+- **Kayalar:** `assets/hf/w_rock.glb` (Tripo + gltf-transform weld/simplify/meshopt/webp 512, ~1.080 üçgen, 58 KB), ~200 kopya; emissive kapalı (`hfProto`). **Tarlalar:** `assets/ui/w_farm.webp` düz çıkartma, şehir çevresinde ~50 adet.
+- Doğa `natureG` grubunda, `buildNature()` kaya modeli inince (en çok 8 sn bekler) kurulur; yerleşim sunucuya göre sabit tohumlu. Eski KayKit çalılar 500'e indi.
+- **Pencere teması her yerde:** `openModal` tüm `.win` pencerelere `rk-theme`, sıralama dışındakilere `win-lion` ekler (aslanlı kalkan + çapraz kılıç arması `assets/ui/win_crest.webp`). Köşe süsleri artık `head()` içinde. Koyu bileşen geçersiz kılmaları: `.w-card, .w-stat, .w-row, .pack, .sp-row, .al-card, .al-mrow, .rl-card` vb. (style.css sonu "Tüm pencereler" bloğu).
+- Araç: `gltf-transform` scratchpad'e kuruldu (`scratchpad/gt`), depoda değil.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
