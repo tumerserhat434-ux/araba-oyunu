@@ -650,7 +650,7 @@ nav#nav .dot::after { content: '!'; position: absolute; inset: 0; display: grid;
   background: radial-gradient(circle at 50% 30%, #ff7a5a, #b0281a 70%); box-shadow: 0 0 0 1.5px #1a0806, 0 0 0 3px #ffd88a, 0 3px 6px rgba(0,0,0,.6); }
 .wm-l span { padding: 0 2px; }
 .wm-l.bot span { color: #ffd2c8; }
-.wm-l.real b { background: radial-gradient(circle at 50% 30%, #7ac0ff, #1a56c8 70%); } .wm-l.real span { color: #cfe6ff; }
+.wm-l.real b { background: radial-gradient(circle at 50% 30%, #ff8a7a, #c81e1e 70%); } .wm-l.real span { color: #ffd2c8; }
 .wm-l.me b { background: radial-gradient(circle at 50% 30%, #fff08a, #d89a10 70%); color: #3a2000; text-shadow: none; box-shadow: 0 0 0 1.5px #2a1800, 0 0 0 3px #fff, 0 0 12px rgba(255,210,80,.9); }
 .wm-l.me span { color: #9dff7a; font-size: 1.08em; }
 .wm-l.throne b { background: radial-gradient(circle at 50% 30%, #ffb05a, #a8320a 70%); font-size: calc(15px * var(--wm-s, 1)); min-width: calc(30px * var(--wm-s, 1)); height: calc(30px * var(--wm-s, 1)); }
@@ -1763,3 +1763,43 @@ body[data-scene="world"] .chat-bar { bottom: calc(max(6px, env(safe-area-inset-b
 .city-hp { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom) + 214px); display: flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; background: rgba(14,10,40,.82); box-shadow: 0 0 0 1.5px rgba(255,210,120,.5); font-family: 'Lilita One', sans-serif; font-size: 13px; color: #fff; }
 .city-hp span { width: 110px; height: 8px; border-radius: 4px; background: rgba(0,0,0,.6); overflow: hidden; }
 .city-hp u { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #3ad070, #a8ff7a); transition: width .4s linear; }
+
+/* ===== Harita kartı v2: küçük, savaşı kapatmayan ===== */
+.wm-card { margin-top: 10px; padding: 14px 9px 8px; border-radius: 15px; border-width: 2px; }
+.wm-card::before, .wm-card::after { top: 6px; width: 7px; height: 7px; }
+.wm-crown { width: 38px; height: 28px; top: -17px; }
+.wm-ch { margin: 0 2px 6px; gap: 6px; }
+.wm-ch b { font-size: 15px; }
+.wm-ch span, .wm-badge { font-size: 11.5px !important; padding: 2px 8px !important; }
+.wm-cs { gap: 5px; margin-bottom: 6px; }
+.wm-st { padding: 4px 7px; gap: 6px; border-radius: 10px; }
+.wm-st > i { width: 24px; height: 24px; font-size: 14px; }
+.wm-st small { font-size: 9.5px; }
+.wm-st b { font-size: 13.5px; }
+.wm-st em, .wm-diff, .wm-times span { font-size: 10px !important; padding: 1px 6px !important; }
+.wm-chp { margin: -1px 0 6px; font-size: 11px; gap: 6px; }
+.wm-chp i { height: 6px; }
+.wm-shield { margin: -2px 0 6px; padding: 4px 8px; font-size: 11px; border-radius: 8px; }
+.wm-desc { font-size: 11.5px; margin: 0 0 6px; }
+.wm-prof { margin: 0 auto 5px; padding: 2px 10px; font-size: 11px; border-radius: 8px; }
+.wm-cb { gap: 5px; } .wm-cb + .wm-cb { margin-top: 5px; }
+.wm-btn { height: 34px; font-size: 13px; gap: 3px; padding: 0 5px;
+  clip-path: polygon(7px 0, calc(100% - 7px) 0, 100% 7px, 100% calc(100% - 7px), calc(100% - 7px) 100%, 7px 100%, 0 calc(100% - 7px), 0 7px); }
+.wm-btn::before { inset: 2px; clip-path: polygon(6px 0, calc(100% - 6px) 0, 100% 6px, 100% calc(100% - 6px), calc(100% - 6px) 100%, 6px 100%, 0 calc(100% - 6px), 0 6px); box-shadow: inset 0 -3px 0 rgba(0,0,0,.28); }
+.wm-btn::after { top: 3px; }
+.wm-btn i { font-size: 14px; }
+.wm-btn span small { font-size: 10px; }
+.wm-btn .wm-cost, .wm-cost { font-size: 10px; padding: 1px 4px; }
+.wm-bottom { gap: 6px; bottom: max(10px, env(safe-area-inset-bottom)); }
+.zs-chips button, .zs-chips span { font-size: 11px; }
+
+/* tank etiketi ve altındaki küçük düğmeler */
+.wm-m { pointer-events: auto; cursor: pointer; padding: 1px 7px; font-size: 11px; }
+.wm-m.open { box-shadow: 0 0 0 2px #ffd860, 0 0 10px rgba(255,216,96,.6); }
+.wm-mc { position: absolute; left: 0; top: 0; display: flex; gap: 4px; pointer-events: auto; z-index: 2; }
+.wm-mc button { display: flex; align-items: center; gap: 3px; border: 0; padding: 3px 7px 3px 5px; border-radius: 9px; font-family: 'Lilita One', sans-serif; font-size: 11px; color: #fff; white-space: nowrap;
+  background: linear-gradient(180deg, #6a4ad8, #34188a); box-shadow: 0 0 0 1.5px #d8b860, 0 3px 6px rgba(0,0,0,.5); text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+.wm-mc button i { font-style: normal; font-size: 12px; }
+.wm-mc button.mc-spd { background: linear-gradient(180deg, #ffd860, #c88a10); color: #3a2000; text-shadow: none; }
+.wm-mc button.mc-re { background: linear-gradient(180deg, #ff6a4a, #b02010); }
+.wm-mc button:active { transform: scale(.95); }

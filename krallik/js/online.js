@@ -337,3 +337,19 @@ export async function getPlayer(uid) {
   if (!ready || !uid) return null;
   try { const s = await FS.getDoc(FS.doc(db, 'players', uid)); return s.exists() ? { uid, ...s.data() } : null; } catch (e) { lastErr = errOf(e); return null; }
 }
+// ---- Şehir kayıtları: servers/{s}/cities/{uid} { hp, fire, fireAt, regenAt, hpAt, t, x, y, moved, by } ----
+// Saldırgan vuruşu (can, yangın; yıkınca yeni konum) yazar, sahibi söndürme/taşınmayı yazar; herkes okur.
+// firestore.rules içinde "cities" bölümü yayınlanmazsa yazma reddedilir; oyun yedek yolla (gelen kutusu) çalışmaya devam eder.
+export let citiesOk = true;
+export async function writeCity(server, uid, data) {
+  if (!ready || !uid) return false;
+  try { await FS.setDoc(FS.doc(db, 'servers', String(server || 1), 'cities', uid), { ...data, by: user.uid }, { merge: true }); citiesOk = true; return true; } catch (e) { lastErr = errOf(e); citiesOk = false; return false; }
+}
+export async function getCities(server) {
+  if (!ready) return {};
+  try { const s = await FS.getDocs(FS.collection(db, 'servers', String(server || 1), 'cities')); const o = {}; s.docs.forEach((d) => { o[d.id] = d.data(); }); return o; } catch (e) { lastErr = errOf(e); return {}; }
+}
+export async function getMyCity(server) {
+  if (!ready) return null;
+  try { const s = await FS.getDoc(FS.doc(db, 'servers', String(server || 1), 'cities', user.uid)); return s.exists() ? s.data() : null; } catch (e) { lastErr = errOf(e); return null; }
+}

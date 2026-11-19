@@ -594,6 +594,14 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Savunan (`main.js`):** `updateFireUI()` (gameTick 0,5 sn): şehir sahnesinde `#fireAlarm` (kırmızı kenar nabzı), `#fireBtn` (Higgsfield `ic_extinguisher.webp`, "Yangını söndür • Şehir canı %x"), söndürünce `#cityHpChip` dolum çubuğu; belediyede `thFire` (ışıklı alev, söndürünce sönerek kaybolur). Olaylar: `fire`, `marchStayEnd`, `teleport`.
 - Test betiği scratchpad'de `bshot*.js` (Firebase engelli).
 
+### 5.39 Savaş v2.1: düşman rengi, sunucuda şehir taşınması, küçük kart, tank üstü kontroller
+- **Renk:** ittifak dışındaki gerçek oyuncular artık kırmızı (`COL.real`, `.wm-l.real`); mavi "gerçek oyuncu" rengi ittifak sanılıyordu. İttifak yeşil, ben sarı.
+- **Şehir kaydı (Firestore `servers/{s}/cities/{uid}`)** `{ hp, fire, fireAt, regenAt, hpAt, t, x, y, moved, by }`: saldırgan her vuruşta yazar (`attackEnemy → r.cityDoc`, `main → writeCity`), yıkınca yeni konumu (`farSpot`) saldırgan belirler → rakip çevrimdışı olsa bile herkes şehri yeni yerinde görür (`refreshRivals → getCities → ONLINE.cities`, `rivalToEnemy → cityDocOver`). Sahibi: `pullMyCity` (açılışta, gelen kutusundan sonra, 90 sn'de bir) → `applyCityDoc` (taşınma + can/yangın eşitleme); söndürünce `myCityDoc()` yazar. Yedek: kayıt yoksa/yazılamadıysa `S.city.pendingMove` ile sahibi kendisi taşır ve yazar. `applyIncoming` artık kendisi taşımaz.
+- **firestore.rules:** yeni `servers/{sid}/cities/{uid}` bölümü (alan listesi sınırlı, hp 0–100, `by == auth.uid`). **Kullanıcı Firebase konsolunda yayınlamalı**, yoksa saldırganın yazması reddedilir ve taşınma ancak rakip oyunu açınca olur.
+- **Bekleme kaldırıldı:** `marchFight` saldırıdan sonra her zaman `sendHome` (yenilgide dumanlı, 2× hızlı). `canReattack(m)` (dönüşte, asker var, yenilmedi, hedef şehir ayakta) → `reattack(id)` tankı yolun ortasından geri çevirir (`phase: 'go'`, kalan süre = dönülen yol). 'stay' kodu eski kayıtlar için duruyor.
+- **Tank üstü kontroller:** alt sefer şeridi kaldırıldı (gözetleme satırları kalır). Tank etiketine ya da tankın kendisine dokununca (`tap` ekran mesafesi < 34 px) altında küçük düğmeler (`.wm-mc`): ⚡ Hızlandır, ⚔ Tekrar saldır, ↩ Geri çağır. Boş yere dokununca kapanır.
+- **Küçük kart (style.css sonu "Harita kartı v2"):** kart, düğmeler (34 px), istatistikler ve can çubuğu küçültüldü; rapor + ışınlanma tek satırda.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**

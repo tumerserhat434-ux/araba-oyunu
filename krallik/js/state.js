@@ -1,7 +1,7 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191147';
+import { ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191254';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -686,7 +686,7 @@ function applyLosses(loss) {
   return { wounded, dead };
 }
 // ---- Çevrimiçi: gerçek oyuncular ----
-export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0, rallyGiants: [], pyr: {} };
+export const ONLINE = { enemies: [], foreign: [], top: [], topAt: 0, rivalsAt: 0, rallyGiants: [], pyr: {}, cities: {} };
 // piramidin sunucudaki durumu (yoksa sahipsiz ve tam canlı)
 export function pyrState(p) {
   const d = ONLINE.pyr[p.id] || {}, stale = !d.lastHit || Date.now() - d.lastHit > PYR_RESET * 1000;
@@ -782,14 +782,24 @@ function marchFight(m, t) {
   m.survivors = {}; for (const k in r.res.A) { m.survivors[k] = r.res.A[k]; S.troops[k] -= r.res.A[k]; }
   const left = totalTroops(m.survivors);
   m.result = { win: r.res.win }; m.fights = (m.fights || 0) + 1;
-  if (r.res.win && left > 0 && isCity(e) && !r.razed && enemyHp(e) > 0) { m.phase = 'stay'; m.stayUntil = t + 300; m.start = t; }
-  else sendHome(m, t, !r.res.win || left === 0);
+  sendHome(m, t, !r.res.win || left === 0); // saldırıdan sonra hemen döner; dönerken "Tekrar saldır" ile geri gelebilir
   save(); emit('marchArrived', { m, r });
   return r;
 }
+// dönen birlik (asker kaldıysa, yenilmediyse, hedef şehir hâlâ ayaktaysa) yolun ortasından geri dönüp tekrar saldırır
+export function canReattack(m) {
+  if (!m || m.kind === 'gather' || m.kind === 'rally' || m.defeated || m.blocked) return false;
+  if (m.phase === 'stay') return true;
+  if (m.phase !== 'back' || !totalTroops(m.survivors || {})) return false;
+  const e = findEnemy(m.target); return !!e && isCity(e) && enemyHp(e) > 0;
+}
 export function reattack(id) {
-  const m = S.marches.find((q) => q.id === id); if (!m || m.phase !== 'stay') return { ok: false, why: 'Birlik hedefte değil' };
-  const r = marchFight(m, now()); return r ? { ok: true, r } : { ok: false, why: 'Saldırı yapılamadı' };
+  const m = S.marches.find((q) => q.id === id); if (!canReattack(m)) return { ok: false, why: 'Bu birlik tekrar saldıramaz' };
+  const t = now();
+  if (m.phase === 'stay') { const r = marchFight(m, t); return r ? { ok: true, r } : { ok: false, why: 'Saldırı yapılamadı' }; }
+  const k = Math.max(0, Math.min(1, (t - m.start) / Math.max(1, m.arrive - m.start)));
+  m.troops = { ...m.survivors }; m.survivors = null; m.phase = 'go'; m.start = t - (1 - k) * m.dur; m.arrive = t + Math.max(1, k * m.dur);
+  save(); emit('march', m); return { ok: true, turned: true };
 }
 export function marchHome(id) { const m = S.marches.find((q) => q.id === id); if (!m || m.phase !== 'stay') return false; sendHome(m, now(), false); save(); emit('marchStayEnd', m); return true; }
 function tickMarches() {
@@ -895,7 +905,7 @@ function farSpot(fx, fy) {
 // başka şehrin can durumu (bot: yerel; gerçek oyuncu: profilindeki can + bu cihazın son vuruşları)
 export function enemyCity(e) {
   if (!e) return null;
-  if (e.real) { const h = S.pvpHits[e.uid]; if (h && h.t * 1000 > (e.updated || 0)) return h; return e.city || null; }
+  if (e.real) { const h = S.pvpHits[e.uid], c = e.city, ct = c ? (c.t || (e.updated || 0) / 1000) : 0; return h && h.t >= ct ? h : c || null; }
   return e.city || null;
 }
 export const enemyHp = (e) => cityHpOf(enemyCity(e));
@@ -934,8 +944,28 @@ export function rivalToEnemy(p) {
   return { alliance: p.alliance || null, frame: p.frame || null, skin: p.skin || null, mapX: p.mapX != null ? p.mapX + sh : (S.mapX + Math.cos(ang) * 200 * dist), mapY: p.mapY != null ? p.mapY + sh : (S.mapY + Math.sin(ang) * 200 * dist), server: p.server || 1, id: 'p:' + p.uid, uid: p.uid, real: true, name: p.name || 'Oyuncu', lord: '🌐 Gerçek oyuncu', x: 0.5 + Math.cos(ang) * dist * 0.45, y: 0.5 + Math.sin(ang) * dist * 0.45,
     troops: { infantry: 0, spearman: 0, archer: 0, cavalry: 0, tank: 0, ...(p.troops || {}) }, tower: (p.towerPow || 0) / 120, th: p.th || 1, hero: p.hero || null,
     res: { food: (p.lootable?.food || 0) / 0.6, wood: (p.lootable?.wood || 0) / 0.6, stone: (p.lootable?.stone || 0) / 0.6, gold: 0 }, power: p.power || 0, shieldUntil: 0, updated: p.updated || 0,
-    city: p.cityHp != null ? { hp: p.cityHp, fire: !!p.fire } : null };
+    city: p.cityHp != null ? { hp: p.cityHp, fire: !!p.fire, t: (p.updated || 0) / 1000 } : null, ...cityDocOver(p) };
 }
+function cityDocOver(p) {
+  const d = ONLINE.cities[p.uid]; if (!d || !(d.t * 1000 > (p.updated || 0))) return {};
+  const o = { city: { hp: d.hp, fire: !!d.fire, fireAt: d.fireAt || 0, regenAt: d.regenAt || 0, hpAt: d.hpAt ?? null, t: d.t } };
+  if (d.moved && d.x != null) { o.mapX = d.x; o.mapY = d.y; }
+  return o;
+}
+// Kendi şehrimin sunucu kaydı: saldırgan şehri yıktıysa yeni konuma taşı, can/yangını eşitle
+export function applyCityDoc(d) {
+  let moved = null;
+  if (d && d.t >= (S.city.t || 0) - 1) {
+    if (d.moved && d.x != null && (d.x !== S.mapX || d.y !== S.mapY) && d.t > (S.city.movedT || 0)) { moved = { x: d.x, y: d.y }; S.city.movedT = d.t; }
+    Object.assign(S.city, { hp: d.hp, fire: !!d.fire, fireAt: d.fireAt || 0, regenAt: d.regenAt || 0, hpAt: d.hpAt ?? null, t: d.t });
+  }
+  // yedek: kayıt yoksa ya da konum yazılamadıysa (kurallar yayınlanmadıysa) şehri ben taşırım
+  if (!moved && S.city.pendingMove && S.city.hp <= 0) { const [x, y] = farSpot(S.mapX, S.mapY); moved = { x, y, local: true }; S.city.movedT = now(); }
+  if (moved) { S.city.pendingMove = false; S.mapX = moved.x; S.mapY = moved.y; S.enemies.forEach((e, i) => placeOnMap(e, i)); S.zombies = []; S.zombieNext = 0; save(); emit('teleport'); emit('fire', S.city); }
+  return moved;
+}
+// sunucuya yazılacak şehir kaydı (sahibi yazar: söndürme, taşınma)
+export const myCityDoc = () => ({ hp: Math.round(myCityHp() * 10) / 10, fire: !!S.city.fire, fireAt: S.city.fireAt || 0, regenAt: S.city.regenAt || 0, hpAt: S.city.hpAt ?? null, t: now(), x: S.mapX, y: S.mapY, moved: false });
 // Başka bir oyuncunun saldırısı (gelen kutusu) bu şehre uygulanır
 export function applyIncoming(r) {
   const loss = {}; for (const t in TROOPS) loss[t] = Math.min(S.troops[t] || 0, Math.max(0, Math.round(r.dLoss?.[t] || 0)));
@@ -949,9 +979,9 @@ export function applyIncoming(r) {
     for (const k of ['food', 'wood', 'stone']) { const floor = Math.floor(S.res[k] * keep); lost[k] = Math.max(0, Math.min(S.res[k] - floor, Math.round(r.loot?.[k] || 0))); S.res[k] -= lost[k]; }
     S.stats.losses++;
     // şehir canı düşer ve yanar; %0'da uzağa taşınır
-    const hp = Math.max(0, myCityHp() - Math.max(0, r.dmg || 25));
-    S.city = { hp, fire: true, fireAt: now() };
-    if (hp <= 0 && S.mapX != null) { const [x, y] = farSpot(S.mapX, S.mapY); moved = { x, y }; S.mapX = x; S.mapY = y; S.enemies.forEach((e, i) => placeOnMap(e, i)); S.zombies = []; S.zombieNext = 0; emit('teleport'); }
+    const hp = Math.max(0, myCityHp() - Math.max(0, r.dmg || 25)), at = Math.floor((r.t || Date.now()) / 1000);
+    S.city = { ...S.city, hp, fire: true, fireAt: at, regenAt: 0, hpAt: null, t: at, pendingMove: hp <= 0 };
+    if (hp <= 0) moved = true;
     emit('fire', S.city);
   } else { S.stats.wins++; }
   const rep = { t: Math.floor((r.t || Date.now()) / 1000), kind: 'defense', pvp: true, win: !r.win, enemy: r.name || 'Bir oyuncu', lord: '🌐 Gerçek oyuncu', sent: r.sent || {}, aLoss: loss, dLoss: r.aLoss || {}, wounded: split.wounded, dead: split.dead, loot: lost, hero: S.commander, dmg: r.win ? (r.dmg || 25) : 0, cityHp: Math.round(myCityHp()), moved };
@@ -981,7 +1011,7 @@ export function attackEnemy(enemyId, sent, heroIds) {
     save(); emit('battle', rep);
     return { rep, res, enemy: e, sent };
   }
-  let dmg = 0, razed = null, cap = 0;
+  let dmg = 0, razed = null, cap = 0, cityDoc = null;
   if (res.win) {
     cap = Object.entries(res.A).reduce((s, [t, n]) => s + n * TROOPS[t].load, 0) * (1 + rb('logis')) * (1 + rallyLoadBonus());
     for (const r of ['food', 'wood', 'stone']) { const take = Math.min(Math.floor(e.res[r] * 0.6), Math.floor(cap / 3)); loot[r] = take; e.res[r] -= take; }
@@ -992,9 +1022,9 @@ export function attackEnemy(enemyId, sent, heroIds) {
     dmg = cityDamage((loot.food || 0) + (loot.wood || 0) + (loot.stone || 0), cap);
     const before = enemyHp(e), hp = Math.max(0, before - dmg);
     const c = { hp, fire: true, fireAt: now(), t: now() };
-    if (e.real) S.pvpHits[e.uid] = c;
+    if (e.real) { if (hp <= 0) { const [x, y] = farSpot(e.mapX, e.mapY); c.x = x; c.y = y; c.moved = true; e.mapX = x; e.mapY = y; } S.pvpHits[e.uid] = c; cityDoc = { hp: c.hp, fire: true, fireAt: c.fireAt, regenAt: 0, hpAt: null, t: c.t, ...(c.moved ? { x: c.x, y: c.y, moved: true } : {}) }; }
     else { e.city = c; if (hp <= 0) { const [x, y] = farSpot(e.mapX, e.mapY); e.mapX = x; e.mapY = y; razed = { x, y }; e.res = { food: 0, wood: 0, stone: 0, gold: 0 }; } }
-    if (e.real && hp <= 0) razed = { pending: true };
+    if (e.real && hp <= 0) razed = { x: e.mapX, y: e.mapY };
   } else S.stats.losses++;
   for (const t in e.troops) e.troops[t] = res.D[t];
   e.power = armyPower(e.troops) + e.tower * 260;
@@ -1004,7 +1034,7 @@ export function attackEnemy(enemyId, sent, heroIds) {
   const rep = { t: now(), kind: 'attack', win: res.win, enemy: e.name, lord: e.lord, sent, aLoss: res.aLoss, dLoss: res.dLoss, wounded: split.wounded, dead: split.dead, loot, hero: heroId, heroes: heroIds, pvp: !!e.real, uid: e.uid, dmg, cityHp: Math.round(enemyHp(e)), razed };
   S.reports.unshift(rep); S.reports = S.reports.slice(0, 30);
   save(); emit('battle', rep);
-  return { rep, res, enemy: e, sent, dmg, razed };
+  return { rep, res, enemy: e, sent, dmg, razed, cityDoc };
 }
 
 // ---- Zombiler: 1–100. seviye, sırayla açılır, haritada sürekli yenilenir ----

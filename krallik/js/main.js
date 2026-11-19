@@ -2,28 +2,28 @@
 //  DEMİR SANCAK — ana dosya: şehir sahnesi, kamera, arayüz panelleri
 // =====================================================================
 import * as THREE from 'three';
-import * as BLD from './buildings.js?v=2611191147';
-import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191147';
-import * as ASSETS from './assets.js?v=2611191147';
-import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191147';
-import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer } from './online.js?v=2611191147';
-import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191147';
-import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191147';
-import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191147';
-import * as G from './state.js?v=2611191147';
-import { getAvatar } from './scenes.js?v=2611191147';
-import { initCampaign, openCampaign } from './campui.js?v=2611191147';
-import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191147';
-import { campIdx, stageLabel } from './campaign.js?v=2611191147';
-import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191147';
-import { createFire } from './fire.js?v=2611191147';
-import { createGrass } from './grass.js?v=2611191147';
-import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191147';
-import { initTutorial, tutEvent } from './tut.js?v=2611191147';
-import { icon } from './icons.js?v=2611191147';
-import { paintCity } from './terrain.js?v=2611191147';
-import { createLife, createVillager, animVillager } from './life.js?v=2611191147';
-import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191147';
+import * as BLD from './buildings.js?v=2611191254';
+import { createSoldier, createTank, animateUnit, createCitizen } from './units.js?v=2611191254';
+import * as ASSETS from './assets.js?v=2611191254';
+import { initWorldMap, openWorldMap, worldOpen, refreshWorldUI, refreshPyramids } from './worldmap.js?v=2611191254';
+import { serverPlayers, assignServer, listAlliances, getAlliance, createAlliance, joinAlliance, updateMember, leaveAlliance, kickMember, editAlliance, sendChat, watchChat, ALLIANCE_MAX, createRally, joinRally, getRally, setRallyStatus, watchRallies, setRank, requestHelp, giveHelp, deleteHelp, watchHelps, watchPyramids, hitPyramid, watchWorldChat, sendWorldChat, shortId, findPlayerById, pairId, watchDmList, watchDm, sendDm, getPlayer, writeCity, getCities, getMyCity } from './online.js?v=2611191254';
+import { online, onOnline, initOnline, loadCloud, saveCloud, topPlayers, rivals, sendAttack, fetchInbox, clearInbox, connectGoogle, switchToExistingGoogle } from './online.js?v=2611191254';
+import { RESEARCH, RESEARCH_MAX, researchCost, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, SPEED_ORDER, SPEED_TIER, SPEED_SHOP, DROP_QUEST, DROP_EVENT, FRAMES, FRAME_BY_ID, OFFERS } from './data.js?v=2611191254';
+import { ALLIANCE_SHOP, STAR_PATH, campCap, RES, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, TROOPS, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, SUMMON, SHOP, RES_PACKS } from './data.js?v=2611191254';
+import * as G from './state.js?v=2611191254';
+import { getAvatar } from './scenes.js?v=2611191254';
+import { initCampaign, openCampaign } from './campui.js?v=2611191254';
+import { SKINS, SKIN_ORDER, createSkinFX } from './skins.js?v=2611191254';
+import { campIdx, stageLabel } from './campaign.js?v=2611191254';
+import { starsHtml, initScenes, openBattle, openSummon, openHeroViewer, getPortrait, getBuildingPortrait, sceneActive, renderActive } from './scenes.js?v=2611191254';
+import { createFire } from './fire.js?v=2611191254';
+import { createGrass } from './grass.js?v=2611191254';
+import { sfx as asfx, initAudio, updateAudio, setMusic, setSfx, audioState, playVoice } from './audio.js?v=2611191254';
+import { initTutorial, tutEvent } from './tut.js?v=2611191254';
+import { icon } from './icons.js?v=2611191254';
+import { paintCity } from './terrain.js?v=2611191254';
+import { createLife, createVillager, animVillager } from './life.js?v=2611191254';
+import { LORD_NAMES, KINGDOM_NAMES } from './data.js?v=2611191254';
 
 export const $ = (id) => document.getElementById(id);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -254,6 +254,7 @@ function updateFireUI() {
 $('fireBtn').addEventListener('click', () => {
   if (!G.extinguish()) return;
   sfx('reveal'); toast('🧯 Yangın söndürüldü! Şehrinin canı 2-3 dakikada dolacak'); fireOut = 1; updateFireUI(); syncSoon();
+  if (online.ready) writeCity(G.S.server || 1, online.uid, G.myCityDoc());
 });
 // ---- belediye binası efekti (teklif paketleriyle) ----
 let skinFX = null;
@@ -1752,8 +1753,8 @@ G.onChange((ev, data) => {
   if (ev === 'quests') { updateQuestUI(); }
   if (ev === 'pyrHit' || ev === 'pyrRally') { pyrApply(ev, data); return; }
   if (ev === 'marchArrived') {
-    const { r, m } = data; if (r.enemy.real) sendAttack(r.enemy.uid, { name: G.S.name, win: r.res.win, loot: r.rep.loot, sent: r.sent, aLoss: r.res.aLoss, dLoss: r.res.dLoss, dmg: r.dmg || 0 });
-    if (r.dmg) toast(r.razed ? `🔥 ${r.enemy.name} yıkıldı! Şehir haritada başka yere taşınıyor` : `🔥 ${r.enemy.name} yanıyor • şehir canı %${r.rep.cityHp} (−%${r.dmg})${m.phase === 'stay' ? ' • birliğin hedefte bekliyor' : ''}`);
+    const { r, m } = data; if (r.enemy.real) { sendAttack(r.enemy.uid, { name: G.S.name, win: r.res.win, loot: r.rep.loot, sent: r.sent, aLoss: r.res.aLoss, dLoss: r.res.dLoss, dmg: r.dmg || 0 }); if (r.cityDoc) writeCity(r.enemy.server || G.S.server || 1, r.enemy.uid, r.cityDoc); }
+    if (r.dmg) toast(r.razed ? `🔥 ${r.enemy.name} yıkıldı! Şehir haritada başka yere taşınıyor` : `🔥 ${r.enemy.name} yanıyor • şehir canı %${r.rep.cityHp} (−%${r.dmg})${G.canReattack(m) ? ' • dönerken tanka dokunup tekrar saldırabilirsin' : ''}`);
     else if (!r.res.win && !r.rep.zombie) toast('💨 Ordun yenildi, tank dumanlar içinde eve dönüyor', true);
     lastBattle = r; sfx(r.res.win ? 'win' : 'lose');
     if (r.rep.zombie) { if (r.res.win) toast(`🧟 Zombi Sv.${r.rep.zombie} öldürüldü! ` + (r.rep.items || []).map((it) => `⏩ ${SPEEDUPS[it.id].short}${it.n > 1 ? ' ×' + it.n : ''}`).join(' ')); else toast(`🧟 Zombi Sv.${r.rep.zombie} çok güçlüydü! Ordun yenildi`, true); }
@@ -1981,19 +1982,28 @@ async function chatAddById() {
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'chIn') chatSend(); if (e.key === 'Enter' && e.target.id === 'chAddIn') chatAddById(); });
 function syncSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncNow, 3000); }
+// kendi şehrimin sunucu kaydı: biri şehrimi yıktıysa yeni konuma taşı; yedek taşımayı da sunucuya yaz
+async function pullMyCity(doc) {
+  if (!online.ready) return;
+  if (doc === undefined) doc = await getMyCity(G.S.server || 1);
+  const mv = G.applyCityDoc(doc);
+  if (mv) { toast(`🔥 Şehrin yıkıldı ve X:${mv.x} Y:${mv.y} konumuna taşındı. Yangını söndür!`, true); writeCity(G.S.server || 1, online.uid, { ...G.myCityDoc(), moved: true }); updateLabels(true); syncSoon(); }
+}
 async function refreshRivals(force) {
   if (!online.ready || (!force && Date.now() - G.ONLINE.rivalsAt < 90000)) return;
   G.ONLINE.rivalsAt = Date.now();
-  const list = await serverPlayers(G.S.server || 1, 200);
+  const [list, cities] = await Promise.all([serverPlayers(G.S.server || 1, 200), getCities(G.S.server || 1)]);
+  G.ONLINE.cities = cities;
   G.ONLINE.enemies = list.map(G.rivalToEnemy);
+  pullMyCity(cities[online.uid]);
   if (modalKind === 'world' && $('modal').classList.contains('open')) renderModal();
 }
 async function processInbox() {
   if (!online.ready) return;
   const items = await fetchInbox(); if (!items.length) return;
-  for (const it of items) { const r = G.applyIncoming(it); toast(r.win ? `🛡️ ${r.enemy} saldırdı, savunman kazandı!` : r.moved ? `🔥 ${r.enemy} şehrini yıktı! Şehrin X:${r.moved.x} Y:${r.moved.y} konumuna taşındı, yangını söndür!` : `🔥 ${r.enemy} şehrini yağmaladı ve ateşe verdi! Şehir canı %${r.cityHp}`, !r.win); }
+  for (const it of items) { const r = G.applyIncoming(it); toast(r.win ? `🛡️ ${r.enemy} saldırdı, savunman kazandı!` : r.moved ? `🔥 ${r.enemy} şehrini yıktı!` : `🔥 ${r.enemy} şehrini yağmaladı ve ateşe verdi! Şehir canı %${r.cityHp}`, !r.win); }
   $('repDot').classList.remove('hidden');
-  await clearInbox(items.map((x) => x.id)); updateTop(); syncSoon();
+  await clearInbox(items.map((x) => x.id)); updateTop(); syncSoon(); pullMyCity();
 }
 async function adoptCloud(cloud, ask) {
   if (!cloud?.data) return false;
@@ -2015,9 +2025,10 @@ async function startOnline() {
   if (!G.S.server) { const n = await assignServer(); G.placeOnServer(n); toast(`🌐 Sunucu #${n}'e katıldın!`); }
   pyrWatch(); chatStart();
   await syncNow();
-  processInbox(); refreshRivals(true);
+  await processInbox(); refreshRivals(true);
   if (G.S.alliance) alRefresh(); // üyeliği doğrula, gücü güncelle
   setInterval(() => { if (G.S.alliance) alRefresh(); }, 300000);
+  setInterval(() => refreshRivals(), 90000); // rakip şehirler ve kendi şehir kaydım (yıkıldıysam taşınma)
   setInterval(helpCleanup, 10000);
   setInterval(() => { if (Date.now() - lastSync > 60000) syncNow(); }, 15000);
   setInterval(processInbox, 120000);
