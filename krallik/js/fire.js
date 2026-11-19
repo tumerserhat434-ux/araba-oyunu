@@ -5,7 +5,7 @@ import * as THREE from 'three';
 let flameTex = null, puffTex = null, emberTex = null;
 const flames = () => {
   if (flameTex) return flameTex;
-  flameTex = new THREE.TextureLoader().load('assets/ui/fx_flames.webp?v=2611192130');
+  flameTex = new THREE.TextureLoader().load('assets/ui/fx_flames.webp?v=2611200110');
   flameTex.colorSpace = THREE.SRGBColorSpace;
   return flameTex;
 };
