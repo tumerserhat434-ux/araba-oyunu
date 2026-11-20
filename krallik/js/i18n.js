@@ -5,7 +5,7 @@
 //   1) birebir eşleşme  2) sayılar # yapılarak eşleşme  3) {0} yer tutuculu kalıplar
 //   4) bulunamazsa metin içindeki bilinen ifadeler tek tek çevrilir.
 // =====================================================================
-import EN from './i18n_en.js?v=2611201530';
+import EN from './i18n_en.js?v=2611201555';
 
 export const LANG = (() => { try { return localStorage.getItem('ds_lang') === 'en' ? 'en' : 'tr'; } catch (e) { return 'tr'; } })();
 export function setLang(l) { try { localStorage.setItem('ds_lang', l); } catch (e) { /* özel pencere */ } location.reload(); }

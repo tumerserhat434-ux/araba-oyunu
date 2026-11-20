@@ -685,6 +685,10 @@ cd araba-oyunu && python3 -m http.server 8000
 - **Dil:** `js/i18n.js` (main.js'in ilk importu). `localStorage['ds_lang']` = 'en' ise MutationObserver ile ekrandaki her yazı düğümü ve placeholder/title çevrilir: birebir → sayılar # → baş/son sayı → `{0}` kalıpları (en uzun önce) → metin içi ifade + süre kısaltmaları (3gün→3d, Sv.→Lv.). Sözlük `js/i18n_en.js` (~1350 giriş; acorn ile çıkarılan metin parçaları, yardımcı ajanlarla çevrildi, terim sözlüğüyle). `fmt/fmtTime` dile göre (K/M/B, 6.6M, 2m 3s), `LOC` sayı biçimi. Ayarlar sekmesinde "Dil / Language" (`data-lang`, sayfa yeniden yüklenir). Yeni metin eklenince İngilizce sözlüğe de eklenmeli (yoksa metin içi ifade çevirisiyle kısmen çevrilir). Canvas üzerine çizilen yazılar çevrilmez.
 - **Kahraman ekranı:** önce eski KayKit modeli görünüyordu; `units.js → attachHero3d` artık 3D model yüklenene kadar KayKit gövdesini gizler (yüklenmezse geri açar). `assets.js → preloadHeroes(ids)`, `hero3dReady(id)`; görüntüleyicide yalnızca sonraki kahraman önceden yüklenir. **Açılışta toplu ön yükleme kaldırıldı:** iPhone'da Safari sayfayı "birçok kez sorun oluştu" diye kapatıyordu (bellek). Kahraman dokuları her cihazda 1024'e (LOW_MEM 768) küçültülür; önbellekte en fazla 5 kahraman (LOW_MEM 3), en eski bırakılır (`h3lru`). Eski dosya silinmedi: `assets/chars` KayKit modelleri sıradan askerlerde kullanılıyor.
 
+### 5.56 Sohbet çubuğu konumu, küçük görev çubuğu
+- Sohbet çubuğu sabit `+60px` ile alt menünün üstüne biniyordu (iPhone çentik payı + yazı tipi). `main.js → fitNav()` alt menünün gerçek yüksekliğini `--navh` CSS değişkenine yazar (resize + 1,5 sn'de bir); `.chat-bar` = `--navh + 4px`, `#bottomHud` = `--navh + 36px` (style.css sonu).
+- Görev (bölüm) çubuğu `.qbar` küçültüldü (taç 30, simge 28, yazı 12, çubuk 10 px, düğme 13 px).
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
