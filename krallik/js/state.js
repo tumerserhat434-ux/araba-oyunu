@@ -1,7 +1,8 @@
 // =====================================================================
 //  DEMİR SANCAK — oyun durumu, kayıt, ekonomi, savaş ve çağırma mantığı
 // =====================================================================
-import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS, BAG_DENOM } from './data.js?v=2611201420';
+import { LANG } from './i18n.js?v=2611201510';
+import { FY_TASKS, FY_DAYS, FY_BONUS, TROOP_LV_MAX, troopLvMul, troopLvCost, troopLvTime, troopLvReq, VIP, VIP_MAX, ALLIANCE_SHOP, starMul, nextStarCost, campCap, BUILDINGS, PLOTS, MAX_LEVEL, maxLevel, thRequirements, upgradeCost, upgradeTime as baseUpgradeTime, prodPerHour as baseProd, prodCap as baseCap, TROOPS, COUNTER, HEROES, HERO_BY_ID, RARITY, heroBonus, heroLevelCost, HERO_MAX_LEVEL, SUMMON, KINGDOM_NAMES, LORD_NAMES, RESEARCH, RESEARCH_MAX, researchCost, researchTime, QUESTS, DAILY, DAILY_CHEST, LOGIN_REWARDS, SPEEDUPS, DROP_QUEST, DROP_EVENT, DROP_CHEST, SPEED_SHOP, FRAMES, FRAME_BY_ID, OFFERS, BAG_DENOM } from './data.js?v=2611201510';
 
 const SAVE_KEY = 'demirsancak_v1';
 const now = () => Date.now() / 1000;
@@ -313,19 +314,20 @@ export function addRes(obj) {
   }
 }
 export function gainRes(obj) { for (const r in obj) S.res[r] = (S.res[r] || 0) + obj[r]; }
+const EN = LANG === 'en', DEC = EN ? '.' : ',', SUF = EN ? ['B', 'M', 'K'] : ['Mr', 'M', 'B'], TU = EN ? ['h', 'm', 's'] : ['s', 'dk', 'sn'];
 export function fmt(n) {
   n = Math.floor(n);
-  if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 1).replace('.', ',') + 'Mr';
-  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.', ',') + 'M';
-  if (n >= 1e4) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace('.', ',') + 'B';
-  return n.toLocaleString('tr-TR');
+  if (n >= 1e9) return (n / 1e9).toFixed(n >= 1e10 ? 0 : 1).replace('.', DEC) + SUF[0];
+  if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 0 : 1).replace('.', DEC) + SUF[1];
+  if (n >= 1e4) return (n / 1e3).toFixed(n >= 1e5 ? 0 : 1).replace('.', DEC) + SUF[2];
+  return n.toLocaleString(EN ? 'en-US' : 'tr-TR');
 }
 export function fmtTime(s) {
   s = Math.max(0, Math.ceil(s));
   const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
-  if (h) return `${h}s ${m}dk`;
-  if (m) return `${m}dk ${x}sn`;
-  return `${x}sn`;
+  if (h) return `${h}${TU[0]} ${m}${TU[1]}`;
+  if (m) return `${m}${TU[1]} ${x}${TU[2]}`;
+  return `${x}${TU[2]}`;
 }
 export const totalTroops = (t = S.troops) => Object.values(t).reduce((a, b) => a + b, 0);
 // 1 saate kadar 12 sn = 1 altın; daha uzun sürelerde dakika başına 1 altın (uzun inşaatları hızlandırmak cazip kalsın)

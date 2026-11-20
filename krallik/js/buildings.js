@@ -3,7 +3,7 @@
 // =====================================================================
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import * as A from './assets.js?v=2611201420';
+import * as A from './assets.js?v=2611201510';
 
 export const FOOTPRINT = { townhall: 11, barracks: 8, archery: 5, hospital: 8, potion: 6, heroes: 8, summon: 8, farm: 7, lumber: 7, quarry: 7, warehouse: 7, academy: 8, tankyard: 9, rally: 9, forge: 7, camp: 8.5, drill: 8.5 };
 
