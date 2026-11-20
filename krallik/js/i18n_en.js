@@ -1346,5 +1346,14 @@ export default {
 "VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.": "VIP 7 perk: your Town Hall becomes a floating amethyst crystal castle; a magic vortex swirls beneath it and crystals fly around.",
 "VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.": "VIP 8 perk: your Town Hall becomes a giant blazing golden globe; it spins, rainbow rings flow around it and golden sparks fly.",
 "Belediye binan bir uzay üssüne dönüşür; 3-2-1 geri sayımla mekik fırlatılır, yörüngede döner ve rampaya geri iner.": "Your Town Hall becomes a space base; a shuttle launches on a 3-2-1 countdown, orbits and lands back on the pad.",
-"'de iyileşir; hastane yoksa ölürler! Hastane arsasına dokunup inşa et.": " heals them; without a hospital they die! Tap the Hospital plot to build it."
+"'de iyileşir; hastane yoksa ölürler! Hastane arsasına dokunup inşa et.": " heals them; without a hospital they die! Tap the Hospital plot to build it.",
+"Komutan:": "Commander:",
+"Tebrikler:": "Congrats:",
+"Sende:": "You have:",
+"Lider:": "Leader:",
+"Adet:": "Qty:",
+"Toplam:": "Total:",
+"Ralli:": "Rally:",
+"Sen:": "You:",
+"Hata:": "Error:"
 };

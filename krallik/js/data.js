@@ -2,6 +2,8 @@
 //  DEMİR SANCAK — oyun verileri (binalar, askerler, kahramanlar, mağaza)
 // =====================================================================
 
+import { LANG as _LG } from './i18n.js?v=2611201640';
+const LOC = _LG === 'en' ? 'en-US' : 'tr-TR';
 export const RES = {
   food: { name: 'Yiyecek', icon: '🌾' },
   wood: { name: 'Odun', icon: '🪵' },
@@ -101,7 +103,7 @@ export const TROOPS = {
   spearman: { name: 'Mızrakçı', short: 'Mızrakçı', icon: '🔱', atk: 10, def: 15, hp: 30, load: 10, cost: { food: 40, wood: 40, stone: 0 }, time: 4, desc: 'Uzun mızrağıyla süvarilere karşı çok güçlü.' },
   archer: { name: 'Okçu', short: 'Okçu', icon: '🏹', atk: 14, def: 8, hp: 24, load: 8, cost: { food: 33, wood: 46, stone: 0 }, time: 4.75, desc: 'Uzaktan yüksek hasar. Piyadelere karşı etkili.' },
   cavalry: { name: 'Şövalye Süvari', short: 'Süvari', icon: '🐎', atk: 16, def: 12, hp: 40, load: 18, cost: { food: 78, wood: 40, stone: 26 }, time: 7.5, reqBarracks: 3, desc: 'Hızlı ve yıkıcı. Okçuları ezer.' },
-  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611201510" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 36, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
+  tank: { name: 'Demir Tank', short: 'Tank', icon: '<img class="ti-img" src="assets/ui/b_tank.webp?v=2611201640" alt="">', atk: 70, def: 60, hp: 180, load: 40, cost: { food: 220, wood: 180, stone: 260 }, time: 36, building: 'tankyard', desc: 'Buharla çalışan zırhlı savaş makinesi. Topuyla piyade, mızrakçı ve okçuları ezer; çok dayanıklıdır.' },
 };
 // ---- Talimhane: asker seviyeleri (1–10) ----
 // Her seviye hasar/savunma/can +%12 (Sv.10 ≈ ×2,08: 11 hasar → 23). Bedel yüksek, süre kısa.
@@ -130,7 +132,7 @@ const FY_T = [
 ];
 const FY_R = [{ energy: 5 }, { items: { s1m: 1 } }, { food: 20000 }, { items: { s1m: 2 } }, { wood: 20000 }, { energy: 5 }, { stone: 20000 }, { items: { s5m: 1 } }, { gold: 10 }, { energy: 8 }, { food: 30000 }, { items: { s1m: 3 } }, { wood: 30000 }, { gold: 15 }];
 export const FY_DAYS = [14, 14, 14, 14, 14, 15, 15];
-export const FY_TASKS = (() => { const out = []; FY_DAYS.forEach((cnt, d) => { for (let i = 0; i < cnt; i++) { const [stat, txt, icon, ns] = FY_T[i]; const n = ns[d]; out.push({ i: out.length, day: d, stat, n, icon, text: txt.replace('{n}', n.toLocaleString('tr-TR')), reward: FY_R[out.length % FY_R.length] }); } }); return out; })();
+export const FY_TASKS = (() => { const out = []; FY_DAYS.forEach((cnt, d) => { for (let i = 0; i < cnt; i++) { const [stat, txt, icon, ns] = FY_T[i]; const n = ns[d]; out.push({ i: out.length, day: d, stat, n, icon, text: txt.replace('{n}', n.toLocaleString(LOC)), reward: FY_R[out.length % FY_R.length] }); } }); return out; })();
 export const FY_BONUS = [{ energy: 20 }, { items: { s5m: 4 } }, { gold: 50 }, { energy: 30, items: { s15m: 2 } }, { gold: 50, items: { s1h: 1 } }, { energy: 40, items: { s5m: 6 } }, { gold: 100, energy: 50, items: { s1h: 2 } }];
 export const COUNTER = {
   infantry: { infantry: 1, spearman: 1.05, archer: 1, cavalry: 1.05, tank: 0.8 },
@@ -299,7 +301,7 @@ export const QUESTS = (() => {
     } else {
       let c; do c = ri(0, CNT.length - 1); while (c === lastCnt); lastCnt = c;
       const [k, txt, a, b] = CNT[c], f = r / QUEST_TOTAL, n = nice(a * Math.pow(b / a, f) * (0.85 + rnd() * 0.3));
-      q = { t: ['cnt', k, n], text: txt.replace('{n}', n.toLocaleString('tr-TR')) };
+      q = { t: ['cnt', k, n], text: txt.replace('{n}', n.toLocaleString(LOC)) };
     }
     q.rank = r; gen.push(q);
   }

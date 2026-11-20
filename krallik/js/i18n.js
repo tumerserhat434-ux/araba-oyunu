@@ -5,7 +5,7 @@
 //   1) birebir eşleşme  2) sayılar # yapılarak eşleşme  3) {0} yer tutuculu kalıplar
 //   4) bulunamazsa metin içindeki bilinen ifadeler tek tek çevrilir.
 // =====================================================================
-import EN from './i18n_en.js?v=2611201510';
+import EN from './i18n_en.js?v=2611201640';
 
 export const LANG = (() => { try { return localStorage.getItem('ds_lang') === 'en' ? 'en' : 'tr'; } catch (e) { return 'tr'; } })();
 export function setLang(l) { try { localStorage.setItem('ds_lang', l); } catch (e) { /* özel pencere */ } location.reload(); }
@@ -43,17 +43,17 @@ function tx(t, depth = 0) {
     const nums = []; const nt = t.replace(NUM, (x) => { nums.push(x); return '#'; });
     const nv = numMap.get(nt); if (nv !== undefined) { let i = 0; return nv.replace(/#/g, () => nums[i++] ?? ''); }
   }
+  // sonu/başı sayı olan kalıplar: "Şu an Sv.1" → "Şu an Sv." + "1"
+  const tm = /^(.*?\D)(\s*\d[\d.,]*%?)$/.exec(t);
+  if (tm && exact.has(tm[1].trimEnd())) return exact.get(tm[1].trimEnd()) + tm[1].slice(tm[1].trimEnd().length) + tm[2];
+  const hm = /^([\d.,]+%?\s*)(\D.*)$/.exec(t);
+  if (hm && exact.has(hm[2])) return hm[1] + exact.get(hm[2]);
   if (depth < 3) for (const tp of tpls) {
     if (!t.includes(tp.lit)) continue;
     const m = tp.re.exec(t); if (!m) continue;
     const vals = {}; tp.order.forEach((idx, j) => { vals[idx] = m[j + 1]; });
     return tp.v.replace(/\{(\d+)\}/g, (_, i) => { const x = vals[i]; if (x == null) return ''; const lead = x.match(/^\s*/)[0], trail = x.match(/\s*$/)[0], core = x.trim(); return lead + (core ? tx(core, depth + 1) : '') + trail; });
   }
-  // sonu/başı sayı olan kalıplar: "Şu an Sv.1" → "Şu an Sv." + "1"
-  const tm = /^(.*?\D)(\s*[\d.,]+%?)$/.exec(t);
-  if (tm && exact.has(tm[1].trimEnd())) return exact.get(tm[1].trimEnd()) + tm[1].slice(tm[1].trimEnd().length) + tm[2];
-  const hm = /^([\d.,]+%?\s*)(\D.*)$/.exec(t);
-  if (hm && exact.has(hm[2])) return hm[1] + exact.get(hm[2]);
   if (depth === 0 && /[çğıöşüÇĞİÖŞÜ]/.test(t)) (window.__i18nMiss ||= new Set()).add(t); // test: sözlükte olmayanlar
   let r = PHRASE_RE ? t.replace(PHRASE_RE, (w) => exact.get(w) ?? w) : t;
   // rakama bitişik süre kısaltmaları: 3gün → 3d, 5sa → 5h, 2dk → 2m, 9sn → 9s
