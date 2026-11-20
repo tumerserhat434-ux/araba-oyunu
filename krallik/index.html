@@ -15,7 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Nunito:wght@700;800;900&family=Lilita+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=2611200250">
+<link rel="stylesheet" href="style.css?v=2611201335">
 <script type="importmap">
 { "imports": { "three": "../lib/three.module.min.js", "three/addons/": "../lib/jsm/" } }
 </script>
@@ -24,7 +24,7 @@
 <canvas id="c"></canvas>
 <div id="labels"></div>
 <div id="fireAlarm" class="fire-alarm hidden"></div>
-<button id="fireBtn" class="fire-btn hidden"><img src="assets/ui/ic_extinguisher.webp?v=2611200250" alt=""><span><b>Yangını söndür</b><small id="fireHp">Şehir canı %100</small></span></button>
+<button id="fireBtn" class="fire-btn hidden"><img src="assets/ui/ic_extinguisher.webp?v=2611201335" alt=""><span><b>Yangını söndür</b><small id="fireHp">Şehir canı %100</small></span></button>
 <div id="cityHpChip" class="city-hp hidden"><i>🏰</i><span><u id="cityHpBar"></u></span><b id="cityHpTxt">%100</b></div>
 
 <div id="loading" class="loading">
@@ -36,50 +36,50 @@
 
 <!-- Üst çubuk -->
 <header id="top" class="hidden">
-  <div class="hud-ribbon"><i></i><img src="assets/ui/crown.webp?v=2611200250" alt=""><i></i></div>
+  <div class="hud-ribbon"><i></i><img src="assets/ui/crown.webp?v=2611201335" alt=""><i></i></div>
   <div class="profile" id="profileBtn">
-    <button id="vipBtn" class="vip-badge off"><img src="assets/ui/vip_badge.webp?v=2611200250" alt=""><b id="vipLvl">VIP 0</b><em id="vipDot" class="dot hidden"></em></button>
+    <button id="vipBtn" class="vip-badge off"><img src="assets/ui/vip_badge.webp?v=2611201335" alt=""><b id="vipLvl">VIP 0</b><em id="vipDot" class="dot hidden"></em></button>
     <div class="avatar"><img id="avatarImg" alt=""><span class="fav-fw"><img id="frameImg" class="aframe" alt=""><i class="fav-sh"></i></span><span class="lvl" id="thLvl">1</span></div>
-    <div class="pinfo"><b><img class="pcrown" src="assets/ui/crown.webp?v=2611200250" alt=""><span id="kname">Krallığım</span></b><div class="pow"><i data-ico="power"></i><span id="power">0</span></div><div class="pbar"><i id="powBar"></i></div></div>
+    <div class="pinfo"><b><img class="pcrown" src="assets/ui/crown.webp?v=2611201335" alt=""><span id="kname">Krallığım</span></b><div class="pow"><i data-ico="power"></i><span id="power">0</span></div><div class="pbar"><i id="powBar"></i></div></div>
   </div>
   <div class="resbar">
-    <div class="res" data-r="food"><i><img src="assets/ui/res_food.webp?v=2611200250" alt=""></i><span id="r_food">0</span><b class="plus">+</b></div>
-    <div class="res" data-r="wood"><i><img src="assets/ui/res_wood.webp?v=2611200250" alt=""></i><span id="r_wood">0</span><b class="plus">+</b></div>
-    <div class="res" data-r="stone"><i><img src="assets/ui/res_stone.webp?v=2611200250" alt=""></i><span id="r_stone">0</span><b class="plus">+</b></div>
-    <div class="res gold" id="goldBtn"><i><img src="assets/ui/res_gold.webp?v=2611200250" alt=""></i><span id="r_gold">0</span><b class="plus">+</b></div>
+    <div class="res" data-r="food"><i><img src="assets/ui/res_food.webp?v=2611201335" alt=""></i><span id="r_food">0</span><b class="plus">+</b></div>
+    <div class="res" data-r="wood"><i><img src="assets/ui/res_wood.webp?v=2611201335" alt=""></i><span id="r_wood">0</span><b class="plus">+</b></div>
+    <div class="res" data-r="stone"><i><img src="assets/ui/res_stone.webp?v=2611201335" alt=""></i><span id="r_stone">0</span><b class="plus">+</b></div>
+    <div class="res gold" id="goldBtn"><i><img src="assets/ui/res_gold.webp?v=2611201335" alt=""></i><span id="r_gold">0</span><b class="plus">+</b></div>
   </div>
 </header>
 
 <div id="side" class="hidden">
-  <div class="chip hchip" id="chipTroops"><img class="hc-ic" src="assets/ui/ic_troops.webp?v=2611200250" alt=""><div class="hc-t"><small>Ordu</small><span id="troopCount">0</span></div></div>
-  <div class="chip hchip" id="chipBuilders"><img class="hc-ic" src="assets/ui/ic_builder.webp?v=2611200250" alt=""><div class="hc-t"><small>İnşaatçı</small><span id="builderCount">0/2</span></div></div>
-  <div class="chip hchip en-chip" id="chipEnergy"><img class="hc-ic" src="assets/ui/ic_energy.webp?v=2611200250" alt=""><div class="hc-t"><small>Enerji</small><span id="energyCount">200/200</span><u class="en-bar"><i id="energyBar"></i></u></div></div>
+  <div class="chip hchip" id="chipTroops"><img class="hc-ic" src="assets/ui/ic_troops.webp?v=2611201335" alt=""><div class="hc-t"><small>Ordu</small><span id="troopCount">0</span></div></div>
+  <div class="chip hchip" id="chipBuilders"><img class="hc-ic" src="assets/ui/ic_builder.webp?v=2611201335" alt=""><div class="hc-t"><small>İnşaatçı</small><span id="builderCount">0/2</span></div></div>
+  <div class="chip hchip en-chip" id="chipEnergy"><img class="hc-ic" src="assets/ui/ic_energy.webp?v=2611201335" alt=""><div class="hc-t"><small>Enerji</small><span id="energyCount">200/200</span><u class="en-bar"><i id="energyBar"></i></u></div></div>
 </div>
 
 <div id="rside" class="hidden">
-  <button class="rbtn" data-go="events"><img src="assets/ui/ic_calendar.webp?v=2611200250" width="46" height="46" alt=""><span>Etkinlikler</span><em class="dot hidden" id="evDot"></em></button>
-  <button class="rbtn" data-go="offers"><img src="assets/ui/ic_gift.webp?v=2611200250" width="46" height="46" alt=""><span>Teklifler</span><em class="dot" id="offDot"></em></button>
-  <button class="rbtn" data-go="alliance"><img src="assets/ui/ic_alliance.webp?v=2611200250" width="46" height="46" alt=""><span>İttifak</span><em class="al-badge hidden" id="alDot"></em></button>
-  <button class="rbtn" data-go="login"><img src="assets/ui/ic_trophy.webp?v=2611200250" width="46" height="46" alt=""><span>Ödüller</span><em class="dot hidden" id="logDot"></em></button>
+  <button class="rbtn" data-go="events"><img src="assets/ui/ic_calendar.webp?v=2611201335" width="46" height="46" alt=""><span>Etkinlikler</span><em class="dot hidden" id="evDot"></em></button>
+  <button class="rbtn" data-go="offers"><img src="assets/ui/ic_gift.webp?v=2611201335" width="46" height="46" alt=""><span>Teklifler</span><em class="dot" id="offDot"></em></button>
+  <button class="rbtn" data-go="alliance"><img src="assets/ui/ic_alliance.webp?v=2611201335" width="46" height="46" alt=""><span>İttifak</span><em class="al-badge hidden" id="alDot"></em></button>
+  <button class="rbtn" data-go="login"><img src="assets/ui/ic_trophy.webp?v=2611201335" width="46" height="46" alt=""><span>Ödüller</span><em class="dot hidden" id="logDot"></em></button>
   <button class="rbtn" data-go="ranking"><i data-ico="power" data-s="44"></i><span>Sıralama</span></button>
-  <button class="rbtn glow" data-go="summon"><img src="assets/ui/ic_summon.webp?v=2611200250" width="52" height="52" alt=""><span>Çağır</span><em id="freeDot" class="dot hidden"></em></button>
-  <button class="rbtn camp-btn" data-go="campaign"><img src="assets/ui/ic_campaign.webp?v=2611200250" width="52" height="52" alt=""><span>Görevler</span><em id="campTag" class="camp-tag">1-1</em></button>
-  <button class="rbtn bag-btn" data-go="bag"><img src="assets/ui/em_bag.webp?v=2611200250" width="48" height="48" alt=""><span>Çanta</span><em class="dot hidden" id="bagDot"></em></button>
+  <button class="rbtn glow" data-go="summon"><img src="assets/ui/ic_summon.webp?v=2611201335" width="52" height="52" alt=""><span>Çağır</span><em id="freeDot" class="dot hidden"></em></button>
+  <button class="rbtn camp-btn" data-go="campaign"><img src="assets/ui/ic_campaign.webp?v=2611201335" width="52" height="52" alt=""><span>Görevler</span><em id="campTag" class="camp-tag">1-1</em></button>
+  <button class="rbtn bag-btn" data-go="bag"><img src="assets/ui/em_bag.webp?v=2611201335" width="48" height="48" alt=""><span>Çanta</span><em class="dot hidden" id="bagDot"></em></button>
 </div>
 
 <div id="bottomHud" class="hidden">
-  <div class="qbar" id="qbar"><img class="qcrown" src="assets/ui/crown.webp?v=2611200250" alt=""><img class="qscroll" src="assets/ui/nav_quest.webp?v=2611200250" alt=""><i class="qsep"></i><div class="qtxt"><span><em id="qCh">Bölüm 1:</em> <b id="qText">Görev</b> <u id="qNum"></u></span><div class="qprog"><span id="qProg"></span><i id="qPct">0%</i></div></div><b id="qBtn">Git <s>»</s></b></div>
+  <div class="qbar" id="qbar"><img class="qcrown" src="assets/ui/crown.webp?v=2611201335" alt=""><img class="qscroll" src="assets/ui/nav_quest.webp?v=2611201335" alt=""><i class="qsep"></i><div class="qtxt"><span><em id="qCh">Bölüm 1:</em> <b id="qText">Görev</b> <u id="qNum"></u></span><div class="qprog"><span id="qProg"></span><i id="qPct">0%</i></div></div><b id="qBtn">Git <s>»</s></b></div>
   <div class="news" id="news"><i data-ico="news" data-s="18"></i><div class="ntrack"><span id="newsTxt"></span></div></div>
 </div>
 
 <!-- Alt menü -->
 <nav id="nav" class="hidden">
-  <button data-go="city" class="on"><img src="assets/ui/nav_city.webp?v=2611200250" alt=""><span>Şehir</span></button>
-  <button data-go="world"><img src="assets/ui/nav_world.webp?v=2611200250" alt=""><span>Dünya</span></button>
-  <button data-go="quests"><img src="assets/ui/nav_quest.webp?v=2611200250" alt=""><span>Görev</span><em id="questDot" class="dot hidden"></em></button>
-  <button data-go="heroes"><img src="assets/ui/nav_heroes.webp?v=2611200250" alt=""><span>Kahraman</span></button>
-  <button data-go="shop"><img src="assets/ui/nav_shop.webp?v=2611200250" alt=""><span>Mağaza</span></button>
-  <button data-go="reports"><img src="assets/ui/nav_reports.webp?v=2611200250" alt=""><span>Rapor</span><em id="repDot" class="dot hidden"></em></button>
+  <button data-go="city" class="on"><img src="assets/ui/nav_city.webp?v=2611201335" alt=""><span>Şehir</span></button>
+  <button data-go="world"><img src="assets/ui/nav_world.webp?v=2611201335" alt=""><span>Dünya</span></button>
+  <button data-go="quests"><img src="assets/ui/nav_quest.webp?v=2611201335" alt=""><span>Görev</span><em id="questDot" class="dot hidden"></em></button>
+  <button data-go="heroes"><img src="assets/ui/nav_heroes.webp?v=2611201335" alt=""><span>Kahraman</span></button>
+  <button data-go="shop"><img src="assets/ui/nav_shop.webp?v=2611201335" alt=""><span>Mağaza</span></button>
+  <button data-go="reports"><img src="assets/ui/nav_reports.webp?v=2611201335" alt=""><span>Rapor</span><em id="repDot" class="dot hidden"></em></button>
 </nav>
 
 <!-- Sohbet şeridi (şehir ve dünya haritası) -->
@@ -97,6 +97,6 @@
 <div id="camp" class="camp hidden"></div>
 <div id="toasts"></div>
 
-<script type="module" src="js/main.js?v=2611200250"></script>
+<script type="module" src="js/main.js?v=2611201335"></script>
 </body>
 </html>

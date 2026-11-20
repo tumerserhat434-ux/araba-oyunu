@@ -4,17 +4,17 @@
 //  R: binanın yarıçapı, H: yüksekliği. Dönen grubun userData.update(t, dt) her karede çağrılır.
 // =====================================================================
 import * as THREE from 'three';
-import * as A from './assets.js?v=2611200250';
-import { rigQueen, poseQueen } from './queenrig.js?v=2611200250';
+import * as A from './assets.js?v=2611201335';
+import { rigQueen, poseQueen } from './queenrig.js?v=2611201335';
 
 export const SKINS = {
   fireworks: { name: 'Havai Fişek Şöleni', desc: 'Belediye binasının üstünde rengârenk havai fişekler patlar.', color: '#d070ff' },
   crown: { name: 'Altın Taç Sarayı', desc: 'Belediye binan altın kubbeli, dev taçlı bir saraya dönüşür; rün halkaları hızlanır, tepeden altın sikke ve mücevher fışkırır.', color: '#ffd060', model: 'th_crown', pulse: 0.1 },
   xmas: { name: 'Yılbaşı Şatosu', desc: 'Belediye binan karlı bir yılbaşı şatosuna dönüşür; Noel Baba ren geyikli kızağıyla etrafında uçup hediye yağdırır.', color: '#ff5a5a', model: 'th_xmas', pulse: 0.14 },
   aurora: { name: 'Buz Sarayı', desc: 'Belediye binan bir buz sarayına dönüşür; Buz Kraliçesi büyü yapar, bulutlardan kar yağar, yerden buz dikenleri fışkırır.', color: '#6affc8', model: 'th_aurora' },
-  dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan volkanik bir kaleye dönüşür; tepesindeki dev ejderha kanat çırpar, kükreyip göğe ateş püskürtür, duvarlardan lav akar.', color: '#ff6a2a', flip: { video: 'assets/ui/fv_dragon.mp4?v=2611200250', k: 1.65 } },
-  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611200250' }, vip: 7 },
-  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611200250' }, vip: 8 },
+  dragon: { name: 'Ejder Kalesi', desc: 'Belediye binan volkanik bir kaleye dönüşür; tepesindeki dev ejderha kanat çırpar, kükreyip göğe ateş püskürtür, duvarlardan lav akar.', color: '#ff6a2a', flip: { video: 'assets/ui/fv_dragon.mp4?v=2611201335', k: 1.65 } },
+  vip7: { name: 'Ametist Gök Kalesi', desc: 'VIP 7 ayrıcalığı: belediye binan uçan bir ametist kristal kalesine dönüşür; altında büyü girdabı döner, kristaller etrafında uçuşur.', color: '#b070ff', flip: { video: 'assets/ui/fv_vip7.mp4?v=2611201335' }, vip: 7 },
+  vip8: { name: 'Altın Dünya', desc: 'VIP 8 ayrıcalığı: belediye binan dev, alevli bir altın küreye dönüşür; küre döner, gökkuşağı halkaları etrafında akar, altın kıvılcımlar savrulur.', color: '#ffb030', flip: { video: 'assets/ui/fv_vip8.mp4?v=2611201335' }, vip: 8 },
   shuttle: { name: 'Galaksi Üssü', desc: 'Belediye binan bir uzay üssüne dönüşür; 3-2-1 geri sayımla mekik fırlatılır, yörüngede döner ve rampaya geri iner.', color: '#5ad8ff', model: 'th_shuttle' },
 };
 export const SKIN_ORDER = ['vip8', 'vip7', 'shuttle', 'dragon', 'aurora', 'xmas', 'crown', 'fireworks'];

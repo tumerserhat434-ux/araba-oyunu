@@ -672,6 +672,10 @@ cd araba-oyunu && python3 -m http.server 8000
 - `activeQuests`: 4 yuva, en fazla 2 bekleyen bina görevi. `claimAllQuests()` + "Tamamlananları al" düğmesi. Yeni sayaçlar: `count('giants')` (ralli zaferi), `count('rallies')` (`startRallyMarch`).
 - Görev kartları küçültüldü (`.qrow`, `.w-banner.sm`); ödül çipleri görevin yanında, `#no` etiketi.
 
+### 5.53 Eğitim süreleri ×2, küçük bina pencereleri
+- `data.js → TROOPS[*].time` iki katına çıkarıldı (piyade/mızrakçı 3,2, okçu 3,8, süvari 6, tank 18 sn/birlik; hız çarpanları aynı).
+- Bina pencereleri (`#sheet`) style.css sonunda tek blokta küçültüldü: başlık simgesi 56 px, başlık 18 px, düğmeler 38 px yükseklik / 15 px yazı, istatistik, maliyet, asker kartları ve tank kartı daha sık. Not: `#sheet .tankcard img` gibi genel seçiciler emoji yerine geçen `img.ic-emo`'ları da büyütür, `>` ile doğrudan çocuk seçilmeli.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
