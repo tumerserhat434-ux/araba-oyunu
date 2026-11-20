@@ -676,6 +676,10 @@ cd araba-oyunu && python3 -m http.server 8000
 - `data.js → TROOPS[*].time` iki katına çıkarıldı (piyade/mızrakçı 3,2, okçu 3,8, süvari 6, tank 18 sn/birlik; hız çarpanları aynı).
 - Bina pencereleri (`#sheet`) style.css sonunda tek blokta küçültüldü: başlık simgesi 56 px, başlık 18 px, düğmeler 38 px yükseklik / 15 px yazı, istatistik, maliyet, asker kartları ve tank kartı daha sık. Not: `#sheet .tankcard img` gibi genel seçiciler emoji yerine geçen `img.ic-emo`'ları da büyütür, `>` ile doğrudan çocuk seçilmeli.
 
+### 5.54 Yeni giriş (yükleme) ekranı
+- Higgsfield `gpt_image_2_6` (0,75 kredi: 2 kapak varyantı + 1 logo). `assets/ui/splash.webp` (9:16 kapak: mavi-altın şövalye komutan, ordu, buharlı tank, beyaz-mavi kale, ejderha; alttaki yapay çubuk kırpıldı), `assets/ui/logo_ds.webp` ("DEMİR SANCAK" arma logosu, beyaz zemin kenardan taşma doldurmayla saydam).
+- `index.html #loading`: `.ld-bg` (Ken Burns yakınlaşma), `.ld-rays` (dönen ışın), `.ld-cloud` ×3 (süzülen bulut), `#ldEmbers` (satır içi betikle 26 kıvılcım), logo düşerek gelir + süzülür + maskeli parlama, altta değişen ipuçları (`#ldTip`, 3,2 sn), altın çerçeveli çizgili çubuk (`#loadBar` + `#loadPct`). `setLoad()` yüzdeyi `#loadPct`'e yazar.
+
 ## 6. Önemli tasarım kararları (neden böyle)
 
 1. **Prosedürel modeller → KayKit → Higgsfield:**
