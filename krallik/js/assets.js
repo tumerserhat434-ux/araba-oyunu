@@ -134,6 +134,9 @@ export function loadHero3d(id) {
   }
   return h3p.get(id);
 }
+export const hero3dReady = (id) => h3.has(id);
+// arka planda sırayla önceden yükle (kahraman ekranı anında açılsın)
+export function preloadHeroes(ids) { let p = Promise.resolve(); for (const id of ids) p = p.then(() => loadHero3d(id)); return p; }
 export function hero3d(id, height = 1.9) {
   const d = h3.get(id); if (!d) return null;
   const scene = SkeletonUtils.clone(d.scene);

@@ -49,6 +49,7 @@ function tx(t, depth = 0) {
     const vals = {}; tp.order.forEach((idx, j) => { vals[idx] = m[j + 1]; });
     return tp.v.replace(/\{(\d+)\}/g, (_, i) => { const x = vals[i]; if (x == null) return ''; const lead = x.match(/^\s*/)[0], trail = x.match(/\s*$/)[0], core = x.trim(); return lead + (core ? tx(core, depth + 1) : '') + trail; });
   }
+  if (depth === 0 && /[çğıöşüÇĞİÖŞÜ]/.test(t)) (window.__i18nMiss ||= new Set()).add(t); // test: sözlükte olmayanlar
   return PHRASE_RE ? t.replace(PHRASE_RE, (w) => exact.get(w) ?? w) : t;
 }
 const cache = new Map();

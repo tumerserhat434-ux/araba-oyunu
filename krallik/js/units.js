@@ -639,6 +639,10 @@ function kkHero(def) {
 }
 
 function attachHero3d(obj, def) {
+  // eski (KayKit) gövde yeni model yüklenene kadar görünmesin: önce eski, 1 sn sonra yeni hali görünüyordu
+  const body = obj.children.filter((c) => c.visible && !c.isSprite && !(c.isMesh && c.geometry && c.geometry.type === 'PlaneGeometry'));
+  const ready = !!A.hero3d && A.hero3dReady?.(def.id);
+  if (!ready) body.forEach((c) => { c.visible = false; });
   const swap = () => {
     if (obj.userData.disposed) return;
     const h = A.hero3d(def.id, 1.9 + (def.rarity - 2) * 0.06); if (!h) return;
@@ -655,7 +659,7 @@ function attachHero3d(obj, def) {
     ud.h3 = { root: h.scene, inner: h.inner, t: Math.random() * 10, B, rest, id: def.id };
     ud.mounted = false;
   };
-  A.loadHero3d(def.id).then((ok) => { if (ok) swap(); });
+  A.loadHero3d(def.id).then((ok) => { if (ok) swap(); else if (!obj.userData.disposed) body.forEach((c) => { c.visible = true; }); });
 }
 // ---------------------------------------------------------------------
 //  Kahraman özel hareketleri ve efektleri

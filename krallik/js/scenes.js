@@ -788,6 +788,7 @@ export function openHeroViewer(id) {
     const h = list[cur];
     if (H.model) { H.scene.remove(H.model); freeSkeletons(H.model); const seen = new Set(); H.model.traverse((o) => { const m = o.material; if (m && m.map && !seen.has(m.map)) { seen.add(m.map); m.map.dispose(); } }); }
     H.model = createHero(h); H.model.position.y = 0.3; H.scene.add(H.model);
+    A.preloadHeroes([list[(cur + 1) % list.length].id, list[(cur - 1 + list.length) % list.length].id]);
     H.aura.material.color.set(RARITY[h.rarity].color).multiplyScalar(1.4);
     H.aura.material.opacity = h.rarity >= 4 ? 0.7 : 0.25;
     want = true; animT = 0;

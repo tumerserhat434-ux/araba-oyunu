@@ -2310,6 +2310,8 @@ async function boot() {
   ['top', 'side', 'nav', 'rside', 'bottomHud'].forEach((id) => $(id).classList.remove('hidden'));
   updateTop();
   $('loading').style.opacity = 0; setTimeout(() => $('loading').remove(), 500);
+  // sahip olunan kahramanların 3D modellerini arka planda önceden yükle (komutan önce)
+  setTimeout(() => { const own = Object.keys(G.S.heroes || {}); const cmd = G.S.commander; ASSETS.preloadHeroes([cmd, ...own.filter((id) => id !== cmd)].filter(Boolean).slice(0, ASSETS.LOW_MEM ? 6 : 24)); }, 2500);
   if (G.S.reports.length && G.S.reports[0].t > (G.S.reportsSeen || 0)) $('repDot').classList.remove('hidden');
   const away = Date.now() / 1000 - (G.S.lastSeenBoot || Date.now() / 1000);
   G.S.lastSeenBoot = Date.now() / 1000;
