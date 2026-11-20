@@ -17,7 +17,7 @@ export const MODEL_LIST = [
   'barrel', 'crate_A_big', 'crate_A_small', 'crate_B_big', 'crate_long_A', 'crate_open', 'flag_blue', 'flag_red', 'sack', 'tent', 'weaponrack', 'target', 'wheelbarrow', 'resource_lumber', 'resource_stone', 'bucket_water', 'bucket_arrows', 'pallet', 'ladder',
 ];
 export const CHAR_LIST = ['Knight', 'Barbarian', 'Rogue', 'Rogue_Hooded', 'Mage'];
-// Higgsfield ile özel tasarlanan binalar (assets/hf/<anahtar>.glb?v=2611201640)
+// Higgsfield ile özel tasarlanan binalar (assets/hf/<anahtar>.glb?v=2611201530)
 export const HF_LIST = ['townhall', 'barracks', 'archery', 'hospital', 'potion', 'heroes', 'summon', 'farm', 'lumber', 'quarry', 'warehouse', 'academy', 'tankyard', 'rally', 'forge', 'camp', 'drill'];
 const hf = new Map(), hfSizes = new Map();
 export const PART_LIST = ['p_sails', 'p_wheel', 'p_saw', 'p_fountain', 'p_crystal', 'p_armillary', 'p_cart', 'u_tank', 'p_portal'];
@@ -29,7 +29,7 @@ const hfLazy = new Map();
 export function setOnHFLoaded(cb) { onHF = cb; }
 export function ensureHF(k) {
   if (hf.has(k) || hfLazy.has(k) || !hfLoader) return;
-  hfLazy.set(k, hfLoader.loadAsync('assets/hf/' + k + '.glb?v=2611201640').then((g) => {
+  hfLazy.set(k, hfLoader.loadAsync('assets/hf/' + k + '.glb?v=2611201530').then((g) => {
     const root = g.scene; prep(root);
     root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.8; o.material.metalness = 0; if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x40384a); } } });
     const pivot = new THREE.Group(); pivot.add(root); root.rotation.y = -Math.PI / 2; root.updateMatrixWorld(true);
@@ -61,8 +61,8 @@ export async function loadAll(onProgress = () => {}) {
   let done = 0;
   const tick = () => onProgress(++done / total);
   const jobs = MODEL_LIST.map((n) => loader.loadAsync(KK + n + '.gltf').then((g) => { prep(g.scene); models.set(n, g.scene); tick(); }).catch((e) => { console.warn('model yüklenemedi', n, e); tick(); }));
-  const cjobs = CHAR_LIST.map((n) => loader.loadAsync(CH + n + '.glb?v=2611201640').then((g) => { prep(g.scene); chars.set(n, { scene: g.scene, clips: g.animations }); tick(); }).catch((e) => { console.warn('karakter yüklenemedi', n, e); tick(); }));
-  const hjobs = HF_LIST.map((k) => loader.loadAsync('assets/hf/' + k + '.glb?v=2611201640').then((g) => {
+  const cjobs = CHAR_LIST.map((n) => loader.loadAsync(CH + n + '.glb?v=2611201530').then((g) => { prep(g.scene); chars.set(n, { scene: g.scene, clips: g.animations }); tick(); }).catch((e) => { console.warn('karakter yüklenemedi', n, e); tick(); }));
+  const hjobs = HF_LIST.map((k) => loader.loadAsync('assets/hf/' + k + '.glb?v=2611201530').then((g) => {
     const root = g.scene; prep(root);
     root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.8; o.material.metalness = 0; if (o.material.map) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x40384a); } } });
     const pivot = new THREE.Group(); pivot.add(root);
@@ -74,7 +74,7 @@ export async function loadAll(onProgress = () => {}) {
     hfSizes.set(k, new THREE.Box3().setFromObject(pivot).getSize(new THREE.Vector3()));
     hf.set(k, pivot); tick();
   }).catch(() => tick()));
-  const pjobs = PART_LIST.map((k) => loader.loadAsync('assets/hf/' + k + '.glb?v=2611201640').then((g) => {
+  const pjobs = PART_LIST.map((k) => loader.loadAsync('assets/hf/' + k + '.glb?v=2611201530').then((g) => {
     const root = g.scene; prep(root);
     root.traverse((o) => { if (o.isMesh && o.material) { o.material.roughness = 0.6; o.material.metalness = 0; } });
     const pivot = new THREE.Group(); pivot.add(root); root.rotation.y = -Math.PI / 2; root.updateMatrixWorld(true);
@@ -118,17 +118,20 @@ function shrinkTex(t, max = 1024) {
   const c = document.createElement('canvas'); c.width = c.height = max; c.getContext('2d').drawImage(im, 0, 0, max, max);
   if (im.close) im.close(); t.image = c; t.needsUpdate = true;
 }
-const h3 = new Map(), h3p = new Map();
+const h3 = new Map(), h3p = new Map(), h3lru = [], H3_MAX = LOW_MEM ? 3 : 5;
 let h3loader = null;
 export function loadHero3d(id) {
   if (!h3p.has(id)) {
     h3loader = h3loader || (() => { const l = new GLTFLoader(); l.setMeshoptDecoder(MeshoptDecoder); return l; })();
-    h3p.set(id, h3loader.loadAsync('assets/heroes3d/' + id + '.glb?v=2611201640').then((g) => {
+    h3p.set(id, h3loader.loadAsync('assets/heroes3d/' + id + '.glb?v=2611201530').then((g) => {
       const root = g.scene;
-      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.65; o.material.metalness = 0; if (o.material.map) { if (LOW_MEM) shrinkTex(o.material.map); o.material.map.anisotropy = LOW_MEM ? 4 : 8; o.material.map.needsUpdate = true; } } } });
+      root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; if (o.material) { o.material.roughness = 0.65; o.material.metalness = 0; if (o.material.map) { shrinkTex(o.material.map, LOW_MEM ? 768 : 1024); o.material.map.anisotropy = LOW_MEM ? 4 : 8; o.material.map.needsUpdate = true; } } } });
       root.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(root), sz = b.getSize(new THREE.Vector3());
       h3.set(id, { scene: root, clips: g.animations, h: sz.y, minY: b.min.y });
+      // bellek: en fazla H3_MAX kahraman önbellekte (iPhone sayfayı bellek yüzünden kapatıyordu); eskiler bırakılır
+      h3lru.push(id);
+      while (h3lru.length > H3_MAX) { const old = h3lru.shift(); if (old === 'fx_queen') { h3lru.push(old); if (h3lru.every((x) => x === 'fx_queen')) break; continue; } h3.delete(old); h3p.delete(old); }
       return true;
     }).catch(() => false));
   }
@@ -139,6 +142,7 @@ export const hero3dReady = (id) => h3.has(id);
 export function preloadHeroes(ids) { let p = Promise.resolve(); for (const id of ids) p = p.then(() => loadHero3d(id)); return p; }
 export function hero3d(id, height = 1.9) {
   const d = h3.get(id); if (!d) return null;
+  const li = h3lru.indexOf(id); if (li >= 0) { h3lru.splice(li, 1); h3lru.push(id); }
   const scene = SkeletonUtils.clone(d.scene);
   const k = height / d.h;
   const holder = new THREE.Group();
