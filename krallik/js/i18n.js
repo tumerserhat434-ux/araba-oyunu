@@ -49,8 +49,16 @@ function tx(t, depth = 0) {
     const vals = {}; tp.order.forEach((idx, j) => { vals[idx] = m[j + 1]; });
     return tp.v.replace(/\{(\d+)\}/g, (_, i) => { const x = vals[i]; if (x == null) return ''; const lead = x.match(/^\s*/)[0], trail = x.match(/\s*$/)[0], core = x.trim(); return lead + (core ? tx(core, depth + 1) : '') + trail; });
   }
+  // sonu/başı sayı olan kalıplar: "Şu an Sv.1" → "Şu an Sv." + "1"
+  const tm = /^(.*?\D)(\s*[\d.,]+%?)$/.exec(t);
+  if (tm && exact.has(tm[1].trimEnd())) return exact.get(tm[1].trimEnd()) + tm[1].slice(tm[1].trimEnd().length) + tm[2];
+  const hm = /^([\d.,]+%?\s*)(\D.*)$/.exec(t);
+  if (hm && exact.has(hm[2])) return hm[1] + exact.get(hm[2]);
   if (depth === 0 && /[çğıöşüÇĞİÖŞÜ]/.test(t)) (window.__i18nMiss ||= new Set()).add(t); // test: sözlükte olmayanlar
-  return PHRASE_RE ? t.replace(PHRASE_RE, (w) => exact.get(w) ?? w) : t;
+  let r = PHRASE_RE ? t.replace(PHRASE_RE, (w) => exact.get(w) ?? w) : t;
+  // rakama bitişik süre kısaltmaları: 3gün → 3d, 5sa → 5h, 2dk → 2m, 9sn → 9s
+  r = r.replace(/(\d)\s?gün\b/g, '$1d').replace(/(\d)sa\b/g, '$1h').replace(/(\d)\s?dk\b/g, '$1m').replace(/(\d)\s?sn\b/g, '$1s').replace(/\bSv\.(?=\s?\d)/g, 'Lv.');
+  return r;
 }
 const cache = new Map();
 export function tr(s) {
