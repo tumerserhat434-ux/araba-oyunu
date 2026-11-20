@@ -673,7 +673,7 @@ cd araba-oyunu && python3 -m http.server 8000
 - Görev kartları küçültüldü (`.qrow`, `.w-banner.sm`); ödül çipleri görevin yanında, `#no` etiketi.
 
 ### 5.53 Eğitim süreleri ×2, küçük bina pencereleri
-- `data.js → TROOPS[*].time` iki katına çıkarıldı (piyade/mızrakçı 3,2, okçu 3,8, süvari 6, tank 18 sn/birlik; hız çarpanları aynı).
+- `data.js → TROOPS[*].time`: önce ×2, sonra kışla ×1,25 ve tank ×2 daha (piyade/mızrakçı 4, okçu 4,75, süvari 7,5, tank 36 sn/birlik; hız çarpanları aynı).
 - Bina pencereleri (`#sheet`) style.css sonunda tek blokta küçültüldü: başlık simgesi 56 px, başlık 18 px, düğmeler 38 px yükseklik / 15 px yazı, istatistik, maliyet, asker kartları ve tank kartı daha sık. Not: `#sheet .tankcard img` gibi genel seçiciler emoji yerine geçen `img.ic-emo`'ları da büyütür, `>` ile doğrudan çocuk seçilmeli.
 
 ### 5.54 Yeni giriş (yükleme) ekranı

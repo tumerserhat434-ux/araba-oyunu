@@ -14,7 +14,7 @@ const FILES = ['click', 'coin', 'build', 'built', 'train', 'horn', 'clash', 'win
 const MUSIC = { city: 'music_city', battle: 'music_battle', summon: 'music_summon' };
 const buf = {};
 let fileMusic = null, musicSrc = null, musicGainNode = null, ambSrc = null;
-async function loadBuf(name) { try { const r = await fetch('assets/audio/' + name + '.mp3?v=2611201000'); const a = await r.arrayBuffer(); buf[name] = await new Promise((res, rej) => ctx.decodeAudioData(a, res, rej)); } catch (e) { /* yok */ } }
+async function loadBuf(name) { try { const r = await fetch('assets/audio/' + name + '.mp3?v=2611201420'); const a = await r.arrayBuffer(); buf[name] = await new Promise((res, rej) => ctx.decodeAudioData(a, res, rej)); } catch (e) { /* yok */ } }
 async function loadFiles() {
   await Promise.all(FILES.map(loadBuf));
   await loadBuf(MUSIC.city); fileMusic = true; startMusicFile();
@@ -209,14 +209,14 @@ function pluckSfx(midi, t, vol = 0.3) {
   const g = ctx.createGain(); g.gain.value = vol; src.connect(g).connect(sfxBus); src.start(t); src.stop(t + 1.9);
 }
 
-// ---- Kahraman sesleri (assets/voices/<id>.mp3?v=2611201000) ----
+// ---- Kahraman sesleri (assets/voices/<id>.mp3?v=2611201420) ----
 let voiceSrc = null;
 const voicePending = new Map();
 export async function playVoice(id) {
   if (!ctx) initAudio(); if (!ctx || !sfxOn) return;
   const key = 'v_' + id;
   if (!buf[key]) {
-    if (!voicePending.has(key)) voicePending.set(key, (async () => { try { const r = await fetch('assets/voices/' + id + '.mp3?v=2611201000'); if (!r.ok) return; const a = await r.arrayBuffer(); buf[key] = await new Promise((res, rej) => ctx.decodeAudioData(a, res, rej)); } catch (e) { /* yok */ } })());
+    if (!voicePending.has(key)) voicePending.set(key, (async () => { try { const r = await fetch('assets/voices/' + id + '.mp3?v=2611201420'); if (!r.ok) return; const a = await r.arrayBuffer(); buf[key] = await new Promise((res, rej) => ctx.decodeAudioData(a, res, rej)); } catch (e) { /* yok */ } })());
     await voicePending.get(key);
     if (!buf[key]) return;
   }
